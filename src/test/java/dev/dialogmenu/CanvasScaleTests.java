@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit;
 import org.bukkit.configuration.file.YamlConfiguration;
 import static dev.dialogmenu.MenuModel.*;
 
-/** Actual pack rendering and persisted personal zoom, not a replacement renderer. */
+/** 验证真实资源包渲染和玩家倍率持久化，不替换渲染器。 */
 final class CanvasScaleTests {
     private static int checks;
     private static final UUID PLAYER = UUID.fromString("00000000-0000-0000-0000-000000000001");

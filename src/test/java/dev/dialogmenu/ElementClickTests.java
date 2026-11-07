@@ -6,7 +6,7 @@ import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.configuration.file.YamlConfiguration;
 import static dev.dialogmenu.MenuModel.*;
 
-/** Element-owned interactions, without a second set of hit-area coordinates. */
+/** 元素自身持有交互，不配置第二套命中区域坐标。 */
 final class ElementClickTests {
     private static int checks;
     private static final String SOURCE = """

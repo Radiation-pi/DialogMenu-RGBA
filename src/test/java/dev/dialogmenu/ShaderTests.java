@@ -10,7 +10,7 @@ import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.configuration.file.YamlConfiguration;
 import static dev.dialogmenu.MenuModel.*;
 
-/** Exercise the optional backend through actual YAML, resource exports and callback components. */
+/** 通过实际 YAML、资源导出和回调组件验证可选渲染路径。 */
 final class ShaderTests {
     private static int checks;
     private static final Context CONTEXT = new Context() {
@@ -128,7 +128,7 @@ final class ShaderTests {
                     "Width, height and signed offset do not corrupt each other");
             }
         }
-        // With one image, new absolute offsets carry native lines, not new PNGs or font definitions.
+        // 单图新增绝对偏移时使用原生换行，不增加 PNG 或字体定义。
         Map<String, byte[]> first = null;
         for (int y : List.of(50, 23, -4)) {
             var shifted = parse(YAML.substring(0, YAML.indexOf("  text:"))

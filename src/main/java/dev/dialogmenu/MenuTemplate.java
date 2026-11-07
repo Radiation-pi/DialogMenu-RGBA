@@ -5,7 +5,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import static dev.dialogmenu.MenuModel.*;
 
-/** A YAML-defined menu family, with reusable catalog/list grids. No application IDs or business functions. */
+/** YAML 菜单家族，提供可复用的目录和列表网格，不包含特定应用 ID 或业务函数。 */
 final class MenuTemplate {
     private static final java.util.regex.Pattern TEXT_VARIABLE =
         java.util.regex.Pattern.compile("\\{([^{}]+)}|%[^%\\s]+%");

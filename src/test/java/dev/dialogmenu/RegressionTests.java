@@ -14,7 +14,7 @@ import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import static dev.dialogmenu.MenuModel.*;
 
-/** Offline behavioral regressions. No Bukkit server or network access is needed. */
+/** 离线行为回归，无需启动 Bukkit 服务器或联网。 */
 public final class RegressionTests {
     private static int checks;
     private static final Context PREVIEW = context("A", 1);

@@ -14,8 +14,8 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import static dev.dialogmenu.MenuModel.TextureRegion;
 
 /**
- * Reads CraftEngine source resources without depending on its Java API or
- * copying generated pack output. YAML source URIs:
+ * 读取 CraftEngine 源资源，不依赖其 Java API，也不复制生成包。
+ * YAML 中支持以下资源地址：
  * craftengine:item/<namespace:item-id>
  * craftengine:image/<namespace:image-id>
  * craftengine:icon/<namespace:image-id>

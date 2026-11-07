@@ -9,7 +9,7 @@ import java.util.*;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 
-/** Owns authoring documents, not expanded runtime nodes. All calls run on the editor worker. */
+/** 管理编辑源文档而非展开后的运行节点，所有调用均在编辑工作线程执行。 */
 final class EditorFiles {
     static final int MAX_YAML = 256 * 1024;
     record Draft(String id, String base, String revision, String yaml, JsonObject tree) {}

@@ -1,0 +1,18 @@
+schema-version: 1
+id: gesture
+canvas: {width: 300, height: 180}
+frontend:
+  target:
+    type: text
+    content: 单击查看，双击确认
+    color: '#243247'
+    tooltip: 双击窗口为三百毫秒
+    actions:
+      single: 'tell: 单击'
+      double: 'tell: 双击'
+  close:
+    type: text
+    content: 关闭
+    color: '#243247'
+    offset: {y: -60}
+    actions: close

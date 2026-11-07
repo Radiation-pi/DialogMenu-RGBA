@@ -12,7 +12,7 @@ import net.kyori.adventure.text.event.*;
 import net.kyori.adventure.text.format.TextColor;
 import static dev.dialogmenu.MenuModel.*;
 
-/** Shared source PNGs; RGB carries 9-bit width, 9-bit height and signed 5-bit local Y. */
+/** 共享源 PNG；RGB 携带 9 位宽、9 位高和 5 位有符号行内 Y。 */
 final class RgbaImages {
     record Glyph(int code, int advance) {}
     record Tile(int x, int y, int size) {}
@@ -70,7 +70,7 @@ final class RgbaImages {
             .clickEvent(click).hoverEvent(hover);
     }
 
-    // A square's native bounds are exact; Euclidean tiling also covers nonsquare images.
+    // 正方形的原生命中边界精确；用欧几里得分块覆盖非正方形图片。
     static List<Tile> tiles(int width, int height) {
         List<Tile> result = new ArrayList<>();
         tile(result, 0, 0, width, height);

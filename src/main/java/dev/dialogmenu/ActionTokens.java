@@ -46,7 +46,7 @@ final class ActionTokens {
         try { index = Integer.parseInt(parts[2]); } catch (NumberFormatException ignored) { return null; }
         if (index < 0 || index >= page.actions.size()) return null;
         var action = page.actions.get(index);
-        // Keep the first gesture's nonce alive for exactly one matching second click.
+        // 第一次手势的随机令牌仅保留到匹配的第二次点击，且只能使用一次。
         if (action.gesture == null || action.gesture.equals(page.pendingGesture)) pages.remove(player);
         else page.pendingGesture = action.gesture;
         return action.run;

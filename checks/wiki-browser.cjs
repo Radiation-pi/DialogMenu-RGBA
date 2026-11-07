@@ -1,5 +1,5 @@
-/* Usage: WIKI_URL=http://127.0.0.1:8000/ node checks/wiki-browser.cjs
- * Install playwright or set PLAYWRIGHT_MODULE; BROWSER_PATH is optional.
+/* 用法：WIKI_URL=http://127.0.0.1:8000/ node checks/wiki-browser.cjs
+ * 先安装 playwright 或设置 PLAYWRIGHT_MODULE，可选设置 BROWSER_PATH。
  */
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const fs = require('node:fs');
@@ -124,7 +124,7 @@ function check(value, message) { assert.ok(value, message); passed++; }
     }
     await noOverflow();
     await shot(`12-example-${width}`);
-    // All articles, including wide tables and long Java lines, stay within the viewport.
+    // 包括宽表格和 Java 长代码在内，所有文章都不能让整页横向溢出。
     for (const id of articles) {
       await page.evaluate(id => { location.hash = id; }, id);
       await page.waitForFunction(id => document.querySelector('article.current')?.id === id, id);

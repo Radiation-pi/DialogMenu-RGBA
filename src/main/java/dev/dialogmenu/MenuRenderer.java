@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import static dev.dialogmenu.MenuModel.*;
 
-/** Each graphic is a separate sprite; the combined image is only an offline preview. */
+/** 每个图形独立生成精灵，合成图仅用于离线预览。 */
 final class MenuRenderer {
     final VanillaAssets assets;
     final boolean shader;
@@ -78,9 +78,9 @@ final class MenuRenderer {
                     || Math.abs(n.width() * n.scaleX() / (n.height() * n.scaleY())
                         - reference.image().getWidth() / (double) reference.image().getHeight()) > 1e-7)
                     throw new IOException(n.id() + " 纹理直引须完整显示、等比缩放、不旋转且opacity=255");
-                // Only providers are exported; Minecraft/CE supply the original texture.
+                // 只导出字体 provider，原纹理由 Minecraft 或 CE 提供。
                 root.drawImage(reference.image(), bounds.x, bounds.y, bounds.width, bounds.height, null);
-                // Keep the displayed bounds without copying the source PNG.
+                // 保留显示边界，不复制源 PNG。
                 sprites.add(new Sprite(n.id(), bounds.x, bounds.y,
                     new BufferedImage(bounds.width, bounds.height, BufferedImage.TYPE_INT_ARGB),
                     reference.texture(), reference.image(), reference.region()));

@@ -6,16 +6,16 @@ import java.util.List;
 import net.kyori.adventure.text.format.TextDecoration;
 import static dev.dialogmenu.MenuModel.*;
 
-/** Dialog plain-message baselines advance nine pixels per explicit newline. */
+/** Dialog 普通消息每次显式换行，基线前进 9 像素。 */
 final class CanvasRows {
     static final int HEIGHT = 9;
-    // Emit from the preceding baseline: negative ascent keeps short fragments' hit bounds exact.
+    // 从前一条基线输出，使用负 ascent 保证短片段的命中边界准确。
     static int offset(int top) { return top < HEIGHT ? top : HEIGHT + top % HEIGHT; }
     static int bodyRow(int top) { return Math.max(0, top / HEIGHT - 1); }
 
     static boolean enabled(Menu menu, Rendered frame, Context context, int width, Collection<Double> scales) {
         if (!graphics(frame)) {
-            // Whole external glyphs can precede row text only when all graphics paint first.
+            // 只有全部图形先绘制时，完整外部字形才能排在分行文字之前。
             boolean text = false;
             for (Node node : menu.nodes()) {
                 if (node.type().equals("text")) text = true;

@@ -11,7 +11,7 @@ import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.configuration.file.YamlConfiguration;
 import static dev.dialogmenu.MenuModel.*;
 
-/** Exercise real CE source mappings and the emitted provider grid, without a server. */
+/** 无需服务器，验证真实 CE 源映射和导出的字体 provider 网格。 */
 final class AtlasReferenceTests {
     private static int checks;
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline Java 25 build against the exact Leaf/plugin dependency lock; no server process is started."""
+"""按锁定的 Leaf 和插件依赖离线构建 Java 25 制品，不启动服务器进程。"""
 import argparse
 import hashlib
 import json
@@ -26,7 +26,7 @@ if not classpath:
             raise SystemExit(f'Missing or mismatched locked dependency: {path}')
         paths.append(str(path))
     classpath = os.pathsep.join(paths)
-# A fresh directory avoids packaging classes left by removed/renamed sources.
+# 使用干净目录，避免打包已删除或改名源码遗留的类。
 import tempfile
 build = root / 'build'
 build.mkdir(exist_ok=True)

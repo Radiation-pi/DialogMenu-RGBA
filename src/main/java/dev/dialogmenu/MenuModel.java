@@ -3,7 +3,7 @@ package dev.dialogmenu;
 import java.util.List;
 import java.util.Map;
 
-/** Positions use the center as origin, positive y upwards. */
+/** 坐标中心为原点，Y 正方向向上。 */
 public final class MenuModel {
     private MenuModel() {}
 

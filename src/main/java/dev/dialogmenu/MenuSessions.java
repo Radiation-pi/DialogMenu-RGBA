@@ -10,7 +10,7 @@ import org.bukkit.plugin.Plugin;
 import java.util.function.Consumer;
 import static dev.dialogmenu.DialogMenuClosedEvent.Reason;
 
-/** Generic YAML state, placeholders and confirmed Skript-list bindings. */
+/** 管理通用 YAML 状态、占位符以及带确认流程的 Skript 列表绑定。 */
 final class MenuSessions {
     interface Host {
         DialogMenuApi getMenuApi();
@@ -265,7 +265,7 @@ final class MenuSessions {
         Session session = sessions.get(player.getUniqueId());
         if (session == null || session.busy || suspended(player)) return;
         session.definition.changeState(session.values, action, value);
-        // Refresh after the entire action chain, so "set + open" does not invalidate its own token midway.
+        // 整条动作链结束后再刷新，避免“set + open”中途使自身令牌失效。
     }
     void refresh(Player player) throws Exception {
         Session session = sessions.get(player.getUniqueId());

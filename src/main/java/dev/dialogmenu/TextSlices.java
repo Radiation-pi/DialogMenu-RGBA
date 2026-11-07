@@ -7,7 +7,7 @@ import java.nio.file.Path;
 import java.util.*;
 import javax.imageio.ImageIO;
 
-/** Share identical row fragments without widening a font's declared character range. */
+/** 复用相同的行片段，不扩大字体声明的字符范围。 */
 final class TextSlices {
     private static final IndexColorModel ALPHA = alphaPalette();
     private static final IndexColorModel BINARY_ALPHA = new IndexColorModel(1, 2,

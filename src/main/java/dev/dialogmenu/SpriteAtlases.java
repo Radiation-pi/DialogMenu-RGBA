@@ -6,7 +6,7 @@ import java.nio.file.Path;
 import java.util.*;
 import javax.imageio.ImageIO;
 
-/** Pack equal-sized sprite cells without changing pixels, glyph metrics or external texture references. */
+/** 合并同尺寸精灵单元，不改变像素、字形度量或外部纹理引用。 */
 final class SpriteAtlases {
     private record Size(int width, int height, int displayHeight) {}
 

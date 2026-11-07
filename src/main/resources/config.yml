@@ -4,6 +4,6 @@ max-canvas-pixels: 131072
 close-with-escape: false
 text-scales: [1, 1.5, 2]
 default-text-scale: 1
-# Renderer is fixed by the installed native/rgba edition, not by this config.
+# 渲染器由安装的原生或 RGBA 发行包固定，不由此配置切换。
 craftengine-auto-reload: true
 craftengine-resources: ../CraftEngine/resources

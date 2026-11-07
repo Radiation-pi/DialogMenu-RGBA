@@ -3,7 +3,7 @@ package dev.dialogmenu;
 import java.util.*;
 import static dev.dialogmenu.MenuModel.*;
 
-/** Native rows must never reorder the menu's painter order, including noninteracting layers. */
+/** 原生行不能改变菜单的绘制顺序，无交互图层也必须保序。 */
 final class RgbaRows {
     static Map<String, Integer> plan(Menu menu, Rendered frame) {
         Map<String, Sprite> sprites = new HashMap<>();
@@ -13,7 +13,7 @@ final class RgbaRows {
         int next = Integer.MAX_VALUE;
         for (Node node : menu.nodes().reversed()) {
             Sprite sprite = sprites.get(node.id());
-            // All supported text scales are <=128px; keep the plan independent of selected scale.
+            // 支持的实际字号均不超过 128px，行计划不依赖玩家当前选择的倍率。
             int top = node.type().equals("text")
                 ? Math.max(0, (int) Math.floor((menu.height() / 2.0 - node.y()) * zoom - 64))
                 : sprite == null ? 0 : sprite.y();

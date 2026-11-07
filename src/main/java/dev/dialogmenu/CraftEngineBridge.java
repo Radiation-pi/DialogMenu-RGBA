@@ -6,7 +6,7 @@ import org.bukkit.plugin.EventExecutor;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 
-/** CE owns generation/upload; Dialog supplies one prepared, immutable external ZIP. */
+/** CE 负责生成和上传，Dialog 提供已准备好的不可变外部 ZIP。 */
 final class CraftEngineBridge implements Listener, AutoCloseable {
     private final DialogMenuPlugin plugin;
     private static final String EVENT =
@@ -32,8 +32,8 @@ final class CraftEngineBridge implements Listener, AutoCloseable {
     private void cache(Event event) {
         try {
             var result = plugin.prepareResources().get();
-            // Avoid waiting on the main thread while CE is preparing its resource cache.
-            // Snapshot generations prevent delayed publication from replacing newer resources.
+            // CE 准备资源缓存时，不阻塞主线程。
+            // 使用快照代次，避免延迟发布覆盖较新的资源。
             Bukkit.getScheduler().runTask(plugin, () -> plugin.publishResources(result));
             plugin.retainPack(eventType.getMethod("cacheData").invoke(event), result.snapshot());
             eventType.getMethod("registerExternalResourcePack", Path.class)

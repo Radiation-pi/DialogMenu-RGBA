@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate a tagged public release and assemble its source archive."""
+"""校验公开发行标签，并组装完整源码归档。"""
 
 from __future__ import annotations
 
@@ -97,6 +97,8 @@ def main(tag: str) -> None:
         ROOT / "gradlew.bat",
         ROOT / "scripts/prepare-release.py",
         ROOT / "scripts/editions.py",
+        ROOT / "scripts/export-wiki.py",
+        ROOT / "scripts/publish-wiki.py",
         ROOT / ".github/workflows/release.yml",
     ]
     files.extend(sorted((ROOT / "gradle/wrapper").glob("*")))

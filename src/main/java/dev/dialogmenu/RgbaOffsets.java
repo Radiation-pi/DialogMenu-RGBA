@@ -7,7 +7,7 @@ import java.util.*;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 
-/** GUI-only text transport: RGB = marker + 10-bit Y + 8-bit palette index; A stays opaque. */
+/** 仅 GUI 使用的文字编码：RGB 为识别标记、10 位 Y 和 8 位色表索引，A 保持不透明。 */
 final class RgbaOffsets {
     static final int MAGIC = 0xD40000;
     static final int TEXTURE_RGB = 0x174783;

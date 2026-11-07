@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Extract Wiki examples and verify them against the built RGBA JAR (Java 25)."""
+"""提取 Wiki 示例，使用构建后的 RGBA JAR 与 Java 25 验证。"""
 import argparse
 import base64
 from html.parser import HTMLParser
@@ -59,7 +59,7 @@ def main():
             path = out / (attrs["data-java"] + ".java")
             path.write_text(text)
             java_files.append(path)
-    # Remove only stale examples produced in this check's output directory.
+    # 只删除本次检查输出目录中不再使用的旧示例。
     for stale in layouts.glob("*.yml"):
         if stale.name not in names:
             stale.unlink()

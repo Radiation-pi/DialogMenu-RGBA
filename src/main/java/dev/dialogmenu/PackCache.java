@@ -10,7 +10,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/** Keep ZIPs while snapshots or external pack consumers still own them. */
+/** 快照或外部资源包使用方仍持有 ZIP 时，保留对应文件。 */
 final class PackCache {
     private record Lease(WeakReference<Object> owner, Path path) {}
     private final Path directory;
@@ -29,7 +29,7 @@ final class PackCache {
         if (!Files.isDirectory(directory)) return;
         try (var files = Files.list(directory)) {
             for (Path file : files.toList()) {
-                // Own generated ZIPs only; never traverse folders, symlinks or unrelated files.
+                // 只管理自身生成的 ZIP，不遍历目录、符号链接或无关文件。
                 if (file.getFileName().toString().matches("dialog-[0-9a-f-]{36}\\.zip")
                     && Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS) && !retained.contains(file))
                     Files.delete(file);

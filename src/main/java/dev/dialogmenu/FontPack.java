@@ -11,7 +11,7 @@ import java.util.*;
 import javax.imageio.ImageIO;
 import static dev.dialogmenu.MenuModel.*;
 
-/** Sparse row-local graphic and Unicode glyphs, with an absolute compatibility path. */
+/** 按行生成稀疏图形和 Unicode 字形，保留绝对定位兼容路径。 */
 final class FontPack {
     record Glyph(int code, int top, int height, int advance, String texture, BufferedImage image,
                  TextureRegion textureRegion) {
@@ -109,7 +109,7 @@ final class FontPack {
                             lines = dynamic ? List.of() : TextFlow.lines(node, MenuText.parse(active.expand(node.text())),
                                 width / (double) doc.menu().width(), glyph -> pack.glyphWidth(glyph, size));
                         } catch (IllegalArgumentException error) {
-                            // Optional scales may not fit this label; selection still validates them.
+                            // 可选倍率可能放不下当前文字，玩家选择时仍会校验。
                             continue;
                         }
                         int count = dynamic ? (node.maxLines() > 0 ? node.maxLines()
@@ -228,7 +228,7 @@ final class FontPack {
         }
         BufferedImage image = new BufferedImage(source.getWidth() / divisor, source.getHeight() / divisor,
             BufferedImage.TYPE_INT_ARGB);
-        // Preserve thin lines when a complete, oversized graphic is reduced to one <=256 texture.
+        // 整张大图缩到不超过 256 的纹理时，保留细线。
         for (int y = 0; y < image.getHeight(); y++) for (int x = 0; x < image.getWidth(); x++) {
             long a = 0, r = 0, g = 0, b = 0;
             for (int py = 0; py < divisor; py++) for (int px = 0; px < divisor; px++) {

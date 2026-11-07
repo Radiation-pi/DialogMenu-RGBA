@@ -7,7 +7,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import static dev.dialogmenu.MenuModel.*;
 
-/** Menu layout documents interpreted locally. */
+/** 在本地解析菜单布局文档。 */
 final class LayoutStore {
     record FlowRow(String collection, String id, String text) {}
     record Document(Menu menu, List<String> open, List<String> close, MenuTemplate template, List<FlowRow> flowRows) {

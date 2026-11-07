@@ -8,7 +8,7 @@ import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.configuration.file.YamlConfiguration;
 import static dev.dialogmenu.MenuModel.*;
 
-/** The exported fonts refer to vanilla files, never re-export icon pixels. */
+/** 导出字体引用原版文件，不重复导出图标像素。 */
 final class VanillaReferenceTests {
     private static int checks;
 

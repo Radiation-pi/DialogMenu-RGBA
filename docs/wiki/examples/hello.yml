@@ -1,0 +1,39 @@
+schema-version: 1
+id: hello
+canvas: {width: 300, height: 180}
+events:
+  open: 'sound: UI_BUTTON_CLICK-0.5-1'
+frontend:
+  panel:
+    type: rectangle
+    width: 300
+    height: 180
+    color: '#EEF2F7'
+  title:
+    type: text
+    content: '你好，{player}'
+    color: '#243247'
+    size: 8
+    offset: {y: 48, z: 1}
+  button-bg:
+    type: rectangle
+    width: 140
+    height: 28
+    color: '#D9E5F7'
+    offset: {y: -12}
+  button:
+    type: text
+    content: 点击打招呼
+    color: '#243247'
+    offset: {y: -12, z: 1}
+    clickable: true
+    tooltip: 向自己发送消息
+    actions:
+      all: 'sound: UI_BUTTON_CLICK-0.5-1'
+      left: 'tell: 你好，{player}！'
+  close:
+    type: text
+    content: '×'
+    color: '#243247'
+    offset: {x: 132, y: 72, z: 2}
+    actions: close
