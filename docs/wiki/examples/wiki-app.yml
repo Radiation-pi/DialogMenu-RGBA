@@ -1,0 +1,37 @@
+schema-version: 1
+id: wiki-app
+characters: '龘'
+state:
+  editing: 'false'
+variables:
+  mode:
+    type: state
+    source: editing
+    fallback: 浏览
+    values: {'false': 浏览, 'true': 编辑}
+pages:
+  wiki-home:
+    canvas: {width: 300, height: 180}
+    frontend:
+      mode:
+        type: text
+        content: '当前模式：{mode}'
+        color: '#243247'
+        offset: {y: 40}
+      toggle:
+        type: text
+        content: 切换编辑
+        color: '#243247'
+        actions: 'toggle: editing'
+      hint:
+        type: text
+        content: 编辑中
+        color: '#2563EB'
+        offset: {y: -28}
+        visible-if: '{editing}'
+      close:
+        type: text
+        content: 关闭
+        color: '#243247'
+        offset: {y: -64}
+        actions: close

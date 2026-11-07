@@ -1,4 +1,4 @@
-"""Packaging rules for the standalone RGBA distribution."""
+"""独立 RGBA 发行包的打包规则。"""
 from pathlib import Path
 import zipfile
 

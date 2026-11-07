@@ -10,7 +10,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
-/** Exercises real binding sessions; only the Paper presentation transport is substituted. */
+/** 验证真实绑定会话，仅替代 Paper 的界面发送通道。 */
 public final class BindingTests {
     private static int checks;
     private static void check(boolean value, String message) {

@@ -8,7 +8,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
-/** Main-thread facade for YAML-defined pages; no per-menu business logic. */
+/** YAML 页面的主线程接口，不包含具体菜单的业务逻辑。 */
 public final class DialogMenuApi {
     private final DialogMenuPlugin plugin;
     DialogMenuApi(DialogMenuPlugin plugin) { this.plugin = plugin; }
@@ -23,8 +23,8 @@ public final class DialogMenuApi {
         return player != null && player.isOnline() && plugin.openFromApi(player, id);
     }
     /**
-     * Bind an existing plugin's data/actions to a YAML family. Layouts, permissions and actions
-     * remain in YAML; the callback receives only the configured callback action's value.
+     * 将业务插件的数据和动作绑定到一个 YAML 家族。
+     * 布局、权限和动作仍由 YAML 定义，回调仅接收 callback 动作配置的值。
      */
     public DialogMenuBinding bind(Plugin owner, Player player, String page, Map<String, String> values,
                                   Consumer<String> action, Consumer<DialogMenuClosedEvent.Reason> closed) {
@@ -71,7 +71,7 @@ public final class DialogMenuApi {
         requireReady();
         return player != null && plugin.refreshFromApi(player);
     }
-    /** A server-side view identity, not a client render acknowledgement. */
+    /** 服务端视图身份，不是客户端渲染回执。 */
     public Object surface(Player player) {
         requireReady();
         return player == null ? null : plugin.surfaceFromApi(player);
@@ -80,7 +80,7 @@ public final class DialogMenuApi {
         requireReady();
         return player == null ? null : plugin.currentIdFromApi(player);
     }
-    /** Stable across refreshes, replaced on page changes/new sessions. Not a client acknowledgement. */
+    /** 刷新时保持，切页或新会话时更换；不是客户端确认回执。 */
     public UUID sessionToken(Player player) {
         requireReady();
         return player == null ? null : plugin.sessionTokenFromApi(player);

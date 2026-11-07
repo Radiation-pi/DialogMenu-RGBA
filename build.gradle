@@ -43,7 +43,7 @@ jar {
     archiveFileName = "DialogMenu-rgba-${project.version}.jar"
 }
 
-// Keep behavioral regressions part of the standard build without a test-framework dependency.
+// 将行为回归纳入标准构建，不额外依赖测试框架。
 tasks.register('regressionTest', JavaExec) {
     dependsOn testClasses
     classpath = sourceSets.test.runtimeClasspath
@@ -78,7 +78,7 @@ tasks.withType(AbstractArchiveTask).configureEach {
     reproducibleFileOrder = true
 }
 
-// The executable suite above is the test runner; no JUnit/TestNG engine is required.
+// 使用上述可执行测试套件，不需要 JUnit 或 TestNG 引擎。
 tasks.named('test') {
     dependsOn tasks.named('regressionTest')
     dependsOn tasks.named('bindingTest')

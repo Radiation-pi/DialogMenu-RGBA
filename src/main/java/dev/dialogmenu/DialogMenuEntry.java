@@ -2,7 +2,7 @@ package dev.dialogmenu;
 
 import java.util.Map;
 
-/** One externally supplied row in a YAML-declared dynamic collection. */
+/** YAML 动态集合中由外部提供的一行数据。 */
 public record DialogMenuEntry(String id, String name, String image, Map<String, String> fields) {
     public DialogMenuEntry {
         if (id == null || !id.matches("[A-Za-z0-9:_-]{1,128}"))

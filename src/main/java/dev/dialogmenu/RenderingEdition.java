@@ -3,7 +3,7 @@ package dev.dialogmenu;
 import java.io.IOException;
 import java.util.Properties;
 
-/** The installed artifact, not a mutable server setting, selects the renderer. */
+/** 渲染器由安装的发行包决定，不受可变服务器配置切换。 */
 final class RenderingEdition {
     static final String ID = read();
 

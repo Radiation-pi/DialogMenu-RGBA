@@ -326,7 +326,7 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         UUID id = player.getUniqueId();
         var pending = gestures.pending(id);
         if (pending != null) {
-            // Data may refresh, but replacing the dialog here would swallow an in-flight second click.
+            // 数据可以刷新，但此处替换对话框会吞掉尚在途中的第二次点击。
             if (player.hasPermission("dialogmenu.use")
                 && gestures.hold(id, view.token, view.document.menu(), context(player))) return;
             gestures.cancel(id);

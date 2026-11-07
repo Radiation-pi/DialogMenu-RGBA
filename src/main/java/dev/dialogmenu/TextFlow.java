@@ -6,7 +6,7 @@ import java.util.function.ToIntFunction;
 import net.kyori.adventure.text.Component;
 import static dev.dialogmenu.MenuModel.*;
 
-/** Wrap resolved Adventure glyphs without serializing styles back to format codes. */
+/** 对解析后的 Adventure 字形换行，不把样式重新序列化成格式码。 */
 final class TextFlow {
     static List<Component> lines(Node node, Component text, double zoom,
                                  ToIntFunction<MenuText.Glyph> measure) {

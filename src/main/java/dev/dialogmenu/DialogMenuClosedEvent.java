@@ -5,7 +5,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 
-/** Emitted once after the old view is detached. Refresh does not close a session. */
+/** 旧视图解除后触发一次；刷新不会关闭会话。 */
 public final class DialogMenuClosedEvent extends Event {
     public enum Reason { CLOSED, REPLACED, RELOAD, DISABLED, PLAYER_QUIT, WORLD_CHANGED, INVENTORY_OPENED }
     private static final HandlerList HANDLERS = new HandlerList();

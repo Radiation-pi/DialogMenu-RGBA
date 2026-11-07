@@ -9,7 +9,7 @@ import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
-/** Adventure owns format parsing; layout and output consume the same resolved glyph styles. */
+/** 由 Adventure 解析格式，布局和输出共用解析后的字形样式。 */
 final class MenuText {
     private static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.builder()
         .character('&').hexColors().useUnusualXRepeatedCharacterHexFormat().build();

@@ -8,7 +8,7 @@ import java.util.Set;
 import org.bukkit.configuration.file.YamlConfiguration;
 import static dev.dialogmenu.MenuModel.*;
 
-/** Run the published Wiki examples through the actual plugin JAR. */
+/** 用真实插件 JAR 运行公开 Wiki 中的示例。 */
 public final class WikiExampleChecks {
     public static void main(String[] args) throws Exception {
         Path directory = Path.of(args[0]);

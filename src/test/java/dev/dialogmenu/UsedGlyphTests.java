@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Set;
 import static dev.dialogmenu.MenuModel.*;
 
-/** Inspect the exported font mappings, not just the pack builder's bookkeeping. */
+/** 检查实际导出的字体映射，而非仅检查资源包生成器的内部记录。 */
 final class UsedGlyphTests {
     private static int checks;
     private static final Context PREVIEW = context("甲");

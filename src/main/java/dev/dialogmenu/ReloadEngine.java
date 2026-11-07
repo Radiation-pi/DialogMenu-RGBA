@@ -9,7 +9,7 @@ import java.util.zip.*;
 import org.bukkit.configuration.file.YamlConfiguration;
 import static dev.dialogmenu.MenuModel.*;
 
-/** File parsing and pack preparation never touch live Bukkit/player state. */
+/** 文件解析和资源包准备不接触运行中的 Bukkit 或玩家状态。 */
 final class ReloadEngine implements AutoCloseable {
     record Settings(int width, int maxPixels, String defaultLayout, boolean escape,
                     List<Double> textScales, double defaultTextScale, boolean autoCraftEngine) {}
@@ -74,7 +74,7 @@ final class ReloadEngine implements AutoCloseable {
         var widths = new TreeSet<>(List.of(300, 360, 420, width));
         var fonts = FontPack.create(catalog, renderer, preview, widths, maxPixels,
             MenuTemplate.characters(documents.values()), scales, CanvasScale.OPTIONS);
-        // Optional scales are validated when selected, not required for every layout to load.
+        // 可选倍率在玩家选择时校验，不要求每个布局加载时适配所有倍率。
         for (var doc : catalog) for (int size : widths) {
             var base = MenuTemplate.preview(doc, preview);
             Context active = new Context() {

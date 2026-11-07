@@ -8,7 +8,7 @@ import net.kyori.adventure.text.event.*;
 import net.kyori.adventure.text.format.*;
 import static dev.dialogmenu.MenuModel.*;
 
-/** Row-local glyphs, in the original paint order within every body row. */
+/** 每条正文行内按原绘制顺序输出局部字形。 */
 final class SpriteCanvas {
     record Output(Component component, int bodyWidth, int rows, int sprites) {}
     static final Key SPACE = Key.key("dialogmenu", "space");
@@ -45,7 +45,7 @@ final class SpriteCanvas {
         Map<Region, ClickEvent> clicks = new HashMap<>();
         Map<String, Sprite> sprites = new HashMap<>();
         for (Sprite sprite : frame.sprites()) sprites.put(sprite.id(), sprite);
-        // Keep a single paint order for text and graphics, already sorted by z in LayoutStore.
+        // 文字和图形共用绘制顺序，LayoutStore 已按 Z 排序。
         for (Node node : menu.nodes()) {
             if (node.type().equals("text")) {
                 addText(parts, menu, node, context, fonts, clicks, bind, width, height, rowCanvas,

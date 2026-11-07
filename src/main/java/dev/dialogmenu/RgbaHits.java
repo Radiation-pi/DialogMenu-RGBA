@@ -10,7 +10,7 @@ import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
 
-/** Native hit geometry stays at the target Y; alpha=1 tiles are discarded by vanilla text.fsh. */
+/** 原生命中几何保留在目标 Y；alpha=1 的字格由原版 text.fsh 丢弃。 */
 final class RgbaHits {
     private record Location(int top, int size) {}
     private record Cell(int height, int width) {

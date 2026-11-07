@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit;
 import net.kyori.adventure.text.event.ClickEvent;
 import static dev.dialogmenu.MenuModel.*;
 
-/** Runs in a separate JVM against each actual distribution JAR, not main output classes. */
+/** 在独立 JVM 中检查实际发行 JAR，而非主源码输出目录的类。 */
 public final class EditionTests {
     private static int checks;
 
@@ -46,7 +46,7 @@ public final class EditionTests {
             public Icon item(int slot) { return null; }
             public boolean permitted(String permission) { return true; }
         };
-        // Simulate switching from an older RGBA installation into the native artifact.
+        // 模拟从旧 RGBA 安装切换到原生发行包。
         Path staleShader = data.resolve("resourcepack/assets/minecraft/shaders/core/text.vsh");
         Files.createDirectories(staleShader.getParent());
         Files.writeString(staleShader, "old shader");

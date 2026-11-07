@@ -3,7 +3,7 @@ package dev.dialogmenu.editor;
 import java.io.*;
 import java.util.*;
 
-/** Bounded framing shared by Bukkit plugin messages and vanilla custom payloads. */
+/** Bukkit 插件消息与原版自定义载荷共用的有界分帧。 */
 public final class EditorWire {
     public static final String CHANNEL = "dialogmenu:editor";
     public static final int CHUNK = 24_000, MAX = 8 * 1024 * 1024;

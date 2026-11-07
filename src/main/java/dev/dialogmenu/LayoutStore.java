@@ -7,7 +7,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import static dev.dialogmenu.MenuModel.*;
 
-/** ArcMenu-shaped documents, interpreted locally without its plugin or API. */
+/** 在本地解析 ArcMenu 风格文档，不依赖其插件或 API。 */
 final class LayoutStore {
     record FlowRow(String collection, String id, String text) {}
     record Document(Menu menu, List<String> open, List<String> close, MenuTemplate template, List<FlowRow> flowRows) {

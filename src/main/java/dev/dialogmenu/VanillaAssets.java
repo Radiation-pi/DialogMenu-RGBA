@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.zip.*;
 import javax.imageio.ImageIO;
 
-/** Original vanilla character and icon sources, never whole rendered text strings. */
+/** 读取原版单字和图标源数据，不将整句文字渲染成图。 */
 final class VanillaAssets {
     record Glyph(byte[] alpha, int width, int height, float advance) {}
     private final Map<Integer, Glyph> glyphs = new HashMap<>();

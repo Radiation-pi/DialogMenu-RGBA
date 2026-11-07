@@ -5,7 +5,7 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
-/** JSON messages and bounded request tracking shared by all loader adapters. */
+/** 各加载器适配共用的 JSON 消息和有界请求跟踪。 */
 public final class EditorProtocol {
     private final EditorWire.Receiver receiver = new EditorWire.Receiver();
     private final Map<Long, CompletableResult> pending = new HashMap<>();

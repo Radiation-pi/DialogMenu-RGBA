@@ -4,7 +4,7 @@ import java.util.*;
 import java.util.function.LongSupplier;
 import static dev.dialogmenu.MenuModel.*;
 
-/** Main-thread gesture arbitration; no business action runs on the first click. */
+/** 在主线程仲裁手势，第一次点击不立即执行业务动作。 */
 final class ClickGestures {
     static final long WINDOW_MILLIS = 300;
     record Target(UUID session, String page, String control, String permission, List<String> single, List<String> twice) {
@@ -65,7 +65,7 @@ final class ClickGestures {
             else previous.single.run();
             return;
         }
-        // Switching targets discards the unfinished gesture, never pairing unrelated controls.
+        // 切换目标时丢弃未完成手势，不能把无关控件配成双击。
         cancel(player);
         Pending next = new Pending(target, clock.getAsLong() + WINDOW_MILLIS, single);
         pending.put(player, next);

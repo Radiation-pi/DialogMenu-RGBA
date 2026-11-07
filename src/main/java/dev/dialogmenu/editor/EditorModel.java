@@ -3,7 +3,7 @@ package dev.dialogmenu.editor;
 import com.google.gson.*;
 import java.util.*;
 
-/** The source tree remains authoritative; world-space nodes are only selection handles. */
+/** 源文档树是权威数据，世界空间节点只作为选择句柄。 */
 public final class EditorModel {
     public record Item(String path, String id, JsonObject source, double x, double y,
                        double parentX, double parentY, double parentScaleX, double parentScaleY,

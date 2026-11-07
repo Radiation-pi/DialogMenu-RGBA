@@ -5,7 +5,7 @@ import java.util.UUID;
 import org.bukkit.configuration.file.YamlConfiguration;
 import static dev.dialogmenu.MenuModel.*;
 
-/** Personal canvas zoom, independent of text preferences and logical menu coordinates. */
+/** 玩家独立画布倍率，不改变文字偏好或菜单逻辑坐标。 */
 final class CanvasScale {
     static final List<Double> OPTIONS = List.of(0.75, 1.0);
     @FunctionalInterface interface Check { void run() throws Exception; }

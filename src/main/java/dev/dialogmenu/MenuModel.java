@@ -3,7 +3,7 @@ package dev.dialogmenu;
 import java.util.List;
 import java.util.Map;
 
-/** Positions use the ArcMenu convention: origin at center, positive y upwards. */
+/** 坐标沿用 ArcMenu 约定：中心为原点，Y 正方向向上。 */
 public final class MenuModel {
     private MenuModel() {}
 

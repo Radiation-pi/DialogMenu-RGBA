@@ -12,7 +12,7 @@ import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.configuration.file.YamlConfiguration;
 import static dev.dialogmenu.MenuModel.*;
 
-/** Replay the emitted pack, independently checking pixels, layering and semantic hit targets. */
+/** 回放导出的资源包，独立检查像素、图层和语义命中目标。 */
 final class RowPackTests {
     private record Ink(BufferedImage image, int x, int y, int width, int height, int displayHeight, int top, int advance) {}
     private final Path pack;
