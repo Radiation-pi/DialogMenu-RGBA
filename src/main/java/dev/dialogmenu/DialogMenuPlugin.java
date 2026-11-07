@@ -40,6 +40,7 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
     private VanillaAssets assets;
     private MenuRenderer renderer;
     private FontPack fonts;
+    private SpriteCanvas canvas = new SpriteCanvas();
     private MenuSessions application;
     private ReloadEngine reloadEngine;
     private EditorBridge editor;
@@ -156,7 +157,7 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
     public void suspendApplication(Player player) {
         gestures.cancel(player.getUniqueId());
         tokens.remove(player.getUniqueId());
-        player.closeDialog();
+        DialogCompat.close(player);
     }
 
     @Override public void onEnable() {
@@ -186,7 +187,7 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
             if (Bukkit.getPluginManager().isPluginEnabled("CraftEngine"))
                 craftEngineBridge = new CraftEngineBridge(this);
             Bukkit.getServicesManager().register(DialogMenuApi.class, api, this, ServicePriority.Normal);
-            requestReload(Bukkit.getConsoleSender(), true);
+            requestReload(Bukkit.getConsoleSender(), ReloadEngine.Mode.ALL);
         } catch (Exception error) {
             getLogger().log(java.util.logging.Level.SEVERE, "Dialog initialization failed", error);
             Bukkit.getPluginManager().disablePlugin(this);
@@ -227,11 +228,12 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         public Icon item(int slot) { return null; }
         public boolean permitted(String permission) { return true; }
     };
-    CompletableFuture<ReloadEngine.Result> prepareResources() { return reloadEngine.prepare(); }
+    CompletableFuture<ReloadEngine.Result> prepareResources() { return reloadEngine.prepare(ReloadEngine.Mode.RESOURCE); }
+    CompletableFuture<ReloadEngine.Result> prepareAll() { return reloadEngine.prepare(); }
     ReloadEngine.Snapshot loadedResources() { return loaded; }
     void retainPack(Object consumer, ReloadEngine.Snapshot snapshot) { reloadEngine.retainPack(consumer, snapshot); }
     void applyEditorResources(ReloadEngine.Result result) {
-        if (publishResources(result) && loaded.settings().autoCraftEngine()
+        if (publishResources(result) && result.resourcesChanged() && loaded.settings().autoCraftEngine()
             && Bukkit.getPluginManager().isPluginEnabled("CraftEngine"))
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "ce reload all");
     }
@@ -256,6 +258,7 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         assets = loaded.assets();
         renderer = loaded.renderer();
         fonts = loaded.fonts();
+        canvas = new SpriteCanvas();
         width = loaded.settings().width();
         maxPixels = loaded.settings().maxPixels();
         store.publish(loaded.documents());
@@ -263,17 +266,19 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
             + "ms off-thread; main-thread publish=" + (System.nanoTime() - start) / 1_000_000.0 + "ms");
         return true;
     }
-    private void requestReload(CommandSender sender, boolean updateCraftEngine) {
+    private void requestReload(CommandSender sender, ReloadEngine.Mode mode) {
         if (reloadRequested) { sender.sendMessage("Dialog正在重载。"); return; }
         reloadRequested = true;
-        prepareResources().whenComplete((result, error) -> {
+        reloadEngine.prepare(mode).whenComplete((result, error) -> {
             if (!isEnabled()) return;
             Bukkit.getScheduler().runTask(this, () -> {
                 reloadRequested = false;
                 if (error != null) { failure(sender, unwrap(error)); return; }
                 boolean changed = publishResources(result);
-                sender.sendMessage(result.changed() ? "Dialog已异步重载。" : "Dialog未变化，复用现有资源。");
-                if (changed && updateCraftEngine && loaded.settings().autoCraftEngine()
+                sender.sendMessage(!result.changed() ? "Dialog未变化，复用现有资源。"
+                    : result.resourcesChanged() ? "Dialog资源已异步重载。"
+                    : "Dialog布局已重载，材质包未修改。");
+                if (changed && result.resourcesChanged() && loaded.settings().autoCraftEngine()
                     && Bukkit.getPluginManager().isPluginEnabled("CraftEngine"))
                     Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "ce reload all");
             });
@@ -323,20 +328,24 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
     public void closeApplication(Player player) { close(player); }
     public void later(Runnable action) { Bukkit.getScheduler().runTaskLater(this, action, 1); }
     private void present(Player player, View view) throws Exception {
+        try (var ignored = application.frame(player)) { presentFrame(player, view); }
+    }
+    private void presentFrame(Player player, View view) throws Exception {
         UUID id = player.getUniqueId();
+        Context context = context(player);
         var pending = gestures.pending(id);
         if (pending != null) {
             // 数据可以刷新，但此处替换对话框会吞掉尚在途中的第二次点击。
             if (player.hasPermission("dialogmenu.use")
-                && gestures.hold(id, view.token, view.document.menu(), context(player))) return;
+                && gestures.hold(id, view.token, view.document.menu(), context)) return;
             gestures.cancel(id);
             tokens.remove(id);
         }
-        var frame = renderer.draw(view.document.menu(), context(player), view.width, maxPixels);
+        var frame = renderer.drawRuntime(view.document.menu(), context, view.width, maxPixels);
         var page = new ActionTokens.Page();
-        var output = new SpriteCanvas().encode(view.document.menu(), frame, context(player), fonts,
+        var output = canvas.encode(view.document.menu(), frame, context, fonts,
             region -> {
-                var target = ClickGestures.Target.of(view.token, view.document.menu(), region, context(player));
+                var target = ClickGestures.Target.of(view.token, view.document.menu(), region, context);
                 return page.bind(() -> activate(player, target), target.twice().isEmpty() ? null : target);
             });
         Component body = output.component();
@@ -380,7 +389,11 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
                 close(player);
                 return;
             }
-            if (target.present(view.token, view.document.menu(), context(player))) executeActions(player, actions, false);
+            boolean present;
+            try (var ignored = application.frame(player)) {
+                present = target.present(view.token, view.document.menu(), context(player));
+            }
+            if (present) executeActions(player, actions, false);
             else if (!allowed(player, target.permission())) player.sendMessage("§c没有操作权限。");
             if (views.get(id) == view && !application.suspended(player)) {
                 if (application.active(player)) application.refresh(player);
@@ -459,7 +472,7 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         View view = views.remove(player.getUniqueId());
         gestures.cancel(player.getUniqueId());
         tokens.remove(player.getUniqueId());
-        player.closeDialog();
+        DialogCompat.close(player);
         application.remove(player, reason);
         if (view != null) closed(player, view, reason);
     }
@@ -554,7 +567,7 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
                 case "list" -> sender.sendMessage("Dialog: " + String.join(", ", layoutIds()));
                 case "status" -> sender.sendMessage("Dialog standalone layouts=" + store.ids().size()
                     + " active=" + views.size() + " renderer=" + RenderingEdition.ID + " ArcMenu=not-used");
-                case "reload" -> requestReload(sender, true);
+                case "reload" -> requestReload(sender, ReloadEngine.Mode.command(args));
                 case "resources" -> exportResources(sender);
                 case "textscale" -> {
                     if (!(sender instanceof Player player)) throw new IllegalArgumentException("此命令需要玩家");
@@ -585,13 +598,14 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
                     if (!(sender instanceof Player player)) throw new IllegalArgumentException("此命令需要玩家");
                     close(player);
                 }
-                default -> sender.sendMessage("/dialogmenu open <id> [small|medium|large] | edit [menu] | scale <0.75|1> | textscale <倍率> | list | reload | resources | close");
+                default -> sender.sendMessage("/dialogmenu open <id> [small|medium|large] | edit [menu] | scale <0.75|1> | textscale <倍率> | list | reload [yaml|resource|all] | resources | close");
             }
         } catch (Exception error) { failure(sender, error); }
         return true;
     }
     @Override public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> choices = args.length == 1 ? List.of("open", "list", "close", "reload", "resources", "status", "textscale", "scale", "edit")
+            : args.length == 2 && args[0].equalsIgnoreCase("reload") ? List.of("yaml", "resource", "all")
             : args.length == 2 && args[0].equals("edit") ? layoutIds()
             : args.length == 2 && args[0].equals("textscale") && loaded != null
                 ? loaded.settings().textScales().stream().map(String::valueOf).toList()

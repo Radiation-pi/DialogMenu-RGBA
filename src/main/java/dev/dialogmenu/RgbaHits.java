@@ -33,10 +33,19 @@ final class RgbaHits {
         for (var atlas : atlases) {
             int columns = atlas.chars().getFirst().codePointCount(0, atlas.chars().getFirst().length());
             int width = atlas.image().getWidth() / columns, height = atlas.sourceHeight();
-            Cell cell = cells.computeIfAbsent(height + "/" + width,
-                key -> new Cell(height, width));
-            for (String row : atlas.chars())
-                row.codePoints().filter(cp -> cp != 0).forEach(cp -> characters.put(cp, cell));
+            for (int row = 0; row < atlas.chars().size(); row++) {
+                int[] codes = atlas.chars().get(row).codePoints().toArray();
+                for (int column = 0; column < codes.length; column++) {
+                    if (codes[column] == 0) continue;
+                    int used = 0;
+                    for (int x = 0; x < width; x++) for (int y = 0; y < height; y++)
+                        if (atlas.image().getRGB(column * width + x, row * height + y) >>> 24 != 0)
+                            used = Math.max(used, x + 1);
+                    int hitWidth = Math.max(1, used);
+                    Cell cell = cells.computeIfAbsent(height + "/" + hitWidth, key -> new Cell(height, hitWidth));
+                    characters.put(codes[column], cell);
+                }
+            }
         }
     }
 

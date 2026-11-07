@@ -89,7 +89,12 @@ public final class MenuModel {
         }
     }
     public record Sprite(String id, int x, int y, java.awt.image.BufferedImage image,
-                         String texture, java.awt.image.BufferedImage original, TextureRegion textureRegion) {
+                         String texture, java.awt.image.BufferedImage original, TextureRegion textureRegion,
+                         int width, int height) {
+        public Sprite(String id, int x, int y, java.awt.image.BufferedImage image,
+                      String texture, java.awt.image.BufferedImage original, TextureRegion textureRegion) {
+            this(id, x, y, image, texture, original, textureRegion, image.getWidth(), image.getHeight());
+        }
         public Sprite(String id, int x, int y, java.awt.image.BufferedImage image,
                       String texture, java.awt.image.BufferedImage original) {
             this(id, x, y, image, texture, original, null);
@@ -98,5 +103,10 @@ public final class MenuModel {
             this(id, x, y, image, null, null);
         }
     }
-    public record Rendered(java.awt.image.BufferedImage image, List<Sprite> sprites, List<Node> textNodes) {}
+    public record Rendered(java.awt.image.BufferedImage image, List<Sprite> sprites, List<Node> textNodes,
+                           int width, int height) {
+        public Rendered(java.awt.image.BufferedImage image, List<Sprite> sprites, List<Node> textNodes) {
+            this(image, sprites, textNodes, image.getWidth(), image.getHeight());
+        }
+    }
 }

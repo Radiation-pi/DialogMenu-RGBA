@@ -17,7 +17,8 @@ final class ClickGestures {
             return this.session.equals(session) && page.equals(menu.id())
                 && context.permitted(permission) && context.permitted(menu.permission())
                 && LayoutStore.interactiveRegions(menu).stream()
-                    .anyMatch(region -> region.hasActions() && equals(of(session, menu, region, context)));
+                    .anyMatch(region -> control.equals(region.id()) && region.hasActions()
+                        && equals(of(session, menu, region, context)));
         }
     }
     interface Scheduler { Runnable later(Runnable action, long millis); }

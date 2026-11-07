@@ -137,7 +137,23 @@ final class LayoutStore {
             throw new IllegalArgumentException("声音volume须为0..16，pitch须为0..2");
         return new SoundSpec(key, volume, pitch);
     }
+    record Header(String id, String permission, int width, int height, Boolean escape, boolean scaleText,
+                  List<String> open, List<String> close) {
+        Document document(List<Node> source) {
+            if (source.isEmpty()) throw new IllegalArgumentException("frontend至少需要一个可见元素");
+            List<Node> nodes = new ArrayList<>(source);
+            nodes.sort(Comparator.comparingDouble(Node::z));
+            return new Document(new Menu(id, permission, width, height, List.copyOf(nodes), List.of(),
+                escape, scaleText), open, close);
+        }
+    }
     static Document parse(String expected, YamlConfiguration yaml) {
+        Header header = header(expected, yaml);
+        List<Node> nodes = new ArrayList<>();
+        flatten(yaml.getConfigurationSection("frontend"), 0, 0, 0, 1, 1, nodes);
+        return header.document(nodes);
+    }
+    static Header header(String expected, YamlConfiguration yaml) {
         id(expected);
         keys(yaml, Set.of("schema-version", "id", "permission", "canvas", "frontend", "events",
             "close-with-escape", "scale-text-with-canvas"));
@@ -148,10 +164,6 @@ final class LayoutStore {
         keys(canvas, Set.of("width", "height"));
         int width = integer(canvas, "width", 300, 16, 4096);
         int height = integer(canvas, "height", 180, 16, 4096);
-        List<Node> nodes = new ArrayList<>();
-        flatten(yaml.getConfigurationSection("frontend"), 0, 0, 0, 1, 1, nodes);
-        if (nodes.isEmpty()) throw new IllegalArgumentException("frontend至少需要一个可见元素");
-        nodes.sort(Comparator.comparingDouble(Node::z));
         List<String> open = List.of(), close = List.of();
         var events = yaml.getConfigurationSection("events");
         if (events != null) {
@@ -159,10 +171,9 @@ final class LayoutStore {
             open = actions(events.get("open"), true);
             close = actions(events.get("close"), true);
         }
-        return new Document(new Menu(expected, yaml.getString("permission", ""), width, height,
-            List.copyOf(nodes), List.of(),
+        return new Header(expected, yaml.getString("permission", ""), width, height,
             yaml.contains("close-with-escape") ? yaml.getBoolean("close-with-escape") : null,
-            yaml.getBoolean("scale-text-with-canvas", false)), open, close);
+            yaml.getBoolean("scale-text-with-canvas", false), open, close);
     }
     static void flatten(ConfigurationSection section, double ox, double oy, double oz,
                         double sx, double sy, List<Node> out) {

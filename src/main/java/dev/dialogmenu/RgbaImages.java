@@ -25,7 +25,7 @@ final class RgbaImages {
     static boolean eligible(Sprite sprite) {
         return sprite.texture() == null && sprite.original() != null
             && sprite.original().getWidth() <= 254 && sprite.original().getHeight() <= 254
-            && sprite.image().getWidth() <= 512 && sprite.image().getHeight() <= 512;
+            && sprite.width() <= 512 && sprite.height() <= 512;
     }
 
     static int payload(int width, int height, int localY) {
@@ -45,7 +45,7 @@ final class RgbaImages {
             return new Entry(new Glyph(0xE000 + images.size(), 2),
                 "generated/rgba_image_" + hashes.get(sprite.original()) + ".png", image, wholeTop(sprite.y()));
         });
-        if (interactive) for (Tile tile : tiles(sprite.image().getWidth(), sprite.image().getHeight()))
+        if (interactive) for (Tile tile : tiles(sprite.width(), sprite.height()))
             hits.computeIfAbsent(new Hit(sprite.y() + tile.y(), tile.size()), key -> 0xF0000 + hits.size());
     }
 
@@ -58,7 +58,7 @@ final class RgbaImages {
     Component image(Sprite sprite) {
         Glyph glyph = glyph(sprite);
         return Component.text(Character.toString(glyph.code()),
-            TextColor.color(payload(sprite.image().getWidth(), sprite.image().getHeight(), sprite.y() % 9)))
+            TextColor.color(payload(sprite.width(), sprite.height(), sprite.y() % 9)))
             .font(Key.key("dialogmenu", "images_rgba"));
     }
 
@@ -87,7 +87,7 @@ final class RgbaImages {
     }
 
     static boolean exactHits(Sprite sprite) {
-        for (Tile tile : tiles(sprite.image().getWidth(), sprite.image().getHeight()))
+        for (Tile tile : tiles(sprite.width(), sprite.height()))
             if (sprite.y() + tile.y() + tile.size() < 7) return false;
         return true;
     }

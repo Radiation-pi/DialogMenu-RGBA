@@ -148,7 +148,7 @@ final class EditorBridge implements PluginMessageListener, Listener, AutoCloseab
                 } finally { EditorFiles.remove(root); }
                 var commit = files.commit(owner, id, value(request, "base"), value(request, "revision"));
                 try {
-                    var result = plugin.prepareResources().get(90, TimeUnit.SECONDS);
+                    var result = plugin.prepareAll().get(90, TimeUnit.SECONDS);
                     main(() -> plugin.applyEditorResources(result)).get();
                 } catch (Exception error) { files.rollback(commit); throw error; }
                 files.applied(owner, id);
