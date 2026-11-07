@@ -4,7 +4,6 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.*;
-import javax.imageio.ImageIO;
 import com.google.gson.Gson;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
@@ -34,6 +33,7 @@ final class RgbaHits {
             int columns = atlas.chars().getFirst().codePointCount(0, atlas.chars().getFirst().length());
             int width = atlas.image().getWidth() / columns, height = atlas.sourceHeight();
             for (int row = 0; row < atlas.chars().size(); row++) {
+                BuildBudget.checkpoint();
                 int[] codes = atlas.chars().get(row).codePoints().toArray();
                 for (int column = 0; column < codes.length; column++) {
                     if (codes[column] == 0) continue;
@@ -50,10 +50,12 @@ final class RgbaHits {
     }
 
     void finish() {
-        for (Location location : locations)
+        for (Location location : locations) {
+            BuildBudget.checkpoint();
             for (Cell cell : cells.values())
                 if (bySize.get(location.size()).containsValue(cell))
                     glyphs.computeIfAbsent(new Hit(location, cell), key -> 0xF0000 + glyphs.size());
+        }
     }
 
     Component text(int top, int size, Component value, FontPack fonts) {
@@ -80,14 +82,16 @@ final class RgbaHits {
     void write(Path pack) throws IOException {
         Path base = pack.resolve("assets/dialogmenu");
         for (Cell cell : cells.values()) {
+            BuildBudget.checkpoint();
             BufferedImage image = new BufferedImage(cell.width(), cell.height(), BufferedImage.TYPE_INT_ARGB);
             for (int y = 0; y < cell.height(); y++)
                 for (int x = 0; x < cell.width(); x++) image.setRGB(x, y, 0x01FFFFFF);
-            ImageIO.write(image, "png", base.resolve("textures/" + cell.texture()).toFile());
+            FontPack.writePng(image, base.resolve("textures/" + cell.texture()));
         }
         var json = new Gson();
         List<Object> providers = new ArrayList<>();
         for (var entry : glyphs.entrySet()) {
+            BuildBudget.checkpoint();
             Location location = entry.getKey().location();
             Cell cell = entry.getKey().cell();
             providers.add(FontPack.bitmap(cell.texture(), location.size(), 7 - location.top(),

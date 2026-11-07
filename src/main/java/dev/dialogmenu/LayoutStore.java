@@ -30,29 +30,43 @@ final class LayoutStore {
     }
     Document get(String id) { return documents.get(id); }
     Set<String> ids() { return documents.keySet(); }
+    Map<String, Document> documents() { return documents; }
     Map<String, Document> load() throws Exception {
         Map<String, Document> next = new LinkedHashMap<>();
         try (var files = Files.list(directory)) {
             for (Path path : files.filter(p -> p.toString().endsWith(".yml")).sorted().toList()) {
-                if (!path.toRealPath().startsWith(directory.toRealPath()))
-                    throw new IOException("布局文件不在layouts/中");
                 String name = path.getFileName().toString().replaceFirst("\\.yml$", "");
-                var yaml = new YamlConfiguration();
-                yaml.loadFromString(Files.readString(path));
-                Map<String, Document> loaded = yaml.isConfigurationSection("pages")
-                    ? MenuTemplate.load(name, yaml) : Map.of(name, parse(name, yaml));
+                Map<String, Document> loaded = load(name);
                 for (var entry : loaded.entrySet())
                     if (next.putIfAbsent(entry.getKey(), entry.getValue()) != null)
                         throw new IllegalArgumentException("重复布局ID：" + entry.getKey());
             }
         }
-        for (Document doc : next.values()) for (Region region : interactiveRegions(doc.menu()))
+        validateLinks(next);
+        return Collections.unmodifiableMap(next);
+    }
+    Path file(String name) throws IOException {
+        Path path = directory.resolve(id(name) + ".yml").toRealPath();
+        if (!path.startsWith(directory.toRealPath()))
+            throw new IOException("布局文件不在layouts/中");
+        return path;
+    }
+    Map<String, Document> load(String name) throws Exception {
+        var yaml = new YamlConfiguration();
+        yaml.loadFromString(Files.readString(file(name)));
+        return yaml.isConfigurationSection("pages")
+            ? MenuTemplate.load(name, yaml) : Map.of(name, parse(name, yaml));
+    }
+    static String source(Document doc) {
+        return doc.template() == null ? doc.menu().id() : doc.template().definition.id;
+    }
+    static void validateLinks(Map<String, Document> documents) {
+        for (Document doc : documents.values()) for (Region region : interactiveRegions(doc.menu()))
             for (String action : java.util.stream.Stream.concat(region.actions().stream(), region.doubleActions().stream()).toList()) {
                 String[] parts = action.split(":", 2);
-                if (parts[0].strip().equals("open") && !next.containsKey(parts[1].strip()))
+                if (parts[0].strip().equals("open") && !documents.containsKey(parts[1].strip()))
                     throw new IllegalArgumentException("跳转布局不存在：" + action);
             }
-        return Collections.unmodifiableMap(next);
     }
     void publish(Map<String, Document> next) { documents = next; }
     static List<Region> interactiveRegions(Menu menu) {
@@ -184,7 +198,7 @@ final class LayoutStore {
             if (s == null) throw new IllegalArgumentException("frontend元素须为对象：" + key);
             keys(s, Set.of("type", "visible", "offset", "scale", "rotation", "children",
                 "width", "height", "color", "opacity", "content", "source", "alignment", "size", "thickness",
-                "line-width", "max-lines", "clickable", "permission", "tooltip", "actions", "reuse-texture"));
+                "line-width", "max-lines", "clickable", "permission", "tooltip", "actions", "reuse-texture", "atlas"));
             for (String transform : List.of("offset", "scale", "rotation")) {
                 var t = s.getConfigurationSection(transform);
                 if (t != null) keys(t, Set.of("x", "y", "z"));
@@ -224,6 +238,9 @@ final class LayoutStore {
             if (!Set.of("left", "center", "right").contains(alignment)) throw new IllegalArgumentException("alignment非法");
             String source = s.getString("source", "");
             if (type.equals("image") && source.isBlank()) throw new IllegalArgumentException(key + " 缺少source");
+            TextureRegion atlas = atlas(s, source);
+            if (atlas != null && !type.equals("image"))
+                throw new IllegalArgumentException(key + " atlas仅用于image");
             int textSize = integer(s, "size", 8, 1, 128);
             int lines = integer(s, "max-lines", 0, 0, 32);
             if (s.contains("line-width")) w = number(s, "line-width", 0);
@@ -238,7 +255,21 @@ final class LayoutStore {
                 throw new IllegalArgumentException(key + " reuse-texture仅用于image");
             out.add(new Node(s.getCurrentPath(), type, x, y, z, nx, ny, w, h, argb,
                 s.getString("content", ""), source, alignment, textSize,
-                thickness, rotation, 9, 18, List.of(), lines, interaction, s.getBoolean("reuse-texture", false)));
+                thickness, rotation, 9, 18, List.of(), lines, interaction, s.getBoolean("reuse-texture", false), atlas));
         }
+    }
+    static TextureRegion atlas(ConfigurationSection section, String source) {
+        if (!section.contains("atlas")) return null;
+        var atlas = section.getConfigurationSection("atlas");
+        if (atlas == null || !source.startsWith("craftengine:")
+            || source.substring("craftengine:".length()).contains(":"))
+            throw new IllegalArgumentException("atlas须用于craftengine:资源包目录/纹理路径");
+        keys(atlas, Set.of("columns", "rows", "column", "row"));
+        for (String key : List.of("columns", "rows", "column", "row"))
+            if (!atlas.contains(key)) throw new IllegalArgumentException("atlas缺少" + key);
+        int columns = integer(atlas, "columns", 1, 1, 4096), rows = integer(atlas, "rows", 1, 1, 4096);
+        if ((long) columns * rows > 65536) throw new IllegalArgumentException("atlas网格最多65536格");
+        return new TextureRegion(columns, rows, integer(atlas, "column", 0, 0, columns - 1),
+            integer(atlas, "row", 0, 0, rows - 1));
     }
 }

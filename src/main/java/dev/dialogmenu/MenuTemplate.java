@@ -1,6 +1,7 @@
 package dev.dialogmenu;
 
 import java.util.*;
+import java.util.function.UnaryOperator;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import static dev.dialogmenu.MenuModel.*;
@@ -9,7 +10,7 @@ import static dev.dialogmenu.MenuModel.*;
 final class MenuTemplate {
     private static final java.util.regex.Pattern TEXT_VARIABLE =
         java.util.regex.Pattern.compile("\\{([^{}]+)}|%[^%\\s]+%");
-    record Entry(String label, String image, List<String> actions) {}
+    record Entry(String label, String image, List<String> actions, TextureRegion atlas) {}
     record CollectionSpec(boolean external, String load, String list, String status, String loading, String ready,
                           String write, String token, String result, int capacity, int timeout,
                           String empty, String editState, List<String> saved) {}
@@ -26,6 +27,9 @@ final class MenuTemplate {
         final Map<String, String> messages = new LinkedHashMap<>();
         final List<Map<String, String>> samples = new ArrayList<>();
         final String characters;
+        private final Map<String, List<String>> previewChoices = new LinkedHashMap<>();
+        private final Preview defaultPreview;
+        private final List<Preview> samplePreviews;
         Definition(String id, YamlConfiguration yaml) {
             this.id = id;
             variables = yaml.getConfigurationSection("variables");
@@ -36,9 +40,9 @@ final class MenuTemplate {
             if (catalog != null) for (String key : catalog.getKeys(false)) {
                 if (!key.matches("[a-zA-Z0-9:_-]+")) throw new IllegalArgumentException("entry ID非法：" + key);
                 var e = Objects.requireNonNull(catalog.getConfigurationSection(key), "entry须为对象");
-                LayoutStore.keys(e, Set.of("label", "image", "actions"));
+                LayoutStore.keys(e, Set.of("label", "image", "actions", "atlas"));
                 entries.put(key, new Entry(e.getString("label", key), e.getString("image", ""),
-                    LayoutStore.actions(e.get("actions"), false)));
+                    LayoutStore.actions(e.get("actions"), false), LayoutStore.atlas(e, e.getString("image", ""))));
             }
             var sources = yaml.getConfigurationSection("collections");
             if (sources != null) for (String key : sources.getKeys(false)) {
@@ -68,6 +72,12 @@ final class MenuTemplate {
                 if (!Set.of("papi", "skript", "state", "literal", "external").contains(v.getString("type", "")))
                     throw new IllegalArgumentException(key + " variable type非法");
                 LayoutStore.integer(v, "max-length", 0, 0, 128);
+                List<String> choices = new ArrayList<>();
+                for (String field : List.of("preview", "fallback")) choices.add(v.getString(field, ""));
+                var mapped = v.getConfigurationSection("values");
+                if (mapped != null) for (Object value : mapped.getValues(false).values())
+                    choices.add(String.valueOf(value));
+                previewChoices.put("{" + key + "}", List.copyOf(choices));
             }
             var text = yaml.getConfigurationSection("messages");
             if (text != null) for (String key : text.getKeys(false)) messages.put(key, text.getString(key, ""));
@@ -99,6 +109,8 @@ final class MenuTemplate {
                 samples.add(Map.copyOf(values));
             }
             characters = yaml.getString("characters", "");
+            defaultPreview = preparePreview(Map.of());
+            samplePreviews = samples.stream().map(this::preparePreview).toList();
         }
         String message(String key) { return messages.getOrDefault(key, key); }
         void changeState(Map<String, String> values, String action, String value) {
@@ -127,6 +139,13 @@ final class MenuTemplate {
             return List.copyOf(next);
         }
         String preview(String text, Map<String, String> state, String player) {
+            return preview(state, player).apply(text);
+        }
+        UnaryOperator<String> preview(Map<String, String> state, String player) {
+            Preview prepared = state.isEmpty() ? defaultPreview : preparePreview(state);
+            return text -> prepared.expand(text, player);
+        }
+        private Preview preparePreview(Map<String, String> state) {
             Map<String, String> values = new LinkedHashMap<>(initial);
             values.putAll(state);
             if (variables != null) for (String key : variables.getKeys(false)) {
@@ -146,7 +165,32 @@ final class MenuTemplate {
                     value = v.getConfigurationSection("values").getString(value, v.getString("fallback", ""));
                 values.put(key, value);
             }
-            return expand(text, values).replace("{player}", player).replace("{uuid}", "preview");
+            return new Preview(values);
+        }
+    }
+    private static final class Preview {
+        private final List<Map.Entry<String, String>> replacements;
+        private final Map<String, String> expanded = new LinkedHashMap<>(16, .75f, true) {
+            @Override protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
+                return size() > 256;
+            }
+        };
+        Preview(Map<String, String> values) {
+            replacements = values.entrySet().stream()
+                .map(entry -> Map.entry("{" + entry.getKey() + "}", entry.getValue())).toList();
+        }
+        String expand(String text, String player) {
+            if (text.indexOf('{') < 0) return text;
+            String result;
+            synchronized (expanded) { result = expanded.get(text); }
+            if (result == null) {
+                result = text;
+                // 保留声明顺序，包括替换值中再次出现后续变量的情况。
+                for (var replacement : replacements)
+                    result = result.replace(replacement.getKey(), replacement.getValue());
+                synchronized (expanded) { expanded.put(text, result); }
+            }
+            return result.replace("{player}", player).replace("{uuid}", "preview");
         }
     }
     final Definition definition;
@@ -228,7 +272,7 @@ final class MenuTemplate {
         return text;
     }
     LayoutStore.Document document(Map<String, List<String>> lists) throws Exception {
-        return document(lists, Map.of(), text -> definition.preview(text, Map.of(), "Player"));
+        return document(lists, Map.of(), definition.preview(Map.of(), "Player"));
     }
     LayoutStore.Document document(Map<String, List<String>> lists,
                                   java.util.function.UnaryOperator<String> expand) throws Exception {
@@ -315,7 +359,7 @@ final class MenuTemplate {
                 boolean icon = entry != null && !entry.image().isBlank();
                 if (icon) nodes.add(image(prefix + "-icon", entry.image(), x + grid.getDouble("icon-x"),
                     y + grid.getDouble("icon-y"), grid.getDouble("icon-size"), grid.getDouble("icon-size"),
-                    interaction));
+                    interaction, entry.atlas()));
                 String color = grid.getString("color", "#343537");
                 if (!color.matches("#[0-9a-fA-F]{6}")) throw new IllegalArgumentException("grid color非法");
                 nodes.add(new Node(prefix + "-label", "text", icon ? x + grid.getDouble("text-x") : x, y,
@@ -327,42 +371,46 @@ final class MenuTemplate {
             return result;
         }
     }
-    private static Node image(String id, String source, double x, double y, double w, double h) {
-        return new Node(id, "image", x, y, 0, 1, 1, w, h, 0xFFFFFFFF, "", source,
-            "center", 8, 1, 0, 9, 18, List.of());
-    }
     private static Node image(String id, String source, double x, double y, double w, double h,
                               Interaction interaction) {
+        return image(id, source, x, y, w, h, interaction, null);
+    }
+    private static Node image(String id, String source, double x, double y, double w, double h,
+                              Interaction interaction, TextureRegion atlas) {
         return new Node(id, "image", x, y, 0, 1, 1, w, h, 0xFFFFFFFF, "", source,
-            "center", 8, 1, 0, 9, 18, List.of(), 0, interaction, false);
+            "center", 8, 1, 0, 9, 18, List.of(), 0, interaction, false, atlas);
     }
     List<LayoutStore.Document> variants() throws Exception {
         List<LayoutStore.Document> result = new ArrayList<>();
-        result.add(document(Map.of(), Map.of(), text -> definition.preview(text, Map.of(), "Player"), true));
+        UnaryOperator<String> preview = definition.preview(Map.of(), "Player");
+        result.add(document(Map.of(), Map.of(), preview, true));
         Set<Map<String,String>> usedSamples = new HashSet<>();
         for (Map<String, String> sample : definition.samples) {
+            BuildBudget.checkpoint();
             Map<String,String> relevant = new LinkedHashMap<>();
             sample.forEach((key, value) -> { if (yamlText.contains("{" + key + "}")) relevant.put(key, value); });
             if (!relevant.isEmpty() && usedSamples.add(relevant))
-                result.add(document(Map.of(), Map.of(), text -> definition.preview(text, relevant, "Player"), true));
+                result.add(document(Map.of(), Map.of(), definition.preview(relevant, "Player"), true));
         }
         for (var source : definition.collections.entrySet())
             for (String id : definition.entries.keySet())
                 if (!source.getValue().external())
                     result.add(document(Map.of(source.getKey(), Collections.nCopies(source.getValue().capacity(), id)),
-                        Map.of(), text -> definition.preview(text, Map.of(), "Player"), true));
+                        Map.of(), preview, true));
         if (definition.variables != null) for (String key : definition.variables.getKeys(false)) {
+            BuildBudget.checkpoint();
             var variable = definition.variables.getConfigurationSection(key);
             var choices = variable.getConfigurationSection("values");
             if (choices != null) for (String value : new LinkedHashSet<>(choices.getValues(false).values().stream()
                 .map(String::valueOf).toList()))
-                result.add(document(Map.of(), Map.of(), text -> definition.preview(text, Map.of(key, value), "Player"), true));
+                result.add(document(Map.of(), Map.of(), definition.preview(Map.of(key, value), "Player"), true));
         }
         return result;
     }
     static List<LayoutStore.Document> catalog(Collection<LayoutStore.Document> docs) throws Exception {
         List<LayoutStore.Document> result = new ArrayList<>();
         for (var doc : docs) {
+            BuildBudget.checkpoint();
             if (doc.template() == null) result.add(doc);
             else result.addAll(doc.template().variants());
         }
@@ -380,16 +428,11 @@ final class MenuTemplate {
         values.add(context.expand(node.text()));
         if (doc.template() != null) {
             Definition definition = doc.template().definition;
-            for (var sample : definition.samples)
-                values.add(context.expand(definition.preview(node.text(), sample, "{player}")));
-            if (definition.variables != null) for (String key : definition.variables.getKeys(false)) {
-                if (!node.text().contains("{" + key + "}")) continue;
-                var variable = definition.variables.getConfigurationSection(key);
-                for (String field : List.of("preview", "fallback"))
-                    values.add(context.expand(variable.getString(field, "")));
-                var choices = variable.getConfigurationSection("values");
-                if (choices != null) for (Object value : choices.getValues(false).values())
-                    values.add(context.expand(String.valueOf(value)));
+            for (var sample : definition.samplePreviews)
+                values.add(context.expand(sample.expand(node.text(), "{player}")));
+            for (var choice : definition.previewChoices.entrySet()) {
+                if (!node.text().contains(choice.getKey())) continue;
+                for (String value : choice.getValue()) values.add(context.expand(value));
             }
         }
         return List.copyOf(values);
@@ -413,9 +456,10 @@ final class MenuTemplate {
     }
     static Context preview(LayoutStore.Document doc, Context base) {
         if (doc.template() == null) return base;
+        UnaryOperator<String> preview = doc.template().definition.preview(Map.of(), "{player}");
         return new Context() {
             public String expand(String text) {
-                return base.expand(doc.template().definition.preview(text, Map.of(), "{player}"));
+                return base.expand(preview.apply(text));
             }
             public Icon item(int slot) { return base.item(slot); }
             public boolean permitted(String permission) { return base.permitted(permission); }

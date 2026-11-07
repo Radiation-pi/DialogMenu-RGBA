@@ -4,6 +4,10 @@ max-canvas-pixels: 131072
 close-with-escape: false
 text-scales: [1, 1.5, 2]
 default-text-scale: 1
-# 渲染器由安装的原生或 RGBA 发行包固定，不由此配置切换。
+# 仅支持 RGBA 渲染，不由配置切换。
 craftengine-auto-reload: true
 craftengine-resources: ../CraftEngine/resources
+# 仅旧image/item ID需要列出定义文件，相对于craftengine-resources；新PNG路径不需要。
+craftengine-definitions: []
+# 单后台线程资源构建的平均CPU预算，1..100；不限制GC或CraftEngine。
+resource-build-cpu-percent: 80

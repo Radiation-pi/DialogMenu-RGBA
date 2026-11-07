@@ -28,7 +28,7 @@ final class RgbaOffsets {
                 net.kyori.adventure.text.format.TextDecoration.STRIKETHROUGH,
                 net.kyori.adventure.text.format.TextDecoration.OBFUSCATED))
                 if (glyph.style().hasDecoration(decoration))
-                    throw new IllegalArgumentException("Shader文字暂不支持" + decoration + "，请改用原生版");
+                    throw new IllegalArgumentException("RGBA文字不支持" + decoration + "，请移除此样式");
             if (glyph.style().color() != null) add(glyph.style().color().value());
         }
     }

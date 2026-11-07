@@ -13,7 +13,6 @@ import io.papermc.paper.registry.data.dialog.ActionButton;
 import io.papermc.paper.registry.data.dialog.type.DialogType;
 import io.papermc.paper.registry.set.RegistrySet;
 import net.kyori.adventure.key.Key;
-import net.kyori.adventure.nbt.api.BinaryTagHolder;
 import net.kyori.adventure.text.event.ClickEvent;
 import java.io.*;
 import java.nio.file.*;
@@ -37,7 +36,6 @@ import static dev.dialogmenu.DialogMenuClosedEvent.Reason;
 
 public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabExecutor, MenuSessions.Host {
     private LayoutStore store;
-    private VanillaAssets assets;
     private MenuRenderer renderer;
     private FontPack fonts;
     private SpriteCanvas canvas = new SpriteCanvas();
@@ -187,7 +185,7 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
             if (Bukkit.getPluginManager().isPluginEnabled("CraftEngine"))
                 craftEngineBridge = new CraftEngineBridge(this);
             Bukkit.getServicesManager().register(DialogMenuApi.class, api, this, ServicePriority.Normal);
-            requestReload(Bukkit.getConsoleSender(), ReloadEngine.Mode.ALL);
+            requestReload(Bukkit.getConsoleSender(), new ReloadEngine.Request(ReloadEngine.Mode.ALL, null));
         } catch (Exception error) {
             getLogger().log(java.util.logging.Level.SEVERE, "Dialog initialization failed", error);
             Bukkit.getPluginManager().disablePlugin(this);
@@ -249,13 +247,15 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         if (loaded != null && loaded.generation() >= result.snapshot().generation()) return false;
         long start = System.nanoTime();
         for (UUID id : List.copyOf(views.keySet())) {
+            View view = views.get(id);
+            if (view == null || !result.menus().isEmpty() && !result.menus().contains(view.document().menu().id())) continue;
             Player player = Bukkit.getPlayer(id);
             if (player != null) close(player, Reason.RELOAD);
             else { views.remove(id); gestures.cancel(id); tokens.remove(id); }
         }
-        application.clear();
+        if (result.menus().isEmpty()) application.clear();
+        else application.clear(result.menus());
         loaded = result.snapshot();
-        assets = loaded.assets();
         renderer = loaded.renderer();
         fonts = loaded.fonts();
         canvas = new SpriteCanvas();
@@ -266,16 +266,17 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
             + "ms off-thread; main-thread publish=" + (System.nanoTime() - start) / 1_000_000.0 + "ms");
         return true;
     }
-    private void requestReload(CommandSender sender, ReloadEngine.Mode mode) {
+    private void requestReload(CommandSender sender, ReloadEngine.Request request) {
         if (reloadRequested) { sender.sendMessage("Dialog正在重载。"); return; }
         reloadRequested = true;
-        reloadEngine.prepare(mode).whenComplete((result, error) -> {
+        reloadEngine.prepare(request).whenComplete((result, error) -> {
             if (!isEnabled()) return;
             Bukkit.getScheduler().runTask(this, () -> {
                 reloadRequested = false;
                 if (error != null) { failure(sender, unwrap(error)); return; }
                 boolean changed = publishResources(result);
                 sender.sendMessage(!result.changed() ? "Dialog未变化，复用现有资源。"
+                    : request.menu() != null ? "Dialog菜单 " + request.menu() + " 已重载，材质包未修改。"
                     : result.resourcesChanged() ? "Dialog资源已异步重载。"
                     : "Dialog布局已重载，材质包未修改。");
                 if (changed && result.resourcesChanged() && loaded.settings().autoCraftEngine()
@@ -567,7 +568,7 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
                 case "list" -> sender.sendMessage("Dialog: " + String.join(", ", layoutIds()));
                 case "status" -> sender.sendMessage("Dialog standalone layouts=" + store.ids().size()
                     + " active=" + views.size() + " renderer=" + RenderingEdition.ID + "");
-                case "reload" -> requestReload(sender, ReloadEngine.Mode.command(args));
+                case "reload" -> requestReload(sender, ReloadEngine.Request.command(args));
                 case "resources" -> exportResources(sender);
                 case "textscale" -> {
                     if (!(sender instanceof Player player)) throw new IllegalArgumentException("此命令需要玩家");
@@ -598,14 +599,17 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
                     if (!(sender instanceof Player player)) throw new IllegalArgumentException("此命令需要玩家");
                     close(player);
                 }
-                default -> sender.sendMessage("/dialogmenu open <id> [small|medium|large] | edit [menu] | scale <0.75|1> | textscale <倍率> | list | reload [yaml|resource|all] | resources | close");
+                default -> sender.sendMessage("/dialogmenu open <id> [small|medium|large] | edit [menu] | scale <0.75|1> | textscale <倍率> | list | reload [yaml|resource|all|菜单名] | resources | close");
             }
         } catch (Exception error) { failure(sender, error); }
         return true;
     }
     @Override public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> choices = args.length == 1 ? List.of("open", "list", "close", "reload", "resources", "status", "textscale", "scale", "edit")
-            : args.length == 2 && args[0].equalsIgnoreCase("reload") ? List.of("yaml", "resource", "all")
+            : args.length == 2 && args[0].equalsIgnoreCase("reload")
+                ? java.util.stream.Stream.concat(java.util.stream.Stream.of("yaml", "resource", "all"),
+                    store.documents().values().stream().flatMap(doc ->
+                        java.util.stream.Stream.of(doc.menu().id(), LayoutStore.source(doc)))).distinct().toList()
             : args.length == 2 && args[0].equals("edit") ? layoutIds()
             : args.length == 2 && args[0].equals("textscale") && loaded != null
                 ? loaded.settings().textScales().stream().map(String::valueOf).toList()

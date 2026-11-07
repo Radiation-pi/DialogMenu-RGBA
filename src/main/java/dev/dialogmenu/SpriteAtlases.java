@@ -4,7 +4,6 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
-import javax.imageio.ImageIO;
 
 /** 合并同尺寸精灵单元，不改变像素、字形度量或外部纹理引用。 */
 final class SpriteAtlases {
@@ -14,6 +13,7 @@ final class SpriteAtlases {
         Map<Size, Map<String, List<FontPack.Glyph>>> groups = new LinkedHashMap<>();
         List<Object> providers = new ArrayList<>();
         for (var glyph : glyphs) {
+            BuildBudget.checkpoint();
             if (glyph.image() == null) {
                 providers.add(FontPack.bitmap(glyph.texture(), glyph.height(), 7 - glyph.top(),
                     glyph.textureRegion() == null ? List.of(Character.toString(glyph.code()))
@@ -30,6 +30,7 @@ final class SpriteAtlases {
             List<List<FontPack.Glyph>> cells = new ArrayList<>(group.getValue().values());
             int columns = 256 / size.width(), capacity = columns * (256 / size.height());
             for (int start = 0; start < cells.size(); start += capacity) {
+                BuildBudget.checkpoint();
                 var chunk = cells.subList(start, Math.min(start + capacity, cells.size()));
                 int rows = (chunk.size() + columns - 1) / columns;
                 var image = new BufferedImage(columns * size.width(), rows * size.height(), BufferedImage.TYPE_INT_ARGB);
@@ -41,7 +42,7 @@ final class SpriteAtlases {
                     for (var glyph : chunk.get(i)) tops.add(glyph.top());
                 }
                 String texture = "generated/sprites_" + sequence++ + ".png";
-                ImageIO.write(image, "png", base.resolve("textures/" + texture).toFile());
+                FontPack.writePng(image, base.resolve("textures/" + texture));
                 for (int top : tops) {
                     List<String> chars = new ArrayList<>();
                     for (int row = 0; row < rows; row++) {
