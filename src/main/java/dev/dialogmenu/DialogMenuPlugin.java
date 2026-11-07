@@ -44,6 +44,7 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
     private EditorBridge editor;
     private CraftEngineBridge craftEngineBridge;
     private volatile ReloadEngine.Snapshot loaded;
+    private final ResourcePublication<ReloadEngine.Result> publication = new ResourcePublication<>();
     private boolean reloadRequested;
     private final YamlConfiguration preferences = new YamlConfiguration();
     private final ActionTokens tokens = new ActionTokens();
@@ -229,9 +230,32 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
     CompletableFuture<ReloadEngine.Result> prepareResources() { return reloadEngine.prepare(ReloadEngine.Mode.RESOURCE); }
     CompletableFuture<ReloadEngine.Result> prepareAll() { return reloadEngine.prepare(); }
     ReloadEngine.Snapshot loadedResources() { return loaded; }
+    DialogMenuApi.PreparedResources preparedResources() {
+        var candidate = publication.pending();
+        return candidate == null ? null : new DialogMenuApi.PreparedResources(candidate.generation(), candidate.value().snapshot().pack());
+    }
+    boolean commitResources(long generation) {
+        var candidate = publication.pending();
+        if (candidate == null || candidate.generation() != generation)
+            throw new IllegalStateException("资源版本已过期，请重新确认待发布版本。");
+        boolean changed = publishResources(candidate.value());
+        publication.commit(generation);
+        return changed;
+    }
+    private boolean externalPublication() { return getConfig().getBoolean("resource-pack-external-publisher", false); }
+    private boolean acceptResources(ReloadEngine.Result result) {
+        if (externalPublication()) {
+            if (!result.resourcesChanged() && loaded != null && loaded.pack().equals(result.snapshot().pack())
+                && publication.pending() == null) return publishResources(result);
+            publication.prepare(result.snapshot().generation(), result);
+            return false;
+        }
+        return publishResources(result);
+    }
+    void preparedByCraftEngine(ReloadEngine.Result result) { acceptResources(result); }
     void retainPack(Object consumer, ReloadEngine.Snapshot snapshot) { reloadEngine.retainPack(consumer, snapshot); }
     void applyEditorResources(ReloadEngine.Result result) {
-        if (publishResources(result) && result.resourcesChanged() && loaded.settings().autoCraftEngine()
+        if (acceptResources(result) && result.resourcesChanged() && loaded.settings().autoCraftEngine()
             && Bukkit.getPluginManager().isPluginEnabled("CraftEngine"))
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "ce reload all");
     }
@@ -274,7 +298,12 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
             Bukkit.getScheduler().runTask(this, () -> {
                 reloadRequested = false;
                 if (error != null) { failure(sender, unwrap(error)); return; }
-                boolean changed = publishResources(result);
+                boolean changed = acceptResources(result);
+                if (externalPublication() && publication.pending() != null) {
+                    sender.sendMessage(Component.text("资源已准备，等待最终包发布确认。版本："
+                        + publication.pending().generation(), net.kyori.adventure.text.format.TextColor.color(0xBECECF)));
+                    return;
+                }
                 sender.sendMessage(!result.changed() ? "Dialog未变化，复用现有资源。"
                     : request.menu() != null ? "Dialog菜单 " + request.menu() + " 已重载，材质包未修改。"
                     : result.resourcesChanged() ? "Dialog资源已异步重载。"
@@ -554,7 +583,7 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
     @Override public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         try {
             String action = args.length == 0 ? "open" : args[0].toLowerCase(Locale.ROOT);
-            if (Set.of("reload", "resources", "status", "edit").contains(action)
+            if (Set.of("reload", "resources", "status", "edit", "publish").contains(action)
                 && !sender.hasPermission("dialogmenu.admin")) {
                 sender.sendMessage("§c仅管理员可执行此操作。");
                 return true;
@@ -567,8 +596,16 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
                 }
                 case "list" -> sender.sendMessage("Dialog: " + String.join(", ", layoutIds()));
                 case "status" -> sender.sendMessage("Dialog standalone layouts=" + store.ids().size()
-                    + " active=" + views.size() + " renderer=" + RenderingEdition.ID + " ArcMenu=not-used");
+                    + " active=" + views.size() + " renderer=" + RenderingEdition.ID
+                    + " published=" + (loaded == null ? "none" : loaded.generation())
+                    + " pending=" + (publication.pending() == null ? "none" : publication.pending().generation()));
                 case "reload" -> requestReload(sender, ReloadEngine.Request.command(args));
+                case "publish" -> {
+                    if (!externalPublication()) throw new IllegalStateException("请先启用外部资源包发布模式。");
+                    if (args.length != 2) throw new IllegalArgumentException("/dialogmenu publish <版本>");
+                    commitResources(Long.parseLong(args[1]));
+                    sender.sendMessage(Component.text("已提交资源版本。", net.kyori.adventure.text.format.TextColor.color(0x60C689)));
+                }
                 case "resources" -> exportResources(sender);
                 case "textscale" -> {
                     if (!(sender instanceof Player player)) throw new IllegalArgumentException("此命令需要玩家");
@@ -605,7 +642,7 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         return true;
     }
     @Override public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        List<String> choices = args.length == 1 ? List.of("open", "list", "close", "reload", "resources", "status", "textscale", "scale", "edit")
+        List<String> choices = args.length == 1 ? List.of("open", "list", "close", "reload", "resources", "status", "textscale", "scale", "edit", "publish")
             : args.length == 2 && args[0].equalsIgnoreCase("reload")
                 ? java.util.stream.Stream.concat(java.util.stream.Stream.of("yaml", "resource", "all"),
                     store.documents().values().stream().flatMap(doc ->

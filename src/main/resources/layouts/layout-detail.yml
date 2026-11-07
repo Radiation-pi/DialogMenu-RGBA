@@ -27,7 +27,7 @@ frontend:
     content: "&8文字和图片配置点击\n&8actions 定义点击动作"
     size: 8
     alignment: left
-    offset: {x: -26, z: 1}
+    offset: {x: -38, z: 1}
   back:
     type: text
     content: '&8返回'

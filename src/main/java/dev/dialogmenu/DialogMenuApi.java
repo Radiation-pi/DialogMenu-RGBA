@@ -4,6 +4,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.nio.file.Path;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
@@ -18,6 +19,11 @@ public final class DialogMenuApi {
     }
     public boolean hasLayout(String id) { requireReady(); return plugin.hasLayout(id); }
     public Set<String> layouts() { requireReady(); return plugin.menuIds(); }
+    /** 外部发布方在主线程获取候选 ZIP 与代次；最终上传成功后提交同一代次。 */
+    public record PreparedResources(long generation, Path zip) {}
+    public PreparedResources preparedResources() { requireReady(); return plugin.preparedResources(); }
+    /** 上传失败时不调用此方法；调用方必须已确认对应最终包发布成功。 */
+    public boolean commitResources(long generation) { requireReady(); return plugin.commitResources(generation); }
     public boolean open(Player player, String id) {
         requireReady();
         return player != null && player.isOnline() && plugin.openFromApi(player, id);
