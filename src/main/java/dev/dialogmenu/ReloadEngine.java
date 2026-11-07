@@ -23,8 +23,9 @@ final class ReloadEngine implements AutoCloseable {
     }
     record Settings(int width, int maxPixels, String defaultLayout, boolean escape,
                     List<Double> textScales, double defaultTextScale, boolean autoCraftEngine,
-                    Path resourceRoot, int resourceBuildCpuPercent, List<String> craftEngineDefinitions) {}
-    record Stamp(long size, FileTime modified) {}
+                    Path resourceRoot, int resourceBuildCpuPercent, List<String> craftEngineDefinitions,
+                    List<Integer> textColors) {}
+    record Stamp(long size, FileTime modified, String digest) {}
     record Snapshot(Map<String, LayoutStore.Document> documents, VanillaAssets assets, MenuRenderer renderer,
                     FontPack fonts, Settings settings, Path pack, Map<Path, Stamp> inputs,
                     Map<Path, Stamp> resourceInputs, long buildMillis,
@@ -44,6 +45,8 @@ final class ReloadEngine implements AutoCloseable {
         return thread;
     });
     private Snapshot latest;
+    // YAML 已应用不等于字库已按该版本重建，二者分别记录。
+    private Map<Path, Stamp> builtInputs = Map.of();
     private long generation;
 
     ReloadEngine(Path data, Context preview) {
@@ -74,6 +77,7 @@ final class ReloadEngine implements AutoCloseable {
         String name = existing == null ? LayoutStore.id(id) : LayoutStore.source(existing);
         Path file = store.file(name);
         Map<Path, Stamp> input = stamps(Set.of(file));
+        if (!input.containsKey(file)) throw new IllegalArgumentException("布局文件不存在：" + name);
         if (input.get(file).equals(latest.inputs().get(file))) return new Result(latest, false, false);
         var replacements = store.load(name);
         Map<String, LayoutStore.Document> documents = new LinkedHashMap<>(latest.documents());
@@ -113,8 +117,9 @@ final class ReloadEngine implements AutoCloseable {
         Settings settings = settings();
         if (!settings.resourceRoot().equals(latest.settings().resourceRoot())
             || !settings.craftEngineDefinitions().equals(latest.settings().craftEngineDefinitions())
-            || !latest.settings().textScales().containsAll(settings.textScales()))
-            throw new IllegalArgumentException("资源目录、CE定义文件或字体倍率范围已变化，请执行 /dialogmenu reload all；旧布局保留");
+            || !latest.settings().textScales().containsAll(settings.textScales())
+            || !latest.settings().textColors().containsAll(settings.textColors()))
+            throw new IllegalArgumentException("资源目录、CE定义文件、字体倍率或颜色范围已变化，请执行 /dialogmenu reload all；旧布局保留");
         var documents = new LayoutStore(data.resolve("layouts")).load();
         if (!documents.containsKey(settings.defaultLayout()))
             throw new IllegalArgumentException("default-layout不存在");
@@ -145,12 +150,20 @@ final class ReloadEngine implements AutoCloseable {
         }
         double defaultScale = LayoutStore.number(yaml, "default-text-scale", 1);
         if (!scales.contains(defaultScale)) throw new IllegalArgumentException("default-text-scale须在text-scales中");
+        List<Integer> colors = new ArrayList<>();
+        if (yaml.contains("text-colors") && !yaml.isList("text-colors"))
+            throw new IllegalArgumentException("text-colors须为#RRGGBB列表");
+        for (String color : LayoutStore.strings(yaml.get("text-colors"))) {
+            if (!color.matches("#[0-9a-fA-F]{6}"))
+                throw new IllegalArgumentException("text-colors须为#RRGGBB列表");
+            colors.add(Integer.parseInt(color.substring(1), 16));
+        }
         return new Settings(width, maxPixels, yaml.getString("default-layout", "layout-demo"),
             yaml.getBoolean("close-with-escape", false), List.copyOf(scales), defaultScale,
             yaml.getBoolean("craftengine-auto-reload", true),
             data.resolve(yaml.getString("craftengine-resources", "../CraftEngine/resources")).normalize(),
             LayoutStore.integer(yaml, "resource-build-cpu-percent", 80, 1, 100),
-            List.copyOf(LayoutStore.strings(yaml.get("craftengine-definitions"))));
+            List.copyOf(LayoutStore.strings(yaml.get("craftengine-definitions"))), List.copyOf(colors));
     }
     private Result build(Mode mode) throws Exception {
         long start = System.nanoTime();
@@ -164,41 +177,61 @@ final class ReloadEngine implements AutoCloseable {
         }
     }
     private Result build(boolean all, Map<Path, Stamp> yamlInputs, Settings settings, long start) throws Exception {
-        if (latest != null && latest.inputs().equals(yamlInputs)
+        if (latest != null && builtInputs.equals(yamlInputs)
             && latest.resourceInputs().equals(resourceInputs(latest.assets(), settings)))
             return new Result(latest, false, false);
         var documents = all ? new LayoutStore(data.resolve("layouts")).load() : latest.documents();
         if (!documents.containsKey(settings.defaultLayout())) throw new IllegalArgumentException("default-layout不存在");
         var assets = new VanillaAssets(data.resolve("images"), settings.resourceRoot(), settings.craftEngineDefinitions());
+        Map<Path, Stamp> initialResources = resourceInputs(assets, settings);
         var renderer = new MenuRenderer(assets);
         List<LayoutStore.Document> catalog = MenuTemplate.catalog(documents.values());
         var widths = new TreeSet<>(List.of(300, 360, 420, settings.width()));
         var fonts = FontPack.create(catalog, renderer, preview, widths, settings.maxPixels(),
-            MenuTemplate.characters(documents.values()), settings.textScales(), CanvasScale.OPTIONS);
+            MenuTemplate.characters(documents.values()), settings.textScales(), CanvasScale.OPTIONS, settings.textColors());
         validate(catalog, renderer, fonts, settings);
-        Path exported = data.resolve("resourcepack");
-        fonts.write(exported);
+        assets.verifyInputs();
+        if (all && !yamlInputs.equals(yamlInputs())) throw new IOException("构建期间布局或配置发生变化，请重试");
+        var afterResources = resourceInputs(assets, settings);
+        for (var entry : initialResources.entrySet())
+            if (!entry.getValue().equals(afterResources.get(entry.getKey())))
+                throw new IOException("构建期间图片发生变化，请重试");
         Path packDirectory = data.resolve("pack-cache");
         Files.createDirectories(packDirectory);
+        Path exported = Files.createTempDirectory(packDirectory, "staging-");
         Path zip = packDirectory.resolve("dialog-" + UUID.randomUUID() + ".zip");
-        try (var output = new ZipOutputStream(Files.newOutputStream(zip));
-             var files = Files.walk(exported)) {
-            for (Path path : files.filter(Files::isRegularFile).sorted().toList()) {
-                BuildBudget.checkpoint();
-                output.putNextEntry(new ZipEntry(exported.relativize(path).toString().replace('\\', '/')));
-                Files.copy(path, output);
-                output.closeEntry();
+        try {
+            fonts.write(exported);
+            try (var output = new ZipOutputStream(Files.newOutputStream(zip));
+                 var files = Files.walk(exported)) {
+                for (Path path : files.filter(Files::isRegularFile).sorted().toList()) {
+                    BuildBudget.checkpoint();
+                    output.putNextEntry(new ZipEntry(exported.relativize(path).toString().replace('\\', '/')));
+                    Files.copy(path, output);
+                    output.closeEntry();
+                }
             }
         } catch (Exception error) {
             Files.deleteIfExists(zip);
             throw error;
+        } finally {
+            EditorFiles.remove(exported);
         }
         Map<Path, Stamp> dependencies = resourceInputs(assets, settings);
+        try {
+            assets.verifyInputs();
+            if (!afterResources.equals(dependencies) || all && !yamlInputs.equals(yamlInputs()))
+                throw new IOException("构建期间输入发生变化，请重试");
+        } catch (Exception error) {
+            Files.deleteIfExists(zip);
+            throw error;
+        }
         BuildBudget.settle();
         Snapshot next = new Snapshot(documents, assets, renderer, fonts, settings, zip, yamlInputs,
             dependencies, TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start),
             Thread.currentThread().getName(), ++generation);
         cache.retain(next, zip);
+        builtInputs = yamlInputs;
         latest = next;
         return new Result(next, true);
     }
@@ -217,6 +250,7 @@ final class ReloadEngine implements AutoCloseable {
             };
             var frame = renderer.draw(doc.menu(), active, size, settings.maxPixels());
             new SpriteCanvas().encode(doc.menu(), frame, active, fonts, region -> null);
+            fonts.validateDynamic(doc, active, size, MenuTemplate.characters(catalog));
         }
     }
     private Map<Path, Stamp> yamlInputs() throws IOException {
@@ -243,7 +277,8 @@ final class ReloadEngine implements AutoCloseable {
         Map<Path, Stamp> result = new HashMap<>();
         for (Path file : files) if (Files.exists(file)) {
             BuildBudget.checkpoint();
-            result.put(file, new Stamp(Files.size(file), Files.getLastModifiedTime(file)));
+            result.put(file, new Stamp(Files.size(file), Files.getLastModifiedTime(file),
+                Files.isRegularFile(file) ? SourceFiles.digest(Files.readAllBytes(file)) : "directory"));
         }
         return Map.copyOf(result);
     }

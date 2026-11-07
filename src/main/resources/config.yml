@@ -4,8 +4,12 @@ max-canvas-pixels: 131072
 close-with-escape: false
 text-scales: [1, 1.5, 2]
 default-text-scale: 1
+# 动态文本额外使用的HEX色；传统16色已内置。
+text-colors: []
 # 仅支持 RGBA 渲染，不由配置切换。
 craftengine-auto-reload: true
+# 外部管线在最终包发布成功后，通过API或publish命令提交待发布版本。
+resource-pack-external-publisher: false
 craftengine-resources: ../CraftEngine/resources
 # 仅旧image/item ID需要列出定义文件，相对于craftengine-resources；新PNG路径不需要。
 craftengine-definitions: []

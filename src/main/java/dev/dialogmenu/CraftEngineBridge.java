@@ -34,7 +34,7 @@ final class CraftEngineBridge implements Listener, AutoCloseable {
             var result = plugin.prepareResources().get();
             // CE 准备资源缓存时，不阻塞主线程。
             // 使用快照代次，避免延迟发布覆盖较新的资源。
-            Bukkit.getScheduler().runTask(plugin, () -> plugin.publishResources(result));
+            Bukkit.getScheduler().runTask(plugin, () -> plugin.preparedByCraftEngine(result));
             plugin.retainPack(eventType.getMethod("cacheData").invoke(event), result.snapshot());
             eventType.getMethod("registerExternalResourcePack", Path.class)
                 .invoke(event, result.snapshot().pack());
