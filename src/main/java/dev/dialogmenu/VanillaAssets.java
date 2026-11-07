@@ -15,6 +15,7 @@ final class VanillaAssets {
     private final Map<String, BufferedImage> icons = new HashMap<>();
     private final Path images;
     private final Map<String, BufferedImage> custom = new HashMap<>();
+    private final SourceFiles inputs = new SourceFiles();
     final CraftEngineAssets craftEngine;
 
     VanillaAssets(Path images) throws IOException {
@@ -75,7 +76,7 @@ final class VanillaAssets {
         Path path = images.resolve(source.startsWith("/") ? source.substring(1) : source).normalize();
         if (!path.startsWith(images) || !Files.isRegularFile(path)
             || !path.toRealPath().startsWith(images.toRealPath())) throw new IOException("Image outside images/: " + source);
-        BufferedImage image = ImageIO.read(path.toFile());
+        BufferedImage image = ImageIO.read(new ByteArrayInputStream(inputs.read(path)));
         if (image == null || image.getWidth() < 16 || image.getHeight() < 16
             || image.getWidth() > 256 || image.getHeight() > 256
             || image.getWidth() % 16 != 0 || image.getHeight() % 16 != 0)
@@ -103,6 +104,8 @@ final class VanillaAssets {
     }
 
     Glyph glyph(int codepoint) { return glyphs.get(codepoint); }
+
+    void verifyInputs() throws IOException { inputs.verify(); craftEngine.verifyInputs(); }
 
     List<String> sources() throws IOException {
         var result = new TreeSet<String>();

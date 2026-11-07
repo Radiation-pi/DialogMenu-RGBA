@@ -27,7 +27,7 @@
 gradle build
 ```
 
-产物：`build/libs/DialogMenu-0.1.5.jar`。
+产物：`build/libs/DialogMenu-0.1.6.jar`。
 
 1. 正常停服，替换原 DialogMenu JAR，保留 `plugins/DialogMenu/` 后启动；不要同时安装多个版本。
 2. 有 CraftEngine 时自动登记生成的资源包；否则用 `/dialogmenu resources` 导出后自行合包分发。合包需保留 `pack.mcmeta` 的 overlays 和 `dialogmenu_*` 目录。
@@ -46,3 +46,19 @@ gradle build
 资源准备使用单后台线程，`resource-build-cpu-percent` 默认 `80`，可设为 `1..100`，表示平均单线程 CPU 预算，不限制 GC 或 CraftEngine。
 
 CE 图片可写 `source: craftengine:资源包目录/textures后的路径.png`，`.png` 可省略。旧 image/item/icon ID 需在 `craftengine-definitions` 列出定义文件，不自动扫描全部 CE 配置。
+
+## 动态文本与重载
+
+传统 16 色已预置；动态文字使用额外 HEX 色时，在 `text-colors: ["#123456"]` 中声明后执行 `reload all` 并重新分发资源包。RGBA 模式不支持斜体、下划线、删除线和混淆装饰，准备期与运行时执行相同校验。
+
+YAML 重载复用当前字库，缺少动态字符范围时拒绝应用。已应用的 YAML 与已构建的资源分别记录，后续 `reload resource/all` 会按新输入重建。缓存使用内容摘要，保留文件大小和时间戳的修改同样可发现；构建期间变化的输入会导致本轮失败，保留上一版可用 ZIP。
+
+## 外部合包发布
+
+使用 Nova/PlanetNova 等统一合包管线时，启用 `resource-pack-external-publisher: true`，并关闭 `craftengine-auto-reload`。CE 缓存事件只登记候选 ZIP，不提前切换服务端字体映射。发布方在主线程通过 `DialogMenuApi.preparedResources()` 获取候选代次与 ZIP，确认对应最终包上传成功后调用 `commitResources(generation)`，然后分发给玩家；失败时不提交，继续保留旧映射。过期代次会被拒绝。
+
+没有接入 API 的管理员可在确认最终发布成功后执行 `/dialogmenu publish <版本>`，`/dialogmenu status` 可查看 published/pending。命令本身不负责上传或确认客户端已加载；外部管线应在提交之后再分发，客户端切包完成之前避免打开依赖新字形的菜单。外部模式启动后，在首次提交之前不提供菜单。未启用该模式时，保持原有准备后立即应用的兼容行为，不能把它当作跨插件发布事务。
+
+Nova 应在生成位移字体前排除 `dialogmenu:*`，精确清单不能自动覆盖未来新增 ID。DialogMenu 不使用 Nova 的 `/1`…`/19` 字体。合包应校验当前版本的文字 shader、include、palette 和字体集合；不得仅根据 JSON 文件个数推断客户端显存占用。
+
+`gradle check` 包含离线资源回归检查；这些检查不代表真实客户端渲染或显存验收通过。

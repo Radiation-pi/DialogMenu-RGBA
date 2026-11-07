@@ -32,6 +32,7 @@ final class CraftEngineAssets {
     private final Map<Path, BufferedImage> textures = new HashMap<>();
     private final Map<String, Reference> references = new HashMap<>();
     private final Set<Path> referencedTextures = new HashSet<>();
+    private final SourceFiles inputs = new SourceFiles();
     private final List<String> definitionFiles;
     private boolean definitionsLoaded;
     private final Map<String, Path> directPaths = new HashMap<>();
@@ -90,6 +91,7 @@ final class CraftEngineAssets {
     synchronized Set<Path> dependencies() {
         return Set.copyOf(referencedTextures);
     }
+    synchronized void verifyInputs() throws IOException { inputs.verify(); }
 
     synchronized boolean atlasReference(String source) throws IOException {
         if (!source.startsWith("craftengine:image/") && !source.startsWith("craftengine:icon/")) return false;
@@ -252,7 +254,7 @@ final class CraftEngineAssets {
             BuildBudget.checkpoint();
             YamlConfiguration yaml = new YamlConfiguration();
             try {
-                yaml.load(file.toFile());
+                yaml.loadFromString(new String(inputs.read(file), java.nio.charset.StandardCharsets.UTF_8));
             } catch (Exception error) {
                 throw new IOException("Cannot read CraftEngine YAML: " + file, error);
             }
@@ -374,7 +376,7 @@ final class CraftEngineAssets {
     private BufferedImage readTexture(Path path) throws IOException {
         BufferedImage image = textures.get(path);
         if (image == null) {
-            image = ImageIO.read(path.toFile());
+            image = ImageIO.read(new java.io.ByteArrayInputStream(inputs.read(path)));
             if (image == null) throw new IOException("CraftEngine纹理不是PNG：" + path);
             textures.put(path, image);
         }
