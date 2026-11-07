@@ -6,6 +6,19 @@ not update or publish releases to that repository. The plugin
 contains only the `layout-demo` and `layout-detail` examples; it does not ship
 server-specific menus, images, or configuration.
 
+## 中文 Wiki
+
+打开 [`docs/index.html`](docs/index.html) 阅读中文版 Wiki，可下载后直接用浏览器离线打开。
+内容包括安装、完整 YAML 示例、共享字库、图片拉伸、资源包、Java API 和兼容边界；
+提供搜索、页内目录、示例复制/下载和手机目录。页面组织参考 CraftEngine 中文文档，
+不依赖外部脚本或字体。
+
+Wiki 示例校验（先构建 JAR，使用 Java 25 与 26.3 依赖）：
+`python3 checks/check-wiki.py --classpath-file <dependencies.txt>`。
+页面交互校验：安装 Playwright，启动 `python3 -m http.server 8000 --directory docs`，
+另一个终端执行 `node checks/wiki-browser.cjs`。可用 `WIKI_URL`、`WIKI_OUT`、
+`PLAYWRIGHT_MODULE` 和 `BROWSER_PATH` 指定地址、输出和本机浏览器。
+
 ## Requirements
 
 - Java 25

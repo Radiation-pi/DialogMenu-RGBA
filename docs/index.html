@@ -1,0 +1,939 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="description" content="DialogMenu RGBA 中文文档：安装、YAML 布局、共享字库、着色器图片拉伸、点击动作和 Java API。可离线阅读。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%232563eb'/%3E%3Cpath d='M8 9h8a7 7 0 0 1 0 14H8zm4 4v6h4a3 3 0 0 0 0-6z' fill='white'/%3E%3C/svg%3E">
+<title>介绍 | DialogMenu RGBA</title>
+<style>
+:root{--ink:#20252d;--muted:#606975;--line:#e5e7eb;--accent:#2563eb;--soft:#eff6ff;--paper:#fff;--code:#192332}
+*{box-sizing:border-box}html{scroll-padding-top:90px}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.8 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}a{color:var(--accent);text-underline-offset:3px}button,input{font:inherit}button{cursor:pointer;border:1px solid var(--line);background:white;border-radius:5px;padding:6px 12px;color:var(--ink)}button:hover{background:var(--soft)}a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid #60a5fa;outline-offset:3px}[hidden]{display:none!important}
+.skip{position:fixed;top:-80px;left:12px;z-index:30;background:#fff;padding:10px}.skip:focus{top:8px}header{position:sticky;top:0;z-index:20;height:64px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.98);display:flex;align-items:center;gap:20px;padding:0 28px}.brand{font-size:17px;font-weight:750;color:var(--ink);text-decoration:none;white-space:nowrap}.brand span{color:var(--accent)}.version{font-size:12px;color:var(--muted);white-space:nowrap}.search{position:relative;width:300px;margin-left:auto}.search input{width:100%;background:#f3f4f6;border:1px solid transparent;border-radius:22px;padding:7px 36px 7px 16px;color:var(--ink);font-size:13px}.search kbd{position:absolute;right:14px;top:8px;font:12px/22px monospace;color:var(--muted)}.top-link{font-size:13px;text-decoration:none}.menu-toggle{display:none}.layout{max-width:1560px;margin:auto;display:grid;grid-template-columns:280px minmax(0,1fr) 215px}
+#sidebar{position:sticky;top:64px;height:calc(100dvh - 64px);overflow-y:auto;padding:26px 20px 30px;border-right:1px solid var(--line)}.nav-label{font-size:12px;color:var(--ink);font-weight:700;letter-spacing:.5px;margin:22px 12px 8px}.nav-label:first-child{margin-top:0}nav a{display:block;margin:2px 0;padding:5px 12px;font-size:13px;color:var(--muted);text-decoration:none;border-radius:4px}nav a:hover{background:#f5f6f8;color:var(--accent)}nav a.active{color:var(--accent);background:var(--soft);font-weight:650}.nav-foot{border-top:1px solid var(--line);margin:26px 12px 0;padding-top:16px;font-size:11px;color:var(--muted)}
+main{min-width:0;padding:28px 44px 70px}.breadcrumb{font-size:12px;color:var(--muted);margin-bottom:20px}article{padding-bottom:22px}h1{font-size:38px;line-height:1.3;letter-spacing:-1px;margin:0 0 22px}h2{font-size:26px;line-height:1.4;letter-spacing:-.5px;margin:36px 0 14px;scroll-margin-top:90px}h3{font-size:18px;line-height:1.5;margin:26px 0 10px;scroll-margin-top:90px}.lead{font-size:17px;color:var(--muted)}p{margin:12px 0}ul,ol{padding-left:24px}li{margin:6px 0}code{font:12.5px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;background:#f0f2f5;border:1px solid #e6e8eb;padding:1px 4px;border-radius:3px;overflow-wrap:anywhere}pre{margin:0;overflow:auto;padding:18px 20px;font:12.5px/1.8 ui-monospace,SFMono-Regular,Consolas,monospace;color:#e3eaf4;background:var(--code);tab-size:2}pre code{font:inherit;padding:0;border:0;background:none;color:inherit;overflow-wrap:normal}.code-block{border-radius:6px;overflow:hidden;margin:18px 0}.code-head{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#253247;color:#d6dfec;padding:7px 12px;font-size:11px}.code-head button{color:#fff;background:transparent;border-color:#59677e;font-size:11px;padding:3px 10px;min-width:52px}.code-head button:hover{background:#344765}
+.note{border-left:4px solid #0ea5e9;border-radius:4px;background:#f0f9ff;padding:14px 18px;margin:20px 0;font-size:14px}.note.warning{border-color:#eab308;background:#fffbeb}.note strong{display:block;margin-bottom:4px}.table-wrap{overflow:auto;margin:16px 0}table{border-collapse:collapse;width:100%;font-size:13px;min-width:510px}th,td{border:1px solid var(--line);padding:10px 13px;text-align:left;vertical-align:top}th{background:#f7f8fa;font-size:12px}tr:nth-child(even){background:#fafbfc}.primary{display:inline-block;color:white;background:var(--accent);border:1px solid var(--accent);text-decoration:none;padding:8px 16px;border-radius:5px;font-size:14px}.actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:24px 0}.meta{font-size:12px;color:var(--muted)}.diagram{border:1px solid var(--line);border-radius:6px;margin:24px 0;padding:22px;background:#fafbfc}.diagram svg{display:block;width:100%;height:auto}.caption{font-size:12px;color:var(--muted);text-align:center;margin:10px 0 0}.flow{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:12px;margin:22px 0}.flow span{border:1px solid var(--line);padding:6px 10px;border-radius:4px;background:#f8fafc}.flow b{color:var(--muted);font-weight:400}.size-control{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;margin-top:16px}.size-control button{font-size:12px}.size-control button[aria-pressed=true]{background:var(--accent);color:white;border-color:var(--accent)}#size-result{color:var(--muted)}
+#toc{position:sticky;top:64px;align-self:start;max-height:calc(100dvh - 64px);overflow:auto;margin-top:28px;padding:6px 18px;border-left:1px solid var(--line);font-size:12px}#toc p{margin:0 0 10px;color:var(--muted)}#toc a{display:block;text-decoration:none;color:var(--muted);margin:8px 0;line-height:1.6}#toc a:hover{color:var(--accent)}.article-nav{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:42px;padding-top:24px;border-top:1px solid var(--line)}.article-nav a{border:1px solid var(--line);padding:12px 16px;border-radius:5px;text-decoration:none;font-size:14px}.article-nav a:hover{border-color:var(--accent)}.article-nav a:last-child{text-align:right}.article-nav small{display:block;color:var(--muted);font-size:11px}.search-result{display:block;color:var(--ink);text-decoration:none;padding:20px 0;border-bottom:1px solid var(--line)}.search-result strong{display:block;color:var(--accent);font-size:18px}.search-result span{display:block;font-size:13px;color:var(--muted);margin-top:8px}.empty{padding:50px 0;color:var(--muted)}.empty strong{display:block;color:var(--ink);font-size:20px}.footer{border-top:1px solid var(--line);margin-top:30px;padding-top:18px;font-size:11px;color:var(--muted)}.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:30;padding:8px 16px;background:#20252d;color:#fff;border-radius:5px;font-size:13px;max-width:90vw}.js-ready article:not(.current){display:none}
+@media(max-width:1200px){.layout{grid-template-columns:240px minmax(0,1fr)}#toc{display:none}main{padding:28px 36px 60px}.version{display:none}}
+@media(max-width:760px){header{height:auto;min-height:64px;flex-wrap:wrap;gap:10px;padding:12px 18px}.brand{font-size:16px}.top-link,.print{display:none}.menu-toggle{display:block;margin-left:auto;font-size:12px;padding:4px 10px}.search{order:3;width:100%;margin:0}.search input{font-size:14px}.layout{display:block}#sidebar{display:none;position:fixed;top:116px;left:0;width:100%;height:calc(100dvh - 116px);z-index:19;background:white;border-right:0;padding:22px}#sidebar.open{display:block}main{padding:25px 22px 45px}h1{font-size:30px}h2{font-size:23px}h3{font-size:17px}html{scroll-padding-top:140px}h2,h3{scroll-margin-top:140px}.lead{font-size:16px}.article-nav{gap:10px}.article-nav a{padding:10px}.diagram{padding:12px}.code-head{font-size:10px}pre{padding:16px;font-size:12px}}
+@media(prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+@media print{header,#sidebar,#toc,.breadcrumb,.article-nav,.actions,button,.size-control,#search-results,.toast,.footer{display:none!important}.layout{display:block}main{padding:0}.js-ready article,article{display:block!important;break-before:page}article:first-of-type{break-before:auto}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f4f6;color:#111}pre code{white-space:pre-wrap}.code-head{background:#eee;color:#111}a{color:#111}h1,h2,h3{break-after:avoid}.table-wrap{overflow:visible}table{min-width:0;font-size:11px}.note{break-inside:avoid}}
+</style>
+</head>
+<body>
+<a class="skip" href="#content">跳到正文</a>
+<header>
+  <a class="brand" href="#intro">DialogMenu <span>RGBA</span></a>
+  <span class="version">0.1.5 · 简体中文</span>
+  <button class="menu-toggle" type="button" aria-controls="sidebar" aria-expanded="false">目录</button>
+  <label class="search"><input id="search" type="search" placeholder="搜索文档…" aria-label="搜索文档"><kbd>/</kbd></label>
+  <a class="top-link" href="https://github.com/palkane/DialogMenu-RGBA" target="_blank" rel="noopener">GitHub</a>
+  <button class="print" id="print" type="button">打印</button>
+</header>
+<div class="layout">
+<aside id="sidebar" aria-label="文档目录">
+<nav>
+  <p class="nav-label">开始使用</p>
+  <a href="#intro">介绍</a>
+  <a href="#install">安装与版本切换</a>
+  <a href="#quickstart">第一份菜单</a>
+  <a href="#commands">命令与配置</a>
+  <p class="nav-label">配置参考</p>
+  <a href="#layout">坐标、尺寸与图层</a>
+  <a href="#elements">画面元素</a>
+  <a href="#text">文字、字库与换行</a>
+  <a href="#images">图片与宽高拉伸</a>
+  <a href="#clicks">点击、悬停与双击</a>
+  <a href="#actions">动作与事件</a>
+  <p class="nav-label">进阶教程</p>
+  <a href="#templates">多页、变量与条件</a>
+  <a href="#paging">按钮分页</a>
+  <a href="#collections">集合与原生表单</a>
+  <a href="#packs">资源包与重载</a>
+  <p class="nav-label">开发与维护</p>
+  <a href="#api">Java API</a>
+  <a href="#renderer">RGBA 原理与开销</a>
+  <a href="#migration">迁移与故障排查</a>
+  <a href="#compatibility">兼容性与测试边界</a>
+</nav>
+<div class="nav-foot">独立 RGBA 项目 · 0.1.5<br>离线可读 · 无外部脚本<br>内容核对：2026-11-07</div>
+</aside>
+<main id="content" tabindex="-1">
+<noscript><style>.search,.menu-toggle,.print,[data-copy],[data-download]{display:none!important}</style><p class="note">JavaScript 已禁用，以下显示全部章节，可使用浏览器查找。</p></noscript>
+<div id="breadcrumb" class="breadcrumb">使用文档 / 介绍</div>
+<div id="search-results" hidden>
+  <h1>搜索文档</h1><p id="search-status" role="status"></p>
+  <div id="result-list"></div>
+  <div class="empty" id="empty" hidden><strong>没有找到相关内容</strong>试试「字库」「拉伸」「callback」。</div>
+  <button id="clear-search" type="button">返回正文</button>
+</div>
+
+<article id="intro">
+<h1>介绍</h1>
+<p class="lead">用 YAML 排版，用动作连接业务。<br>在原版 Minecraft Dialog 中显示独立文字、图片与可点击元素。</p>
+<div class="actions"><a class="primary" href="#quickstart">开始第一份菜单</a><a href="#api">接入 Java API →</a></div>
+<p class="meta">DialogMenu RGBA 0.1.5 · Java 25 · Minecraft 26.3 · 资源包格式 97.1 起</p>
+<h2>什么是 RGBA 版</h2>
+<p>这是 DialogMenu 的独立着色器版本。它复用整字字库，在颜色数据中编码文字偏移和图片尺寸，再由核心文字着色器解码，减少按不同纵向位置重复准备字体的开销。</p>
+<p>普通玩家不需要客户端 Mod，但必须接受匹配的资源包。点击仍由原版 Dialog 与服务端会话校验处理，不是任意客户端鼠标事件接口。</p>
+<div class="flow" aria-label="菜单工作流程"><span>YAML 与源图片</span><b>→</b><span>校验、字库与资源包</span><b>→</b><span>客户端接收</span><b>→</b><span>Dialog 与 Shader</span></div>
+<h2>先读哪一篇</h2>
+<ul>
+  <li>首次安装：<a href="#install">运行环境</a> → <a href="#quickstart">可下载的完整示例</a>。</li>
+  <li>想减小资源包：<a href="#text">字库与颜色</a> → <a href="#images">共享图片拉伸</a> → <a href="#packs">什么时候需要发新包</a>。</li>
+  <li>接入自己的业务：<a href="#templates">外部变量</a> → <a href="#collections">集合与表单</a> → <a href="#api">完整 Java 示例</a>。</li>
+</ul>
+<div class="note"><strong>两个独立项目</strong>原 <code>palkane/DialogMenu</code> 保留以前公开的原生版本；本 Wiki 仅对应 <code>palkane/DialogMenu-RGBA</code>。两者共用插件名、命令、API 和数据目录，只能安装一个。</div>
+<h2>不包含什么</h2>
+<p>随包只有 <code>layout-demo</code>、<code>layout-detail</code> 两个公开示例，没有服务器业务、经济系统或整套菜单。静态图片不是任意 ItemStack 的 3D 模型；没有右键、Shift、中键或服务端滚轮回调。可视化编辑需要另配匹配的编辑客户端，普通玩家显示菜单不需要它。</p>
+</article>
+
+<article id="install">
+<h1>安装与版本切换</h1>
+<h2>运行环境</h2>
+<ul>
+  <li>Java 25，提供 26.3 Dialog API 的 Paper 系服务端，以及 Minecraft 26.3 客户端。</li>
+  <li>客户端接受菜单资源包；核心文字 Shader 不能被其他包不兼容地覆盖。</li>
+  <li>最低资源包格式为 <code>97.1</code>，不是旧版 Spigot 通用插件。</li>
+</ul>
+<p>CraftEngine、PlaceholderAPI、Skript 都是可选集成。只有布局实际使用其资源、变量或集合协议时才需要安装；静态入门示例不依赖它们。</p>
+<h2>从源码构建</h2>
+<p>本 Wiki 以仓库的 <code>0.1.5</code> 源码为基线，不假定已有可下载的 Release。使用 Java 25，在仓库根目录执行：</p>
+<div class="code-block"><div class="code-head"><span>终端 · Windows 使用 gradlew.bat</span><button type="button" data-copy="build-command">复制</button></div><pre><code id="build-command">./gradlew build</code></pre></div>
+<p>产物为 <code>build/libs/DialogMenu-rgba-0.1.5.jar</code>。Gradle 会运行布局、渲染、绑定与表单检查；构建通过不代表你的客户端组合已通过验收。</p>
+<h2>安装步骤</h2>
+<ol>
+  <li>备份原 JAR 及 <code>plugins/DialogMenu/</code>。正常停止服务器，只保留一份 DialogMenu JAR，然后启动。</li>
+  <li>管理员执行 <code>/dialogmenu status</code>，应包含 <code>renderer=rgba</code>；等待布局资源准备完成。</li>
+  <li>按<a href="#packs">资源包流程</a>生成、分发并接收资源。</li>
+  <li>玩家执行 <code>/dialogmenu open layout-demo</code>，验证详情跳转、返回和关闭。</li>
+</ol>
+<h2>从原生版切换</h2>
+<p>保留原 <code>plugins/DialogMenu</code> 中的布局、图片和玩家偏好，先迁移旧 <code>backend</code>，再正常停服换 JAR。重新生成并接收匹配的资源包。不能靠 <code>reload</code> 换插件版本。</p>
+<div class="note warning"><strong>不是配置开关</strong><code>shader-rendering</code> 和 <code>-Ddialogmenu.rgba</code> 旧开关不再选择发行版。当前渲染器由 JAR 内的发行标记固定。不要同时放入原生和 RGBA 两个包。</div>
+</article>
+
+<article id="quickstart">
+<h1>第一份菜单</h1>
+<p>新建 <code>plugins/DialogMenu/layouts/hello.yml</code>。文件名与 <code>id</code> 一致；ID 使用小写字母、数字、<code>-</code>、<code>_</code>，首字符必须是字母或数字，最长 64 字符。</p>
+<div class="code-block"><div class="code-head"><span>hello.yml · 完整示例</span><button type="button" data-copy="hello-yaml">复制</button></div><pre><code id="hello-yaml" data-yaml="hello">schema-version: 1
+id: hello
+canvas: {width: 300, height: 180}
+events:
+  open: 'sound: UI_BUTTON_CLICK-0.5-1'
+frontend:
+  panel:
+    type: rectangle
+    width: 300
+    height: 180
+    color: '#EEF2F7'
+  title:
+    type: text
+    content: '你好，{player}'
+    color: '#243247'
+    size: 8
+    offset: {y: 48, z: 1}
+  button-bg:
+    type: rectangle
+    width: 140
+    height: 28
+    color: '#D9E5F7'
+    offset: {y: -12}
+  button:
+    type: text
+    content: 点击打招呼
+    color: '#243247'
+    offset: {y: -12, z: 1}
+    clickable: true
+    tooltip: 向自己发送消息
+    actions:
+      all: 'sound: UI_BUTTON_CLICK-0.5-1'
+      left: 'tell: 你好，{player}！'
+  close:
+    type: text
+    content: '×'
+    color: '#243247'
+    offset: {x: 132, y: 72, z: 2}
+    actions: close
+</code></pre></div>
+<button type="button" data-download="hello-yaml" data-filename="hello.yml">下载 hello.yml</button>
+<h2>加载与打开</h2>
+<ol>
+  <li>保存文件，管理员执行 <code>/dialogmenu reload</code>，等待成功提示。</li>
+  <li>完成资源包更新，让客户端接收新包。仅改 YAML 不等于客户端已拿到字库。</li>
+  <li>玩家执行 <code>/dialogmenu open hello small</code>。</li>
+  <li>点击文字“点击打招呼”，应听到声音并收到问候；点击“×”关闭。</li>
+</ol>
+<div class="note"><strong>点击跟随文字，不跟随背景</strong>矩形只是底色，不是独立按钮区域。本例文字带动作，矩形边缘不应执行它。要做整块可点击按钮，可使用带动作的 <code>image</code>。</div>
+<p>Esc 默认禁用，应保留可见关闭入口。界面不是整张文字截图：背景和文字始终是不同元素。</p>
+</article>
+
+<article id="commands">
+<h1>命令与配置</h1>
+<h2>命令</h2>
+<div class="table-wrap"><table><thead><tr><th>命令</th><th>用途</th></tr></thead><tbody>
+<tr><td><code>/dialogmenu</code></td><td>打开 <code>default-layout</code>。</td></tr>
+<tr><td><code>/dialogmenu open [id] [small|medium|large]</code></td><td>打开页面；档位宽度分别为 300 / 360 / 420，也接受“小 / 中 / 大”。省略档位使用配置宽度。</td></tr>
+<tr><td><code>/dialogmenu list</code></td><td>列出已加载的页面 ID；模板列出其各 page ID。</td></tr>
+<tr><td><code>/dialogmenu close</code></td><td>关闭自己的菜单并清理会话。</td></tr>
+<tr><td><code>/dialogmenu reload</code></td><td>重新读取配置、布局和资源，在后台准备新快照。</td></tr>
+<tr><td><code>/dialogmenu resources</code></td><td>导出当前快照资源，不重读 YAML，也不自动给客户端发包。</td></tr>
+<tr><td><code>/dialogmenu status</code></td><td>查看布局数、活动视图数和 <code>renderer=rgba</code>，不是客户端渲染回执。</td></tr>
+<tr><td><code>/dialogmenu textscale [倍率]</code></td><td>查询或设置文字倍率；必须是配置中的选项，可带 <code>x</code> 后缀。</td></tr>
+<tr><td><code>/dialogmenu scale [0.75|1]</code></td><td>查询或设置画布倍率，与文字倍率不是同一偏好。</td></tr>
+<tr><td><code>/dialogmenu edit [menu]</code></td><td>管理员编辑入口，需匹配的独立编辑客户端 Mod。</td></tr>
+</tbody></table></div>
+<p><code>open / close / textscale / scale / edit</code> 需要玩家执行。<code>reload / resources / status / edit</code> 需要 <code>dialogmenu.admin</code>；基础命令权限为 <code>dialogmenu.use</code>，菜单和元素还可声明自己的权限。</p>
+<h2>config.yml</h2>
+<div class="code-block"><div class="code-head"><span>config.yml · 配置文件，不放入 layouts/</span><button type="button" data-copy="config-yaml">复制</button></div><pre><code id="config-yaml" data-config>default-layout: layout-demo
+canvas-width: 300
+max-canvas-pixels: 131072
+close-with-escape: false
+text-scales: [1, 1.5, 2]
+default-text-scale: 1
+craftengine-auto-reload: true
+craftengine-resources: ../CraftEngine/resources
+</code></pre></div>
+<ul>
+<li><code>canvas-width</code>：64..512。实际画布还受高度、面积限制。</li>
+<li><code>max-canvas-pixels</code>：4096..524288，默认 131072；增大不取消实际宽高限制。</li>
+<li><code>close-with-escape</code>：可由单页同名字段覆盖。需要明确清理业务时，优先提供关闭动作。</li>
+<li><code>text-scales</code>：准备的文字倍率列表；增多可能增加字库资源与准备时间。</li>
+<li><code>craftengine-resources</code>：CE 源资源查找目录，不是客户端 ZIP 的下载地址。</li>
+</ul>
+<p>玩家文字、画布偏好保存在 <code>player-text-scales.yml</code> 的不同字段中。配置不适配新倍率时，应先修布局，而不是期待插件自动重排。</p>
+</article>
+
+<article id="layout">
+<h1>坐标、尺寸与图层</h1>
+<h2>中心原点</h2>
+<p>画布中心是 <code>(0, 0)</code>。X 正方向向右，Y 正方向向上。<code>offset.z</code> 越大越靠前；图片与文字共享图层顺序。组内坐标叠加父组偏移和缩放。</p>
+<div class="diagram">
+<svg viewBox="0 0 600 280" role="img" aria-labelledby="coordinate-title coordinate-desc">
+<title id="coordinate-title">300×180 逻辑画布坐标</title><desc id="coordinate-desc">中心为零点，左侧负X，右侧正X，上方正Y，下方负Y。蓝色按钮位于零点下方。</desc>
+<rect x="70" y="35" width="460" height="210" rx="5" fill="#eef2f7" stroke="#cbd5e1"/>
+<path d="M90 140H510M300 225V50" stroke="#94a3b8" stroke-dasharray="5 5"/>
+<path d="m503 135 8 5-8 5M295 57l5-8 5 8" fill="none" stroke="#64748b"/>
+<rect x="215" y="162" width="170" height="35" rx="3" fill="#d9e5f7"/>
+<g fill="#334155" font-family="system-ui,sans-serif" font-size="14"><text x="310" y="130">(0, 0)</text><text x="482" y="130">+X</text><text x="311" y="65">+Y</text><text x="88" y="130">−X</text><text x="311" y="225">−Y</text><text x="300" y="185" text-anchor="middle">offset.y: −12</text><text x="300" y="22" text-anchor="middle">canvas: 300 × 180</text></g>
+</svg>
+<p class="caption">逻辑坐标示意，不是 Minecraft 客户端截图。</p>
+<div class="size-control" aria-label="换算显示宽度">
+<button type="button" data-width="300" aria-pressed="true">small</button>
+<button type="button" data-width="360" aria-pressed="false">medium</button>
+<button type="button" data-width="420" aria-pressed="false">large</button>
+<output id="size-result" aria-live="polite">300 × 180 · 比例 1.0</output>
+</div></div>
+<h2>逻辑尺寸与显示尺寸</h2>
+<p><code>canvas.width/height</code> 定义布局坐标系。打开时指定的宽度决定比例，显示高度按原比例计算，再乘玩家画布倍率。例如 300×180 的布局，以 420 宽打开时是 420×252；选择 <code>scale 0.75</code> 后约为 315×189。</p>
+<p>YAML 逻辑宽高解析范围为 16..4096，但实际显示宽必须在 64..512、高不超过 1024、面积不超过 <code>max-canvas-pixels</code>。逻辑参数能解析，不代表任意显示尺寸都能使用。</p>
+<h2>缩放和旋转</h2>
+<ul>
+<li><code>offset: {x, y, z}</code>，默认均为 0。</li>
+<li><code>scale: {x, y, z}</code>，默认均为 1，X/Y 必须大于 0，Z 只能为 1。</li>
+<li><code>rotation: {x, y, z}</code>，只支持平面 Z 旋转；文字、group 不支持旋转。</li>
+<li><code>scale-text-with-canvas</code> 默认 false；文字还受字号、玩家 textscale 和字体约束，不要假定它随背景任意缩放。</li>
+</ul>
+<div class="note warning"><strong>布局不会自动响应式重排</strong>不同宽度、文字倍率可能造成越界、换行增加或点击范围变化。发布前要实际打开各目标组合。</div>
+</article>
+
+<article id="elements">
+<h1>画面元素</h1>
+<p>所有元素写在 <code>frontend</code>，键名遵循布局 ID 规则。元素可嵌套在 <code>group.children</code> 中。</p>
+<h2>类型与字段</h2>
+<div class="table-wrap"><table><thead><tr><th>type</th><th>主要字段</th><th>说明</th></tr></thead><tbody>
+<tr><td><code>group</code></td><td><code>children</code>、offset、scale</td><td>只组织子元素，不产生自己的图形或点击区。</td></tr>
+<tr><td><code>rectangle</code></td><td>width、height、color、opacity</td><td>实心矩形。</td></tr>
+<tr><td><code>frame</code></td><td>width、height、thickness、color</td><td>边框，thickness 默认 1。</td></tr>
+<tr><td><code>line</code></td><td>width、thickness、color</td><td>线条高度取 thickness。</td></tr>
+<tr><td><code>text</code></td><td>content、size、color、alignment、line-width、max-lines</td><td>独立文字，可带动作与提示。</td></tr>
+<tr><td><code>image</code></td><td>source、width、height、reuse-texture</td><td>源图片或纹理引用，可带动作与提示。</td></tr>
+</tbody></table></div>
+<p>平面图形默认宽高 16；文字默认字号 8。<code>color</code> 为引号包住的 <code>'#RRGGBB'</code>，默认白色；<code>opacity</code> 为 0..255，默认 255。图片的保色路径不把 color 当作通用染色器。</p>
+<h2>分组示例</h2>
+<p>下面是节点片段，不是独立文件。它把标题与横线一起移动。group 不能直接挂点击动作。</p>
+<div class="code-block"><div class="code-head"><span>frontend 内的片段</span><button type="button" data-copy="group-snippet">复制</button></div><pre><code id="group-snippet">header:
+  type: group
+  offset: {y: 55, z: 1}
+  children:
+    title:
+      type: text
+      content: 我的菜单
+      color: '#243247'
+    rule:
+      type: line
+      width: 240
+      color: '#CBD5E1'
+      offset: {y: -18}</code></pre></div>
+<h2>显示与权限</h2>
+<p><code>visible: false</code> 静态隐藏。动态 <code>visible-if</code> 只在<a href="#templates">多页模板</a>中处理。菜单顶层 <code>permission</code> 控制打开权限；文字/图片上的 <code>permission</code> 控制其交互授权，不代替业务插件的交易和数据校验。</p>
+<p>没有独立 <code>backend</code>，也没有通用三维 <code>model</code> 元素。未知字段会报错，不会悄悄当作新功能。</p>
+</article>
+
+<article id="text">
+<h1>文字、字库与换行</h1>
+<h2>整字共享</h2>
+<p>RGBA 按字号等实际字体需求共享整字资源，不为每个 Y 偏移复制一份汉字 PNG。自动准备 3500 个唯一常用汉字，以及布局所需字符；这不是完整 Unicode，也不保证所有生僻字、符号或 Emoji 都有字形。</p>
+<p>统一字号、少量颜色、少量玩家倍率通常比大量字号和颜色更省。不是“所有文字固定 9px”：<code>size</code> 默认 8；9px 是原生 <code>plain_message</code> 的行步长，二者不要混用。</p>
+<h2>换行示例</h2>
+<div class="code-block"><div class="code-head"><span>text-demo.yml · 完整示例</span><button type="button" data-copy="text-yaml">复制</button></div><pre><code id="text-yaml" data-yaml="text-demo">schema-version: 1
+id: text-demo
+canvas: {width: 300, height: 180}
+frontend:
+  paragraph:
+    type: text
+    content: '这是一段独立文字，超过设置的行宽后换行。'
+    size: 8
+    color: '#243247'
+    alignment: left
+    line-width: 200
+    max-lines: 4
+    offset: {x: -100, y: 38}
+  close:
+    type: text
+    content: 关闭
+    color: '#243247'
+    offset: {y: -60}
+    actions: close
+</code></pre></div>
+<p><code>line-width</code> 是布局中的文字行宽，不是字符数量；必须与 <code>max-lines</code> 成对配置，后者为 1..32。超出准备或行数限制会失败，不会默默吞字。<code>alignment</code> 可为 left / center / right，默认 center。</p>
+<h2>颜色与格式</h2>
+<p>支持 <code>&amp;</code> 与 <code>§</code> 的 legacy 颜色、RGB 和粗体。RGBA 文字明确拒绝斜体、下划线、删除线和随机样式。不要用这些装饰去制作命中区域。</p>
+<p>准备颜色表最多 256 项；颜色由正常的 <code>color</code> 或文字格式配置，不需要手工填写编码 RGB。动态输出的新颜色也要提前准备。</p>
+<h2>补充字符</h2>
+<p>动态内容中的罕用字可用模板顶层 <code>characters</code> 补充，并通过 <code>preview / fallback / values / samples</code> 准备可能的输出。普通单页顶层不接受 <code>characters</code>，即使只需一页，也应改用 <code>pages</code> 模板。</p>
+<p>准备新字符、字号、倍率或颜色后，需要重载、检查新资源并让客户端接收更新。动态运行时字符串不等于自动生成一份完整字体。</p>
+<h2>字号边界</h2>
+<p>配置解析接受 1..128，但实际字体 ascent、原生命中与画布还有限制；极小字号可能被拒绝，不能把解析范围当作全部可用。建议从默认 8 和现有 textscale 组合开始。</p>
+</article>
+
+<article id="images">
+<h1>图片与宽高拉伸</h1>
+<h2>源图与显示宽高</h2>
+<p>自有 PNG 放在 <code>plugins/DialogMenu/images/</code>，<code>source</code> 写相对路径。加载器要求源图宽高为 16 的整数倍，且各在 16..256。禁止越出 images 目录的路径。</p>
+<p>符合条件的自有图会生成一个共享 wrapper，由 Shader 独立改变显示宽和高，不必为每一种尺寸复制 PNG。协议尺寸为 1..512，但仍受画布、裁切、命中与原生字体限制，不代表所有尺寸位置都一定可显示。</p>
+<h2>拉伸示例</h2>
+<p>先下载下面的 16×16 示例源图，放入 <code>images/demo-panel.png</code>，再保存布局。该示例图仅用于验证非等比拉伸。</p>
+<p><a id="download-image" download="demo-panel.png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAUElEQVR4nGNUTX79n4ECwMLAwMCwuIKfLM2xHR8hBsA4MECKgUxkWU1NA+BeIDccBt4Lw8AAFsJKECAm3BfOXrJyM3VcQF8vwJyNDBgpzc4AWh8RN5o8sFEAAAAASUVORK5CYII=">下载 demo-panel.png</a></p>
+<div class="code-block"><div class="code-head"><span>image-demo.yml · 完整示例</span><button type="button" data-copy="image-yaml">复制</button></div><pre><code id="image-yaml" data-yaml="image-demo">schema-version: 1
+id: image-demo
+canvas: {width: 300, height: 180}
+frontend:
+  panel:
+    type: image
+    source: demo-panel.png
+    width: 143
+    height: 37
+    offset: {y: 12}
+    tooltip: 同一源图，独立宽高
+    actions: 'tell: 点击了拉伸图片'
+  label:
+    type: text
+    content: 图片独立拉伸
+    color: '#243247'
+    offset: {y: -30, z: 1}
+  close:
+    type: text
+    content: 关闭
+    color: '#243247'
+    offset: {y: -65}
+    actions: close
+</code></pre></div>
+<h2>走 Shader 的条件</h2>
+<ul>
+<li>自有源图、无旋转、节点 <code>opacity: 255</code>，完整位于画布内，不被裁切。</li>
+<li>源图各边不超过 254；结合 16 倍数的加载规则，当前可用到 240×240。256×256 源图仍可加载，但不走这条 wrapper 路径。</li>
+<li>实际请求显示宽高各不超过 512。PNG 自身含透明像素不等于设置了节点 opacity。</li>
+</ul>
+<p>不符合 wrapper 条件的自有图会使用已有渲染路径，可能准备不同的图形资源；不要据此承诺所有旋转、透明或裁切变化都不用新包。拉伸是最近邻采样，不是九宫格，边框也会随之变形。</p>
+<h2>原版与 CraftEngine 纹理</h2>
+<div class="table-wrap"><table><thead><tr><th>source</th><th>来源</th></tr></thead><tbody>
+<tr><td><code>minecraft:item/book</code></td><td>内置支持的原版平面纹理，不是任意模型渲染。</td></tr>
+<tr><td><code>craftengine:image/namespace:id</code></td><td>已注册 CE 图片；icon 前缀也是图片入口。</td></tr>
+<tr><td><code>craftengine:item/namespace:id</code></td><td>可解析的 CE 物品纹理，不自动渲染其复杂模型。</td></tr>
+<tr><td><code>craftengine:texture/namespace:item/path</code></td><td>CE 资源目录中的原纹理。</td></tr>
+</tbody></table></div>
+<p><code>reuse-texture: true</code> 仅用于 image，选择可复用的 CE 原纹理；CE 图集引用会自动使用直引路径。原版与这些直引资源必须<strong>等比、无旋转、无裁切、opacity=255</strong>，不能照上面的自有 PNG 示例非等比拉伸。直引只输出 provider，客户端需要原版或 CE 资源本身。</p>
+</article>
+
+<article id="clicks">
+<h1>点击、悬停与双击</h1>
+<h2>动作写在元素上</h2>
+<p>只有 <code>text</code> 和 <code>image</code> 可配置 <code>clickable / actions / tooltip / permission</code>。命中随实际字形、分行、图层与倍率变化，不另配矩形坐标。</p>
+<p><code>clickable</code> 默认 true；设为 false 不执行回调，但可以保留 tooltip 和动作配置。<code>tooltip</code> 接受字符串或字符串列表。可见底色不自动扩大文字的点击范围。</p>
+<h2>即时点击与手势仲裁</h2>
+<ul>
+<li><code>actions: 'tell: ...'</code> 或字符串列表：即时执行。</li>
+<li><code>actions.all</code> 和 <code>actions.left</code>：依次即时执行，不是右键入口。</li>
+<li><code>actions.single</code> 和 <code>actions.double</code>：同一个控件进行 300ms 仲裁；配置 double 后，单击等待窗口结束。</li>
+<li><code>single/double</code> 不能与 <code>all/left</code> 混用。</li>
+</ul>
+<div class="code-block"><div class="code-head"><span>gesture.yml · 完整示例</span><button type="button" data-copy="gesture-yaml">复制</button></div><pre><code id="gesture-yaml" data-yaml="gesture">schema-version: 1
+id: gesture
+canvas: {width: 300, height: 180}
+frontend:
+  target:
+    type: text
+    content: 单击查看，双击确认
+    color: '#243247'
+    tooltip: 双击窗口为三百毫秒
+    actions:
+      single: 'tell: 单击'
+      double: 'tell: 双击'
+  close:
+    type: text
+    content: 关闭
+    color: '#243247'
+    offset: {y: -60}
+    actions: close
+</code></pre></div>
+<h2>服务端边界</h2>
+<p>点击会校验当前会话、控件、权限与动作。页面替换、关闭、重载后的旧点击不能继续操作新页面。回调仍只说明一个配置动作被触发；扣款、购买、SQL、库存和防重复提交由业务端校验。</p>
+<p>原版 Dialog 的整体滚动不等于插件收到滚轮事件。不要配置 right、shift、wheel 等未支持动作分支。</p>
+</article>
+
+<article id="actions">
+<h1>动作与事件</h1>
+<p>动作格式通常为 <code>'类型: 参数'</code>；无参数动作直接写名称。多个动作按字符串列表配置。命令参数不需要前导 <code>/</code>。</p>
+<h2>动作表</h2>
+<div class="table-wrap"><table><thead><tr><th>动作</th><th>用途与注意</th></tr></thead><tbody>
+<tr><td><code>tell: 文本</code></td><td>向当前玩家发送消息。</td></tr>
+<tr><td><code>sound: UI_BUTTON_CLICK-0.5-1</code></td><td>声音 name-volume-pitch；音量 0..16、音高 0..2，也可用命名空间声音 ID。</td></tr>
+<tr><td><code>command: spawn</code></td><td>先关闭菜单，再由玩家执行命令。</td></tr>
+<tr><td><code>command-in-place: balance</code></td><td>不预先关闭菜单，按玩家身份执行。</td></tr>
+<tr><td><code>console: ...</code></td><td>先关闭，再执行控制台命令；只能由可信管理员维护，不能交给不可信用户编辑。</td></tr>
+<tr><td><code>open: page-id</code></td><td>打开已加载页面；不存在的目标在加载时被拒绝。</td></tr>
+<tr><td><code>back</code></td><td>返回导航历史中的页面；无历史时关闭。</td></tr>
+<tr><td><code>close</code></td><td>关闭当前菜单并清理会话。</td></tr>
+<tr><td><code>return</code></td><td>立即结束当前动作列表，不关闭菜单，也不等于 back。</td></tr>
+<tr><td><code>toggle: editing</code></td><td>切换已声明的模板 state 布尔值。</td></tr>
+<tr><td><code>set: page 2</code></td><td>更新已声明的模板 state。</td></tr>
+<tr><td><code>notice: 文本</code></td><td>设置模板 notice 状态供展示。</td></tr>
+<tr><td><code>entry: collection-id item-id</code></td><td>模板集合条目操作；external 集合回传稳定 ID，不是任意物品发放命令。</td></tr>
+<tr><td><code>callback: inspect</code></td><td>向当前 Java binding 回传字符串，由业务插件处理。</td></tr>
+</tbody></table></div>
+<h2>打开与关闭事件</h2>
+<p><code>events.open</code> 和 <code>events.close</code> 只允许 tell、sound，防止导航递归。不能在关闭事件中再 open 页面或执行业务命令。</p>
+<div class="code-block"><div class="code-head"><span>单页或 pages 内的事件片段</span><button type="button" data-copy="events-snippet">复制</button></div><pre><code id="events-snippet">events:
+  open:
+    - 'sound: UI_BUTTON_CLICK-0.5-1'
+  close:
+    - 'tell: 已关闭菜单'</code></pre></div>
+<h2>命令与回调如何选择</h2>
+<p>已有独立命令可以直接用 command。需要绑定会话、业务数据和稳定 ID 时，使用 callback 或 external collection 的 Java 回调。不要在 YAML 中重造一套交易数据库。</p>
+</article>
+
+<article id="templates">
+<h1>多页、变量与条件</h1>
+<h2>单页与模板是两种结构</h2>
+<p>普通单页顶层只有布局字段；使用 state、variables、characters、samples、collections、forms 时，应改成下面的 <code>pages</code> 家族模板。文件名匹配家族 id，打开命令使用家族中的 page ID。所有文件的 page ID 不能重复。</p>
+<div class="code-block"><div class="code-head"><span>wiki-app.yml · 完整示例</span><button type="button" data-copy="template-yaml">复制</button></div><pre><code id="template-yaml" data-yaml="wiki-app">schema-version: 1
+id: wiki-app
+characters: '龘'
+state:
+  editing: 'false'
+variables:
+  mode:
+    type: state
+    source: editing
+    fallback: 浏览
+    values: {'false': 浏览, 'true': 编辑}
+pages:
+  wiki-home:
+    canvas: {width: 300, height: 180}
+    frontend:
+      mode:
+        type: text
+        content: '当前模式：{mode}'
+        color: '#243247'
+        offset: {y: 40}
+      toggle:
+        type: text
+        content: 切换编辑
+        color: '#243247'
+        actions: 'toggle: editing'
+      hint:
+        type: text
+        content: 编辑中
+        color: '#2563EB'
+        offset: {y: -28}
+        visible-if: '{editing}'
+      close:
+        type: text
+        content: 关闭
+        color: '#243247'
+        offset: {y: -64}
+        actions: close
+</code></pre></div>
+<p>执行 <code>/dialogmenu open wiki-home</code>。切换后显示“编辑中”，再次切换隐藏。<code>characters</code> 仅演示额外字形准备，不要求在画面中出现该字。</p>
+<h2>变量类型</h2>
+<div class="table-wrap"><table><thead><tr><th>type</th><th>source</th></tr></thead><tbody>
+<tr><td><code>literal</code></td><td>字面字符串，可展开已有变量。</td></tr>
+<tr><td><code>state</code></td><td>当前 state 的键名。</td></tr>
+<tr><td><code>papi</code></td><td>PlaceholderAPI 表达式，需相应 expansion。</td></tr>
+<tr><td><code>skript</code></td><td>Skript 变量来源，需对应脚本和数据。</td></tr>
+<tr><td><code>external</code></td><td>Java binding 提供的数据键；省略 source 时使用变量名。</td></tr>
+</tbody></table></div>
+<p>通用字段：<code>type / source / fallback / preview / max-length / values</code>。<code>preview</code> 用于准备阶段，<code>fallback</code> 用于缺失数据，<code>values</code> 把离散值映射为显示值。<code>{player}</code> 与 <code>{uuid}</code> 是内置玩家占位。</p>
+<div class="note warning"><strong>max-length 不是普通字符串截断</strong>变量上的该字段用于受限数字显示：过长数字会进行缩写或科学计数，非数字可能输出 <code>-</code>。不要给玩家名字或任意正文加它来“截字”。表单字段的同名参数则是真正的输入长度限制。</div>
+<h2>visible-if</h2>
+<p>仅模板可用，可用于元素和整个组。表达式展开后必须严格为字符串 <code>true</code> 或 <code>false</code>，不是 JavaScript、比较表达式或权限表达式。隐藏的元素不保留点击目标。</p>
+<h2>samples 与动态几何</h2>
+<p>模板顶层 <code>samples</code> 是变量名到预览值的对象列表；变量必须先声明。可准备不同颜色、图源和几何变体。几何展开支持 offset 的 x/y/z，以及 width、height、size、line-width 等数值字段。</p>
+<p>运行时值必须落在已准备资源的范围内。动态换了一张新图、一个新字号或新颜色，不会自动把所有可能值都预生成。多个变量的组合应显式给出代表性 samples，不假定 values 自动穷举笛卡尔积。</p>
+</article>
+
+<article id="paging">
+<h1>按钮分页</h1>
+<p>少量固定页面可直接 <code>open</code>；动态列表可由业务端推送外部集合。下面演示最简单、完整且可直接打开的两页，使用不同 page ID，避免把显示文字当状态表达式。</p>
+<div class="code-block"><div class="code-head"><span>wiki-pages.yml · 完整示例</span><button type="button" data-copy="paging-yaml">复制</button></div><pre><code id="paging-yaml" data-yaml="wiki-pages">schema-version: 1
+id: wiki-pages
+pages:
+  wiki-page-one:
+    canvas: {width: 300, height: 180}
+    frontend:
+      body:
+        type: text
+        content: 第一页正文
+        color: '#243247'
+        offset: {y: 30}
+      next:
+        type: text
+        content: 下一页
+        color: '#243247'
+        actions: 'open: wiki-page-two'
+      close:
+        type: text
+        content: 关闭
+        color: '#243247'
+        offset: {y: -60}
+        actions: close
+  wiki-page-two:
+    canvas: {width: 300, height: 180}
+    frontend:
+      body:
+        type: text
+        content: 第二页正文
+        color: '#243247'
+        offset: {y: 30}
+      previous:
+        type: text
+        content: 上一页
+        color: '#243247'
+        actions: back
+      close:
+        type: text
+        content: 关闭
+        color: '#243247'
+        offset: {y: -60}
+        actions: close
+</code></pre></div>
+<h2>更复杂的列表</h2>
+<p>state 可以保存页码，由业务或已准备的映射控制内容；没有自动执行算术表达式的 <code>set: page {page}+1</code>。局部列表、固定页脚或无限数据虚拟化不是原生 flow-list 的能力。</p>
+<p>点击翻页可能替换页面身份；不要缓存旧页面点击令牌继续发送。Java binding 只能打开同一 YAML 家族内的页面。</p>
+</article>
+
+<article id="collections">
+<h1>集合与原生表单</h1>
+<h2>插件持有的集合</h2>
+<p>Java 插件管理动态数据时，使用 <code>external: true</code>。YAML 负责行格式，Java 负责条目和业务操作，不必为每次增加数据修改 YAML。</p>
+<div class="code-block"><div class="code-head"><span>wiki-catalog.yml · 完整示例，与 Java 示例配套</span><button type="button" data-copy="catalog-yaml">复制</button></div><pre><code id="catalog-yaml" data-yaml="wiki-catalog">schema-version: 1
+id: wiki-catalog
+variables:
+  selected:
+    type: external
+    source: selected-id
+    fallback: none
+    preview: none
+collections:
+  entries: {external: true}
+forms:
+  create:
+    title: 新建条目
+    submit: 提交
+    cancel: 取消
+    fields:
+      name: {label: 名称, initial: '', max-length: 24}
+pages:
+  wiki-catalog-list:
+    canvas: {width: 300, height: 120}
+    frontend:
+      title:
+        type: text
+        content: '选中：{selected}'
+        color: '#243247'
+        offset: {y: 30}
+      create:
+        type: text
+        content: 新建
+        color: '#243247'
+        actions: 'callback: create'
+      close:
+        type: text
+        content: 关闭
+        color: '#243247'
+        offset: {y: -35}
+        actions: close
+    flow-lists:
+      content:
+        collection: entries
+        title: 条目
+        row: '{entry.name} · {entry.size}'
+        empty: 暂无条目
+</code></pre></div>
+<p>使用 <code>binding.updateCollection("entries", rows)</code> 替换数据。条目必须使用唯一稳定 ID，点击返回该 ID，并复核条目当前存在与权限。</p>
+<h2>flow-lists 的滚动边界</h2>
+<p>列表作为原生 Dialog 正文追加，使用整个正文的滚动。不是画布中的局部滚动区，没有固定标题/页脚、自定义滚轮监听或无限项虚拟化。条目可以很多，但需要自行控制刷新频率和规模。</p>
+<p>占位字段为 <code>{entry.id}</code>、<code>{entry.name}</code>、<code>{entry.image}</code> 和自定义字段。image 是显示数据 token，不会自动生成行内 image 控件。</p>
+<h2>forms</h2>
+<p>顶层 <code>forms</code> 声明原生文本输入表单，通过 <code>binding.openForm("create", callback)</code> 打开。字段支持 label、initial、max-length，长度为 1..128，默认 64。</p>
+<p>提交回传“字段键 → 输入值”，业务插件仍需校验重名、权限、价格等规则。取消或 Esc 不提交并恢复最新列表；表单打开期间后台数据更新不应覆盖输入。关闭、替换、暂停或重载后过期提交被清理。</p>
+<h2>Skript 集合与网格</h2>
+<p>另一条集合路径通过 Skript 的 load/list/status/write/token/result 等字段联动，需自行实现对应协议；不能把这些字段与 <code>external: true</code> 混写，Java binding 也不能绑定 Skript-backed 集合。</p>
+<p>模板的 <code>entries</code> 定义 label/image/actions，<code>grids</code> 可按 slots、columns、step-x/step-y、width/height、background、icon/text 参数生成有限格子。它与原生 flow-list 不同，容量最多 64，不是同一个自动滚动系统。没有对应脚本时，优先使用上面的 external API，不复制未知服务器脚本名。</p>
+</article>
+
+<article id="packs">
+<h1>资源包与重载</h1>
+<h2>有 CraftEngine</h2>
+<p>DialogMenu 将生成的 ZIP 登记为 CE 外部资源。默认 <code>craftengine-auto-reload: true</code> 会请求资源更新；仍需检查 CE 自己的生成、上传与分发结果，并让客户端接收。不要再把同一份生成字体手工复制到 CE 源目录，造成重复定义。</p>
+<h2>没有 CraftEngine</h2>
+<ol>
+<li>修改 YAML 后先执行 <code>/dialogmenu reload</code>，等待新快照准备成功。</li>
+<li>执行 <code>/dialogmenu resources</code>，导出到 <code>plugins/DialogMenu/resourcepack/</code>。</li>
+<li>用服务器既有流程将该目录打包、合并并发布，更新对应的资源包地址/散列。</li>
+<li>让客户端接收新包，再打开菜单。</li>
+</ol>
+<p>导出的是当前快照，不会替你重读改过的 YAML；也不会仅凭 resources 命令自动把客户端包换新。</p>
+<h2>修改偏移还要重建吗</h2>
+<div class="table-wrap"><table><thead><tr><th>改动</th><th>预期与操作</th></tr></thead><tbody>
+<tr><td>只改已准备文字的显示偏移</td><td>通常复用整字 PNG；仍 reload 让布局生效。JSON、行计划、命中代理或 ZIP 可能变化，不能保证永远不用新包。</td></tr>
+<tr><td>同一符合条件的图片改宽高</td><td>可复用 wrapper PNG；仍有布局、命中和包快照检查。</td></tr>
+<tr><td>新增字符、颜色、字号、文字倍率或图源</td><td>需要准备相应资源，reload 后重新发布并接收更新。</td></tr>
+<tr><td>换插件发行版或核心 Shader</td><td>正常停服换 JAR，并生成、接收匹配包；不是 reloadmenu。</td></tr>
+</tbody></table></div>
+<p>本插件命令为 <code>/dialogmenu reload</code>，不是 <code>/reloadmenu</code>。使用服务器自己的别名时，也不能据此跳过资源变化检查。</p>
+<h2>准备失败与旧快照</h2>
+<p>布局、字体和 ZIP 在后台单线程准备；失败保留旧有效快照，未变化资源可复用。命令触发后要等待最终成功/失败结果，而不是把“请求已发出”当作发布成功。</p>
+<p>资源包压缩大小不等于显存：客户端还需要解压纹理、构建字体与管理命中。不要只看 ZIP 字节数判断 FPS、内存或所有 Shader 兼容性。</p>
+</article>
+
+<article id="api">
+<h1>Java API</h1>
+<h2>取得服务</h2>
+<p>以同版本 RGBA JAR 作为 compileOnly 依赖，并在你的 plugin.yml 声明 <code>depend: [DialogMenu]</code> 或按需要使用 softdepend。所有 API 调用必须在服务器主线程。YAML 先用上一章的 <code>wiki-catalog.yml</code>。</p>
+<p>下面的类放在你自己的插件项目中，玩家命令或监听器可以调用 <code>show(player)</code>。回调仅演示数据联动，不执行真实交易或持久化。</p>
+<div class="code-block"><div class="code-head"><span>WikiCatalog.java · 完整可编译类</span><button type="button" data-copy="java-example">复制</button></div><pre><code id="java-example" data-java="WikiCatalog">import dev.dialogmenu.DialogMenuApi;
+import dev.dialogmenu.DialogMenuBinding;
+import dev.dialogmenu.DialogMenuEntry;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
+
+public final class WikiCatalog {
+    private final Plugin owner;
+    private DialogMenuBinding binding;
+
+    public WikiCatalog(Plugin owner) {
+        this.owner = owner;
+    }
+
+    public void show(Player player) {
+        DialogMenuApi api = owner.getServer().getServicesManager()
+            .load(DialogMenuApi.class);
+        if (api == null) throw new IllegalStateException("DialogMenu 未就绪");
+        if (binding != null) binding.close();
+        binding = api.bind(owner, player, "wiki-catalog-list",
+            Map.of("selected-id", "none"),
+            selected -> {
+                DialogMenuBinding current = binding;
+                if (current == null || !current.isActive()) return;
+                if (selected.equals("create")) {
+                    current.openForm("create", fields -> {
+                        String name = fields.get("name").strip();
+                        if (name.isEmpty()) return;
+                        // 示例替换整个集合；真实业务需校验并持久化。
+                        current.updateCollection("entries", List.of(
+                            new DialogMenuEntry(UUID.randomUUID().toString(),
+                                name, "", Map.of("size", "10x20"))));
+                    });
+                } else {
+                    current.update(Map.of("selected-id", selected));
+                    player.sendMessage("选中：" + selected);
+                }
+            },
+            reason -> owner.getLogger().fine("菜单关闭：" + reason));
+        if (binding != null) {
+            binding.updateCollection("entries", List.of(
+                new DialogMenuEntry("sample:one", "示例一", "",
+                    Map.of("size", "10x20"))));
+        }
+    }
+}</code></pre></div>
+<div class="note"><strong>一个实例只持有一个 binding</strong>上例适合演示一个玩家流程。多玩家业务应按 UUID 保存 binding，不能用一个全局字段让玩家互相替换。collection ID 与 callback 值共用回调入口，业务应避免重名，例如不要把条目 ID 命名成 <code>create</code>。</div>
+<h2>基础 API</h2>
+<p><code>hasLayout / layouts / open / close / refresh / currentId / sessionToken / surface</code>。返回值需要检查，离线玩家、无权限或失效布局可能无法打开。token 和 surface 是服务端视图身份，不是客户端已经渲染的确认。</p>
+<h2>Binding 生命周期</h2>
+<div class="table-wrap"><table><thead><tr><th>方法</th><th>用途</th></tr></thead><tbody>
+<tr><td><code>update(Map)</code></td><td>更新声明的 external 数据。</td></tr>
+<tr><td><code>updateCollection(id, rows)</code></td><td>替换 external 集合。</td></tr>
+<tr><td><code>openForm(id, submitted)</code></td><td>打开 YAML 声明的原生输入表单。</td></tr>
+<tr><td><code>open(page)</code></td><td>只能切换到相同 YAML 家族的页面。</td></tr>
+<tr><td><code>suspend / resume</code></td><td>暂停点击，再恢复最新数据，适合另一个输入流程。</td></tr>
+<tr><td><code>close / isActive</code></td><td>关闭或查询当前句柄；过期句柄不能操作新会话。</td></tr>
+</tbody></table></div>
+<p>DialogMenuEntry ID 为 1..128 字符，允许字母、数字、<code>:</code>、<code>_</code>、<code>-</code>。自定义字段键为 1..64 字符，仅字母、数字、<code>_</code>、<code>-</code>；不能覆盖保留字段 id/name/image。</p>
+<h2>关闭事件</h2>
+<p><code>DialogMenuClosedEvent</code> 提供 player、menuId、token、reason。原因有 <code>CLOSED / REPLACED / RELOAD / DISABLED / PLAYER_QUIT / WORLD_CHANGED / INVENTORY_OPENED</code>。刷新不等于关闭；不要用同一份旧句柄对后来的新会话清理。</p>
+</article>
+
+<article id="renderer">
+<h1>RGBA 原理与开销</h1>
+<h2>颜色不是最终显示颜色</h2>
+<p>“RGBA 版”是发行名称，不代表四个通道全可自由塞数据。文字颜色载荷使用 RGB；A 保持 255。Shader 只有在 GUI、纹理标记和颜色门控同时满足时才解码，最终从调色表还原可见颜色。</p>
+<div class="code-block"><div class="code-head"><span>协议速览 · 由引擎生成，不写入 YAML color</span></div><pre><code>文字 RGB = 0xD40000 | (top &lt;&lt; 8) | paletteIndex
+文字 A   = 255
+字形纹理标记 RGB = 0x174783
+
+图片 RGB = 0x800000 | ((width - 1) &lt;&lt; 14)
+                      | ((height - 1) &lt;&lt; 5) | (localY &amp; 31)
+width / height = 1..512
+localY = -8..8</code></pre></div>
+<p>图片宽和高各需 9 位，行内 Y 分配 5 位，加上识别位装入 24 位 RGB。两个 1..512 不是“1024 个通道”，而是两项各有 512 种取值，共 512×512 种宽高组合。</p>
+<h2>换行和行内偏移</h2>
+<p>仍然利用原生正文行组织位置，安全时用真实换行进位，局部再做偏移。为了保留混合图片/文字的全局 z 顺序，行计划并非简单对所有 Y 取模；跨行图层需要时仍使用字体基线锚点。</p>
+<p>plain_message 行步长为 9px，但独立控件还有上下留白和控件间距。不能把两个独立正文控件的起点差当成一个字形行高。</p>
+<h2>为什么点击没有跟着 Shader 丢失</h2>
+<p>原版 CPU 命中不理解 Shader 对顶点的移动。因此可见字形之外，还生成透明度很低的原生代理字格，文字与图片分别集中到 <code>text_hit_all.json</code>、<code>image_hit_all.json</code>。代理随实际位置和尺寸准备，不恢复独立 backend 区域。</p>
+<h2>省在哪里，仍花在哪里</h2>
+<ul>
+<li>整字按字号共享，不因新增一个 Y 偏移重新复制一套汉字 PNG。</li>
+<li>同一自有图片的 wrapper 可服务不同宽高，避免逐尺寸复制源纹理。</li>
+<li>更多字号、倍率、字符、颜色、不同源图和变体仍会增加资源；fallback 图形路径也有成本。</li>
+<li>行计划、原生命中代理、字体 JSON、ZIP 和客户端字体缓存仍然存在。</li>
+</ul>
+<p>没有一个脱离布局的“每加偏移固定增加多少 KB”。要比较大小，应使用同样的布局、字符、倍率、合包方式和压缩设置，并同时检查实际显示与点击。</p>
+</article>
+
+<article id="migration">
+<h1>迁移与故障排查</h1>
+<h2>移除旧 backend</h2>
+<p>新版本拒绝 <code>backend</code>，连 <code>backend: {}</code> 也不接受。把动作、提示和交互权限移到对应的可见 text/image 节点，再删除 backend；不能仅把旧矩形点击区删掉，导致动作丢失。</p>
+<p>旧区域覆盖整块按钮而文字较小时，迁移后的点击范围会不同。需要整块命中时，使用带动作的图片元素，不要把 actions 挂在 rectangle 或 group 上。</p>
+<h2>常见问题</h2>
+<div class="table-wrap"><table><thead><tr><th>现象</th><th>检查顺序</th></tr></thead><tbody>
+<tr><td>菜单不存在</td><td>看 reload 最终结果、文件名/id、重复 page ID、open 目标。模板打开 page ID 而非家族 id。</td></tr>
+<tr><td>乱码、方框或缺字</td><td>确认接收新包、字符在字库中、模板 characters/preview/samples 充分、原字形确实存在。</td></tr>
+<tr><td>位置错乱或编码色可见</td><td>查 renderer=rgba、匹配包版本，以及其他包是否覆盖核心文字 Shader。</td></tr>
+<tr><td>背景能看但边缘点不到</td><td>确认动作在 image 或 text 自身；文字不会让背景整块可点。</td></tr>
+<tr><td>纹理直引报错</td><td>等比、完整不裁切、无旋转、opacity255；非等比拉伸应使用符合条件的自有图。</td></tr>
+<tr><td>PNG 无法加载</td><td>路径在 images 内，宽高16..256且为16倍数，文件是真 PNG。</td></tr>
+<tr><td>超出正文范围</td><td>实际宽64..512、高≤1024、面积预算、画布倍率，以及逻辑宽高比例。</td></tr>
+<tr><td>visible-if 非法</td><td>必须是 pages 模板，展开后严格 true/false，不写表达式比较。</td></tr>
+<tr><td>绑定失败或没有回调</td><td>主线程、owner 已启用、玩家在线、同家族、external 键名、当前句柄、元素权限和 callback 动作。</td></tr>
+<tr><td>单击慢了</td><td>有 double 分支时等待300ms是手势仲裁，不是资源包卡顿。</td></tr>
+</tbody></table></div>
+<h2>报告问题时提供</h2>
+<p>插件版本与 renderer、服务端/客户端版本、GUI 缩放、文字与画布倍率、最小 YAML 和源图尺寸、reload 最终错误、资源包是否已更新，以及有无其他核心 Shader。显示问题提供截图；点击问题说明准确控件、位置、单/双击和预期动作。不要提交账号、密钥或私有业务数据。</p>
+</article>
+
+<article id="compatibility">
+<h1>兼容性与测试边界</h1>
+<h2>当前适用范围</h2>
+<p>本文对应独立 RGBA 0.1.5 源码。实际客户端证据来自 Minecraft 26.3 的软件 Vulkan 路径；硬件 OpenGL、Iris、其他核心 Shader 组合及其他版本仍需分别验证。普通玩家无需 Mod，不代表任意图形兼容层都可无条件使用。</p>
+<p>编辑桥与共享协议在源码中，但匹配的编辑客户端单独提供；本 Wiki 不把编辑 Mod 当作随 JAR 安装完成的功能。</p>
+<h2>开发检查不等于玩家验收</h2>
+<p>源码构建带布局、资源、渲染、点击令牌、绑定和表单回归。已有实际字体与客户端探针检查，但这些不能替代你的服务端启用生命周期、真实权限、交易和完整客户端组合验收，也不构成显存/FPS 保证。</p>
+<h2>发布前检查清单</h2>
+<ol>
+<li>确认只安装一个 DialogMenu，status 为 rgba，所有布局准备成功。</li>
+<li>接收匹配资源包，打开 hello、image-demo 和实际业务页面。</li>
+<li>在 small/medium/large、textscale 各选项、scale 1/0.75 下核对中文、换行、图片边缘和重叠图层。</li>
+<li>验证文字/图片 hover，边缘点击和外侧不触发，单/双击互斥。</li>
+<li>验证翻页、关闭、重开、权限拒绝、刷新后旧控件失效。</li>
+<li>Java 集合验证新增/删除/稳定 ID；表单验证提交、取消、输入期间后台刷新和关闭后过期提交。</li>
+<li>业务插件另测真实数据与事务，不把静态示例成功当作交易通过。</li>
+</ol>
+<h2>源码导航</h2>
+<div class="table-wrap"><table><thead><tr><th>源码</th><th>职责</th></tr></thead><tbody>
+<tr><td><code>LayoutStore / MenuTemplate</code></td><td>YAML 校验、模板、变体、集合和表单定义。</td></tr>
+<tr><td><code>MenuRenderer / SpriteCanvas / FontPack</code></td><td>布局、原生正文组件与字体资源。</td></tr>
+<tr><td><code>RgbaOffsets / RgbaImages / RgbaRows / RgbaHits</code></td><td>编码、图片 wrapper、行计划与命中代理。</td></tr>
+<tr><td><code>src/main/resources/rgba/</code></td><td>核心文字着色器与3500字表。</td></tr>
+<tr><td><code>DialogMenuApi / DialogMenuBinding / MenuSessions</code></td><td>API 与业务会话生命周期。</td></tr>
+</tbody></table></div>
+<p>仓库：<a href="https://github.com/palkane/DialogMenu-RGBA" target="_blank" rel="noopener">DialogMenu-RGBA</a>。页面组织与阅读方式参考 <a href="https://ce-pre.gtemc.cn/zh-Hans/" target="_blank" rel="noopener">CraftEngine 中文文档</a>；内容、示例与品牌独立，不是其官方文档。</p>
+</article>
+<div class="footer">DialogMenu RGBA · 0.1.5 · 简体中文 · 可离线阅读<br>代码块标明“完整示例”才可单独保存；片段需放入对应结构。</div>
+</main>
+<aside id="toc" aria-label="本页目录"><p>本页目录</p><div id="toc-links"></div></aside>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+<script>
+'use strict';
+const pages = [...document.querySelectorAll('main > article')];
+const search = document.getElementById('search');
+const sidebar = document.getElementById('sidebar');
+const menuToggle = document.querySelector('.menu-toggle');
+const links = [...sidebar.querySelectorAll('nav a')];
+const results = document.getElementById('search-results');
+const toc = document.getElementById('toc-links');
+const titleOf = page => page.querySelector('h1').textContent;
+pages.forEach(page => page.querySelectorAll('h2,h3').forEach((heading, index) => {
+  heading.id ||= `${page.id}-heading-${index + 1}`;
+}));
+let currentPage = pages[0];
+function closeMenu() {
+  sidebar.classList.remove('open');
+  menuToggle.setAttribute('aria-expanded', 'false');
+  menuToggle.textContent = '目录';
+}
+function showPage(id, historyMode = 'push', anchor = '') {
+  const page = pages.find(item => item.id === id) || pages[0];
+  currentPage = page;
+  document.body.classList.add('js-ready');
+  pages.forEach(item => item.classList.toggle('current', item === page));
+  results.hidden = true;
+  search.value = '';
+  document.title = `${titleOf(page)} | DialogMenu RGBA`;
+  document.getElementById('breadcrumb').textContent = `使用文档 / ${titleOf(page)}`;
+  links.forEach(link => {
+    const active = link.hash === '#' + page.id;
+    link.classList.toggle('active', active);
+    if (active) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
+  });
+  const hash = '#' + (anchor || page.id);
+  if (historyMode === 'push' && location.hash !== hash) history.pushState(null, '', hash);
+  toc.replaceChildren(...[...page.querySelectorAll('h2,h3')].map(heading => {
+    const link = document.createElement('a');
+    link.href = '#' + heading.id;
+    link.textContent = heading.textContent;
+    return link;
+  }));
+  page.querySelector('.article-nav')?.remove();
+  const nav = document.createElement('div');
+  nav.className = 'article-nav';
+  nav.setAttribute('aria-label', '文章导航');
+  const index = pages.indexOf(page);
+  for (const [item, label] of [[pages[index - 1], '上一篇'], [pages[index + 1], '下一篇']]) {
+    if (!item) { nav.append(document.createElement('span')); continue; }
+    const link = document.createElement('a'), small = document.createElement('small');
+    link.href = '#' + item.id;
+    small.textContent = label;
+    link.append(small, document.createTextNode(titleOf(item)));
+    nav.append(link);
+  }
+  page.append(nav);
+  closeMenu();
+  requestAnimationFrame(() => {
+    if (anchor) document.getElementById(anchor)?.scrollIntoView();
+    else window.scrollTo(0, 0);
+  });
+}
+function fromHash() {
+  let id;
+  try { id = decodeURIComponent(location.hash.slice(1)); } catch (_) { id = ''; }
+  const page = pages.find(item => item.id === id || item.contains(document.getElementById(id)));
+  showPage(page?.id || 'intro', 'none', page && id !== page.id ? id : '');
+}
+document.addEventListener('click', event => {
+  const link = event.target.closest('a[href^="#"]');
+  if (!link || link.classList.contains('skip')) return;
+  let id;
+  try { id = decodeURIComponent(link.hash.slice(1)); } catch (_) { return; }
+  const page = pages.find(item => item.id === id || item.contains(document.getElementById(id)));
+  if (!page) return;
+  event.preventDefault();
+  showPage(page.id, 'push', id !== page.id ? id : '');
+  if (!link.closest('#toc')) {
+    document.getElementById('content').focus({preventScroll:true});
+  }
+});
+window.addEventListener('popstate', fromHash);
+window.addEventListener('hashchange', fromHash);
+search.addEventListener('input', () => {
+  const terms = search.value.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+  if (!terms.length) { showPage(currentPage.id, 'none'); return; }
+  pages.forEach(page => page.classList.remove('current'));
+  results.hidden = false;
+  toc.replaceChildren();
+  const matched = pages.filter(page => terms.every(term => page.textContent.toLocaleLowerCase().includes(term)));
+  document.getElementById('search-status').textContent = `找到 ${matched.length} 篇文档`;
+  document.getElementById('empty').hidden = matched.length !== 0;
+  document.getElementById('result-list').replaceChildren(...matched.map(page => {
+    const link = document.createElement('a'), title = document.createElement('strong'), snippet = document.createElement('span');
+    link.href = '#' + page.id;
+    link.className = 'search-result';
+    title.textContent = titleOf(page);
+    const text = page.textContent.replace(/\s+/g, ' ').trim();
+    const at = Math.max(0, text.toLocaleLowerCase().indexOf(terms[0]) - 30);
+    snippet.textContent = (at ? '…' : '') + text.slice(at, at + 160) + '…';
+    link.append(title, snippet);
+    return link;
+  }));
+});
+document.getElementById('clear-search').addEventListener('click', () => { showPage(currentPage.id, 'none'); search.focus(); });
+menuToggle.addEventListener('click', () => {
+  const open = sidebar.classList.toggle('open');
+  menuToggle.setAttribute('aria-expanded', String(open));
+  menuToggle.textContent = open ? '收起目录' : '目录';
+});
+document.addEventListener('keydown', event => {
+  if (event.key === '/' && !event.ctrlKey && !event.metaKey && !event.altKey &&
+      !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
+    event.preventDefault(); search.focus();
+  }
+  if (event.key === 'Escape') {
+    if (!results.hidden) showPage(currentPage.id, 'none');
+    const wasOpen = sidebar.classList.contains('open');
+    closeMenu();
+    if (wasOpen) menuToggle.focus();
+  }
+});
+let toastTimer;
+function notify(text) {
+  const toast = document.getElementById('toast');
+  toast.textContent = text; toast.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toast.hidden = true; }, 2300);
+}
+async function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    try { await navigator.clipboard.writeText(text); return true; } catch (_) {}
+  }
+  const area = document.createElement('textarea');
+  area.value = text; area.style.position = 'fixed'; area.style.opacity = '0';
+  document.body.append(area); area.select();
+  let copied = false;
+  try { copied = document.execCommand('copy'); } catch (_) {}
+  area.remove();
+  return copied;
+}
+document.querySelectorAll('[data-copy]').forEach(button => button.addEventListener('click', async () => {
+  const copied = await copyText(document.getElementById(button.dataset.copy).textContent);
+  if (!copied) { notify('未能复制，请选中代码手动复制。'); return; }
+  button.textContent = '已复制'; notify('代码已复制');
+  setTimeout(() => { button.textContent = '复制'; }, 1800);
+}));
+document.querySelectorAll('[data-download]').forEach(button => button.addEventListener('click', () => {
+  const text = document.getElementById(button.dataset.download).textContent;
+  const url = URL.createObjectURL(new Blob([text], {type:'text/yaml;charset=utf-8'}));
+  const anchor = document.createElement('a');
+  anchor.href = url; anchor.download = button.dataset.filename;
+  document.body.append(anchor); anchor.click(); anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}));
+document.querySelectorAll('[data-width]').forEach(button => button.addEventListener('click', () => {
+  document.querySelectorAll('[data-width]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+  const width = Number(button.dataset.width);
+  document.getElementById('size-result').textContent = `${width} × ${Math.round(180 * width / 300)} · 比例 ${(width / 300).toFixed(1)}`;
+}));
+document.getElementById('print').addEventListener('click', () => window.print());
+fromHash();
+</script>
+</body>
+</html>

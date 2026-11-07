@@ -100,6 +100,8 @@ def main(tag: str) -> None:
         ROOT / ".github/workflows/release.yml",
     ]
     files.extend(sorted((ROOT / "gradle/wrapper").glob("*")))
+    files.extend(sorted((ROOT / "docs").rglob("*")))
+    files.extend(sorted((ROOT / "checks").rglob("*")))
     files.extend(sorted((ROOT / "src").rglob("*")))
     files = [path for path in files if path.is_file()]
     for path in files:
