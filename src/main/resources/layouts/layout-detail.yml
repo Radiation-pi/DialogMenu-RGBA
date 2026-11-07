@@ -1,0 +1,55 @@
+schema-version: 1
+id: layout-detail
+canvas:
+  width: 300
+  height: 180
+frontend:
+  background:
+    type: rectangle
+    width: 300
+    height: 180
+    color: '#ECEDEE'
+  title:
+    type: text
+    content: '&8元素与点击'
+    size: 8
+    offset: {y: 59, z: 1}
+  diagram:
+    type: frame
+    width: 72
+    height: 58
+    thickness: 2
+    color: '#737C85'
+    rotation: {z: 12}
+    offset: {x: -83, y: -1, z: 1}
+  description:
+    type: text
+    content: "&8文字和图片配置点击\n&8actions 定义点击动作"
+    size: 8
+    alignment: left
+    offset: {x: -26, z: 1}
+  back:
+    type: text
+    content: '&8返回'
+    size: 8
+    offset: {x: -103, y: -61, z: 1}
+    clickable: true
+    actions: {left: back}
+  check:
+    type: text
+    content: '&8点击检查'
+    size: 8
+    offset: {x: 44, y: -61, z: 1}
+    clickable: true
+    tooltip: 点击执行检查
+    actions:
+      left:
+        - 'sound: UI_BUTTON_CLICK-0.5-1'
+        - 'tell: &7点击检查通过：{player}'
+  close:
+    type: text
+    content: '&8×'
+    size: 8
+    offset: {x: 133, y: 76, z: 1}
+    clickable: true
+    actions: {left: close}

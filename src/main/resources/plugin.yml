@@ -1,0 +1,17 @@
+name: DialogMenu
+version: ${version}
+main: dev.dialogmenu.DialogMenuPlugin
+api-version: '26.3'
+softdepend: [Skript, PlaceholderAPI, CraftEngine]
+commands:
+  dialogmenu:
+    description: YAML Dialog menu
+    usage: /dialogmenu open <id> [small|medium|large]
+    permission: dialogmenu.use
+permissions:
+  dialogmenu.admin:
+    default: op
+    description: Manage Dialog menus and resources
+  dialogmenu.use:
+    default: true
+    description: Open Dialog menus
