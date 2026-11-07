@@ -151,9 +151,12 @@ final class MenuTemplate {
     }
     final Definition definition;
     final String page;
+    private final CompiledLayout layout;
     private final String yamlText;
-    private final List<ConfigurationSection> grids = new ArrayList<>();
+    private final List<GridPlan> grids = new ArrayList<>();
     private final Map<String, FlowListSpec> flowLists = new LinkedHashMap<>();
+    private record MenuLayout(List<List<Node>> branches, Menu menu) {}
+    private volatile MenuLayout latestMenu;
     private MenuTemplate(Definition definition, String page, ConfigurationSection config) {
         this.definition = definition;
         this.page = page;
@@ -181,7 +184,7 @@ final class MenuTemplate {
                     throw new IllegalArgumentException("grid entry不存在：" + key);
             }
             LayoutStore.actions(grid.get("empty-actions"), false);
-            grids.add(grid);
+            grids.add(new GridPlan(grid));
         }
         yaml.set("grids", null);
         var flowSection = yaml.getConfigurationSection("flow-lists");
@@ -197,6 +200,7 @@ final class MenuTemplate {
         }
         yaml.set("flow-lists", null);
         yamlText = yaml.saveToString();
+        layout = new CompiledLayout(page, yaml);
     }
     static Map<String, LayoutStore.Document> load(String id, YamlConfiguration yaml) throws Exception {
         LayoutStore.keys(yaml, Set.of("schema-version", "id", "variables", "state", "collections",
@@ -238,16 +242,61 @@ final class MenuTemplate {
     private LayoutStore.Document document(Map<String, List<String>> lists,
                                   Map<String, List<DialogMenuEntry>> external,
                                   java.util.function.UnaryOperator<String> expand, boolean catalog) throws Exception {
-        var yaml = new YamlConfiguration();
-        yaml.loadFromString(yamlText);
-        resolveSources(yaml.getConfigurationSection("frontend"), expand, catalog);
-        var base = LayoutStore.parse(page, yaml);
-        List<Node> nodes = new ArrayList<>(base.menu().nodes());
-        for (int g = 0; g < grids.size(); g++) {
-            var grid = grids.get(g);
+        var base = layout.document(expand, catalog);
+        List<List<Node>> parts = new ArrayList<>();
+        parts.add(base.menu().nodes());
+        for (int g = 0; g < grids.size(); g++) parts.add(grids.get(g).nodes(g, lists));
+        MenuLayout menuLayout = latestMenu;
+        boolean same = menuLayout != null && menuLayout.branches().size() == parts.size();
+        if (same) for (int i = 0; i < parts.size(); i++)
+            if (parts.get(i) != menuLayout.branches().get(i)) { same = false; break; }
+        Menu menu;
+        if (same) menu = menuLayout.menu();
+        else {
+            List<Node> nodes = new ArrayList<>();
+            parts.forEach(nodes::addAll);
+            nodes.sort(Comparator.comparingDouble(Node::z));
+            menu = new Menu(page, base.menu().permission(), base.menu().width(), base.menu().height(),
+                List.copyOf(nodes), List.of(), base.menu().closeWithEscape(), base.menu().scaleTextWithCanvas());
+            latestMenu = new MenuLayout(List.copyOf(parts), menu);
+        }
+        List<LayoutStore.FlowRow> flowRows = new ArrayList<>();
+        for (FlowListSpec spec : flowLists.values()) {
+            String collection = spec.collection();
+            List<DialogMenuEntry> rows = external.getOrDefault(collection, List.of());
+            if (!spec.title().isBlank())
+                flowRows.add(new LayoutStore.FlowRow(collection, "", expand.apply(spec.title())));
+            if (rows.isEmpty() && !spec.empty().isBlank())
+                flowRows.add(new LayoutStore.FlowRow(collection, "", expand.apply(spec.empty())));
+            for (DialogMenuEntry item : rows) {
+                Map<String, String> fields = new LinkedHashMap<>();
+                item.fields().forEach((key, value) -> fields.put("entry." + key, value));
+                fields.put("entry.id", item.id());
+                fields.put("entry.name", item.name());
+                fields.put("entry.image", item.image());
+                flowRows.add(new LayoutStore.FlowRow(collection, item.id(),
+                    MenuTemplate.expand(expand.apply(spec.row()), fields)));
+            }
+        }
+        return new LayoutStore.Document(menu, base.open(), base.close(), this, List.copyOf(flowRows));
+    }
+    private final class GridPlan {
+        private final ConfigurationSection grid;
+        private final Map<List<String>, List<Node>> cache = new LinkedHashMap<>(4, .75f, true) {
+            @Override protected boolean removeEldestEntry(Map.Entry<List<String>, List<Node>> eldest) {
+                return size() > 8;
+            }
+        };
+        GridPlan(ConfigurationSection grid) { this.grid = grid; }
+        List<Node> nodes(int g, Map<String, List<String>> lists) {
             String collection = grid.getString("collection");
             List<String> items = grid.contains("items") ? LayoutStore.strings(grid.get("items"))
                 : lists.getOrDefault(collection, List.of());
+            synchronized (cache) {
+                List<Node> cached = cache.get(items);
+                if (cached != null) return cached;
+            }
+            List<Node> nodes = new ArrayList<>();
             int slots = grid.getInt("slots", 8), columns = grid.getInt("columns", 4);
             for (int i = 0; i < slots; i++) {
                 String id = i < items.size() ? items.get(i) : "";
@@ -273,65 +322,9 @@ final class MenuTemplate {
                     1, 1, 1, 0, 0, 0xFF000000 | Integer.parseInt(color.substring(1), 16), label, "",
                     icon ? "left" : "center", 8, 1, 0, 9, 18, List.of(), 0, interaction, false));
             }
-        }
-        nodes.sort(Comparator.comparingDouble(Node::z));
-        List<LayoutStore.FlowRow> flowRows = new ArrayList<>();
-        for (FlowListSpec spec : flowLists.values()) {
-            String collection = spec.collection();
-            List<DialogMenuEntry> rows = external.getOrDefault(collection, List.of());
-            if (!spec.title().isBlank())
-                flowRows.add(new LayoutStore.FlowRow(collection, "", expand.apply(spec.title())));
-            if (rows.isEmpty() && !spec.empty().isBlank())
-                flowRows.add(new LayoutStore.FlowRow(collection, "", expand.apply(spec.empty())));
-            for (DialogMenuEntry item : rows) {
-                Map<String, String> fields = new LinkedHashMap<>();
-                item.fields().forEach((key, value) -> fields.put("entry." + key, value));
-                fields.put("entry.id", item.id());
-                fields.put("entry.name", item.name());
-                fields.put("entry.image", item.image());
-                flowRows.add(new LayoutStore.FlowRow(collection, item.id(),
-                    MenuTemplate.expand(expand.apply(spec.row()), fields)));
-            }
-        }
-        return new LayoutStore.Document(new Menu(page, base.menu().permission(), base.menu().width(),
-            base.menu().height(), List.copyOf(nodes), List.of(), base.menu().closeWithEscape(),
-            base.menu().scaleTextWithCanvas()), base.open(), base.close(), this, List.copyOf(flowRows));
-    }
-    private static boolean visible(ConfigurationSection node, java.util.function.UnaryOperator<String> expand,
-                                   boolean catalog) {
-        if (!node.contains("visible-if")) return true;
-        Object condition = node.get("visible-if");
-        if (!(condition instanceof String value)) throw new IllegalArgumentException("visible-if须为布尔变量字符串");
-        String result = catalog ? "true" : expand.apply(value);
-        if (!Set.of("true", "false").contains(result))
-            throw new IllegalArgumentException("visible-if须解析为true/false：" + result);
-        node.set("visible-if", null);
-        return Boolean.parseBoolean(result);
-    }
-    private static void resolveSources(ConfigurationSection nodes, java.util.function.UnaryOperator<String> expand,
-                                       boolean catalog) {
-        if (nodes == null) return;
-        for (String key : nodes.getKeys(false)) {
-            var node = nodes.getConfigurationSection(key);
-            if (node == null) continue;
-            if (!visible(node, expand, catalog)) node.set("visible", false);
-            if (node.getString("type", "").equals("image")) node.set("source", expand.apply(node.getString("source", "")));
-            if (node.contains("color")) node.set("color", expand.apply(node.getString("color")));
-            resolveGeometry(node, expand);
-            resolveSources(node.getConfigurationSection("children"), expand, catalog);
-        }
-    }
-    private static void resolveGeometry(ConfigurationSection node, java.util.function.UnaryOperator<String> expand) {
-        for (String key : List.of("x", "y", "offset.x", "offset.y", "offset.z", "width", "height", "size", "line-width")) {
-            if (!(node.get(key) instanceof String value)) continue;
-            String resolved = expand.apply(value);
-            try {
-                double number = Double.parseDouble(resolved);
-                if (!Double.isFinite(number)) throw new NumberFormatException();
-                node.set(key, number);
-            } catch (NumberFormatException error) {
-                throw new IllegalArgumentException(node.getCurrentPath() + "." + key + " 须解析为有限数字");
-            }
+            List<Node> result = List.copyOf(nodes);
+            synchronized (cache) { cache.put(List.copyOf(items), result); }
+            return result;
         }
     }
     private static Node image(String id, String source, double x, double y, double w, double h) {

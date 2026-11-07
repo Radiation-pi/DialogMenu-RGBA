@@ -9,7 +9,7 @@ final class RgbaRows {
         Map<String, Sprite> sprites = new HashMap<>();
         for (Sprite sprite : frame.sprites()) sprites.put(sprite.id(), sprite);
         Map<String, Integer> rows = new HashMap<>();
-        double zoom = frame.image().getWidth() / (double) menu.width();
+        double zoom = frame.width() / (double) menu.width();
         int next = Integer.MAX_VALUE;
         for (Node node : menu.nodes().reversed()) {
             Sprite sprite = sprites.get(node.id());
@@ -26,6 +26,6 @@ final class RgbaRows {
 
     static Sprite relative(Sprite sprite, int row) {
         return new Sprite(sprite.id(), sprite.x(), sprite.y() - row * CanvasRows.HEIGHT,
-            sprite.image(), sprite.texture(), sprite.original(), sprite.textureRegion());
+            sprite.image(), sprite.texture(), sprite.original(), sprite.textureRegion(), sprite.width(), sprite.height());
     }
 }

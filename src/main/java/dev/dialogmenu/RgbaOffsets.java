@@ -65,13 +65,6 @@ final class RgbaOffsets {
         }
         glsl.append("    }\n    return vec3(1.0, 0.0, 1.0);\n}\n");
         Files.writeString(include, glsl);
-        for (String name : List.of("text.vsh", "text.fsh")) {
-            Path shader = pack.resolve("assets/minecraft/shaders/core/" + name);
-            Files.createDirectories(shader.getParent());
-            try (var input = RgbaOffsets.class.getResourceAsStream("/rgba/" + name)) {
-                if (input == null) throw new IOException("Missing RGBA shader: " + name);
-                Files.copy(input, shader, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            }
-        }
+        RgbaShaders.write(pack);
     }
 }

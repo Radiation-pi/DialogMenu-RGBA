@@ -11,6 +11,14 @@ import static dev.dialogmenu.MenuModel.*;
 /** 每条正文行内按原绘制顺序输出局部字形。 */
 final class SpriteCanvas {
     record Output(Component component, int bodyWidth, int rows, int sprites) {}
+    private record TextKey(FontPack fonts, String text, double wrapWidth, int maxLines, int size) {}
+    private record TextLayout(List<Component> lines, List<Integer> widths) {}
+    private record LabelKey(FontPack fonts, String node, Component text, int size, int top, int row,
+                            int argb, boolean sliced) {}
+    private record InkKey(FontPack fonts, String font, int code, int color) {}
+    private final Map<TextKey, TextLayout> staticText = new LinkedHashMap<>(16, .75f, true);
+    private final Map<LabelKey, Component> staticLabels = new LinkedHashMap<>(16, .75f, true);
+    private final Map<InkKey, Component> staticInks = new LinkedHashMap<>(16, .75f, true);
     static final Key SPACE = Key.key("dialogmenu", "space");
     static String move(int pixels) {
         if (pixels < -1024 || pixels > 1024) throw new IllegalArgumentException("Canvas movement out of range");
@@ -36,7 +44,7 @@ final class SpriteCanvas {
         return (int) Math.round((menu.height() / 2.0 - node.y()) * width / menu.width() - size / 2.0 + line * (size + 1));
     }
     Output encode(Menu menu, Rendered frame, Context context, FontPack fonts, Function<Region, ClickEvent> bind) {
-        int width = frame.image().getWidth(), height = frame.image().getHeight(), rows = (height + 8) / 9;
+        int width = frame.width(), height = frame.height(), rows = (height + 8) / 9;
         boolean rowCanvas = fonts.rows(menu, frame, context, width);
         boolean graphicRows = fonts.graphicRows(menu, frame, rowCanvas);
         Map<String, Integer> nativeRows = fonts.shader() ? RgbaRows.plan(menu, frame) : Map.of();
@@ -69,18 +77,30 @@ final class SpriteCanvas {
         return new Output(body.decoration(TextDecoration.BOLD, false).decoration(TextDecoration.ITALIC, false)
             .shadowColor(ShadowColor.none()), width + 10, rows, frame.sprites().size());
     }
-    private static void addText(List<List<Component>> parts, Menu menu, Node node, Context context,
+    private void addText(List<List<Component>> parts, Menu menu, Node node, Context context,
                                 FontPack fonts, Map<Region, ClickEvent> clicks,
                                 Function<Region, ClickEvent> bind, int width, int height, boolean rows, int nativeRow) {
         int size = textSize(menu, node, width, context.textScale(), context.canvasScale());
         double zoom = width / (double) menu.width();
-        Component parsed = MenuText.parse(context.expand(node.text()));
-        List<Component> lines = TextFlow.lines(node, parsed, zoom, glyph -> fonts.glyphWidth(glyph, size));
+        String expanded = context.expand(node.text());
+        boolean fixed = expanded.equals(node.text()) && !MenuTemplate.dynamicText(node);
+        TextKey key = new TextKey(fonts, expanded, node.width() * node.scaleX() * zoom, node.maxLines(), size);
+        TextLayout layout = fixed ? staticText.get(key) : null;
+        if (layout == null) {
+            List<Component> lines = TextFlow.lines(node, MenuText.parse(expanded), zoom,
+                glyph -> fonts.glyphWidth(glyph, size));
+            layout = new TextLayout(lines, lines.stream().map(text -> fonts.textWidth(text, size)).toList());
+            if (fixed) {
+                staticText.put(key, layout);
+                if (staticText.size() > 256) staticText.remove(staticText.keySet().iterator().next());
+            }
+        }
+        List<Component> lines = layout.lines();
         Region region = node.interaction() == null ? null : node.interaction().region(node);
         if (region != null && region.hasActions()) clicks.computeIfAbsent(region, bind);
         for (int line = 0; line < lines.size(); line++) {
             Component text = lines.get(line);
-            int advance = fonts.textWidth(text, size);
+            int advance = layout.widths().get(line);
             double anchor = (menu.width() / 2.0 + node.x()) * zoom;
             int x = (int) Math.round(anchor - switch (node.alignment()) {
                 case "left" -> 0;
@@ -93,7 +113,7 @@ final class SpriteCanvas {
             Key font = fonts.textFont(top, size, rows, text);
             for (int start = 0, part = 0; start < size; part++) {
                 Component label;
-                if (rows) {
+            if (rows) {
                     var builder = Component.text();
                     for (var glyph : MenuText.glyphs(text)) {
                         if (glyph.code() == ' ') {
@@ -107,14 +127,22 @@ final class SpriteCanvas {
                         }
                     }
                     label = builder.build();
-                } else label = text;
-                int relativeTop = top - nativeRow * 9;
-                label = fonts.shader() ? fonts.rgbaText(label, node.argb(), relativeTop).font(font)
+            } else label = text;
+            int relativeTop = top - nativeRow * 9;
+            boolean fixedLabel = fixed && region == null;
+            LabelKey labelKey = new LabelKey(fonts, node.id(), label, size, relativeTop,
+                rows ? CanvasRows.bodyRow(top + start) : nativeRow, node.argb(), rows);
+            Component cachedLabel = fixedLabel ? staticLabels.get(labelKey) : null;
+            if (cachedLabel == null) {
+                cachedLabel = fonts.shader() ? fonts.rgbaText(label, node.argb(), relativeTop).font(font)
                     : label.font(font).colorIfAbsent(TextColor.color(node.argb()));
-                if (region != null && !fonts.shader())
-                    label = label.clickEvent(clicks.get(region)).hoverEvent(hover(region, context));
-                int row = rows ? CanvasRows.bodyRow(top + start) : nativeRow;
-                parts.get(row).add(positioned(label, x, advance));
+                if (fixedLabel) cache(staticLabels, labelKey, cachedLabel, 2048);
+            }
+            label = cachedLabel;
+            if (region != null && !fonts.shader())
+                label = label.clickEvent(clicks.get(region)).hoverEvent(hover(region, context));
+            int row = rows ? CanvasRows.bodyRow(top + start) : nativeRow;
+            parts.get(row).add(positioned(label, x, advance));
                 if (fonts.shader() && region != null)
                     parts.get(nativeRow).add(positioned(fonts.rgbaHit(relativeTop, size, text)
                         .clickEvent(clicks.get(region)).hoverEvent(hover(region, context)), x, advance));
@@ -122,24 +150,42 @@ final class SpriteCanvas {
             }
         }
     }
-    private static void addSprite(List<List<Component>> parts, Sprite sprite, FontPack fonts, boolean rows,
+    private void addSprite(List<List<Component>> parts, Sprite sprite, FontPack fonts, boolean rows,
                                   int nativeRow, boolean interactive, ClickEvent click, HoverEvent<Component> hover) {
         if (fonts.shader()) sprite = RgbaRows.relative(sprite, nativeRow);
         if (fonts.shaderImage(sprite, interactive)) {
             RgbaImages images = fonts.rgbaImages();
-            parts.get(nativeRow).add(positioned(images.image(sprite), sprite.x(), images.glyph(sprite).advance()));
+            RgbaImages.Glyph glyph = images.glyph(sprite);
+            int color = RgbaImages.payload(sprite.width(), sprite.height(), sprite.y() % 9);
+            Component ink = cachedInk(fonts, "images_rgba", glyph.code(), color,
+                Key.key("dialogmenu", "images_rgba"));
+            parts.get(nativeRow).add(positioned(ink, sprite.x(), glyph.advance()));
             if (click != null || hover != null)
-                for (var tile : RgbaImages.tiles(sprite.image().getWidth(), sprite.image().getHeight()))
+                for (var tile : RgbaImages.tiles(sprite.width(), sprite.height()))
                     parts.get(nativeRow).add(positioned(images.hit(sprite.y() + tile.y(), tile.size(), click, hover),
                         sprite.x() + tile.x(), tile.size() + 1));
             return;
         }
         for (Sprite part : CanvasRows.parts(sprite, rows)) {
             FontPack.Glyph glyph = fonts.sprite(CanvasRows.local(part, rows));
-            Component ink = Component.text(Character.toString(glyph.code()), TextColor.color(0xFFFFFF))
-                .font(Key.key("dialogmenu", "sprites")).clickEvent(click).hoverEvent(hover);
+            Component ink = cachedInk(fonts, "sprites", glyph.code(), 0xFFFFFF,
+                Key.key("dialogmenu", "sprites"));
+            if (click != null || hover != null) ink = ink.clickEvent(click).hoverEvent(hover);
             parts.get(rows ? CanvasRows.bodyRow(part.y()) : nativeRow).add(positioned(ink, part.x(), glyph.advance()));
         }
+    }
+    private Component cachedInk(FontPack fonts, String font, int code, int color, Key key) {
+        InkKey inkKey = new InkKey(fonts, font, code, color);
+        Component ink = staticInks.get(inkKey);
+        if (ink == null) {
+            ink = Component.text(Character.toString(code), TextColor.color(color)).font(key);
+            cache(staticInks, inkKey, ink, 4096);
+        }
+        return ink;
+    }
+    private static <K, V> void cache(Map<K, V> values, K key, V value, int limit) {
+        values.put(key, value);
+        if (values.size() > limit) values.remove(values.keySet().iterator().next());
     }
     private static HoverEvent<Component> hover(Region region, Context context) {
         return region.tooltip().isEmpty() ? null

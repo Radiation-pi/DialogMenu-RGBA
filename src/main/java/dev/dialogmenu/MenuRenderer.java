@@ -10,22 +10,36 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import static dev.dialogmenu.MenuModel.*;
 
 /** 每个图形独立生成精灵，合成图仅用于离线预览。 */
 final class MenuRenderer {
     final VanillaAssets assets;
     final boolean shader;
+    private record Graphic(String id, String type, double x, double y, double sx, double sy, double width,
+                           double height, int argb, String source, double thickness, double rotation,
+                           boolean reuse, boolean interactive, int canvasWidth, int canvasHeight,
+                           int logicalHeight, double zoom) {}
+    private final Map<Graphic, Sprite> runtimeSprites = new LinkedHashMap<>(16, .75f, true);
+    private long cachedPixels;
     MenuRenderer(VanillaAssets assets) { this(assets, RenderingEdition.shader()); }
     MenuRenderer(VanillaAssets assets, boolean shader) { this.assets = assets; this.shader = shader; }
 
     Rendered draw(Menu menu, Context context, int width, int maxPixels) throws IOException {
+        return draw(menu, context, width, maxPixels, true);
+    }
+    Rendered drawRuntime(Menu menu, Context context, int width, int maxPixels) throws IOException {
+        return draw(menu, context, width, maxPixels, false);
+    }
+    private Rendered draw(Menu menu, Context context, int width, int maxPixels, boolean preview) throws IOException {
         width = (int) Math.round(width * context.canvasScale());
         int height = Math.max(1, (int) Math.round(menu.height() * width / (double) menu.width()));
         if (width < 64 || width > 512 || height > 1024 || (long) width * height > maxPixels)
             throw new IllegalArgumentException("当前画布比例/尺寸超出正文范围，请减小尺寸；不自动重排布局");
-        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D root = image.createGraphics();
+        BufferedImage image = preview ? new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB) : null;
+        Graphics2D root = preview ? image.createGraphics() : null;
         double zoom = width / (double) menu.width();
         List<Sprite> sprites = new ArrayList<>();
         List<Node> textNodes = new ArrayList<>();
@@ -34,6 +48,13 @@ final class MenuRenderer {
                 if (n.rotation() != 0) throw new IllegalArgumentException(n.id() + " 原生文字不支持旋转");
                 textNodes.add(n);
                 continue;
+            }
+            Graphic key = new Graphic(n.id(), n.type(), n.x(), n.y(), n.scaleX(), n.scaleY(), n.width(),
+                n.height(), n.argb(), n.source(), n.thickness(), n.rotation(), n.reuseTexture(),
+                n.interaction() != null, width, height, menu.height(), zoom);
+            if (!preview) {
+                Sprite cached = runtimeSprites.get(key);
+                if (cached != null) { sprites.add(cached); continue; }
             }
             double h = n.type().equals("line") ? n.thickness() : n.height();
             AffineTransform transform = new AffineTransform();
@@ -63,13 +84,19 @@ final class MenuRenderer {
             bounds = bounds.intersection(new Rectangle(0, 0, width, height));
             if (bounds.isEmpty()) continue;
             if (shaderSource != null && bounds.equals(unclipped)) {
+                Sprite reference = new Sprite(n.id(), bounds.x, bounds.y, null, null, shaderSource, null,
+                    bounds.width, bounds.height);
+                if (!preview && (n.interaction() == null || RgbaImages.exactHits(reference))) {
+                    add(sprites, key, reference, false);
+                    continue;
+                }
                 BufferedImage layer = new BufferedImage(bounds.width, bounds.height, BufferedImage.TYPE_INT_ARGB);
                 Graphics2D g = layer.createGraphics();
                 g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
                 g.drawImage(shaderSource, 0, 0, bounds.width, bounds.height, null);
                 g.dispose();
-                sprites.add(new Sprite(n.id(), bounds.x, bounds.y, layer, null, shaderSource));
-                root.drawImage(layer, bounds.x, bounds.y, null);
+                add(sprites, key, new Sprite(n.id(), bounds.x, bounds.y, layer, null, shaderSource), preview);
+                if (root != null) root.drawImage(layer, bounds.x, bounds.y, null);
                 continue;
             }
             if (n.source().startsWith("minecraft:") || n.reuseTexture() || assets.craftEngine.atlasReference(n.source())) {
@@ -79,11 +106,11 @@ final class MenuRenderer {
                         - reference.image().getWidth() / (double) reference.image().getHeight()) > 1e-7)
                     throw new IOException(n.id() + " 纹理直引须完整显示、等比缩放、不旋转且opacity=255");
                 // 只导出字体 provider，原纹理由 Minecraft 或 CE 提供。
-                root.drawImage(reference.image(), bounds.x, bounds.y, bounds.width, bounds.height, null);
+                if (root != null) root.drawImage(reference.image(), bounds.x, bounds.y, bounds.width, bounds.height, null);
                 // 保留显示边界，不复制源 PNG。
-                sprites.add(new Sprite(n.id(), bounds.x, bounds.y,
-                    new BufferedImage(bounds.width, bounds.height, BufferedImage.TYPE_INT_ARGB),
-                    reference.texture(), reference.image(), reference.region()));
+                add(sprites, key, new Sprite(n.id(), bounds.x, bounds.y,
+                    preview ? new BufferedImage(bounds.width, bounds.height, BufferedImage.TYPE_INT_ARGB) : null,
+                    reference.texture(), reference.image(), reference.region(), bounds.width, bounds.height), preview);
                 continue;
             }
             BufferedImage layer = new BufferedImage(bounds.width, bounds.height, BufferedImage.TYPE_INT_ARGB);
@@ -112,11 +139,24 @@ final class MenuRenderer {
                 default -> throw new IllegalArgumentException("元素尚不支持：" + n.type());
             }
             g.dispose();
-            sprites.add(new Sprite(n.id(), bounds.x, bounds.y, layer));
-            root.drawImage(layer, bounds.x, bounds.y, null);
+            add(sprites, key, new Sprite(n.id(), bounds.x, bounds.y, layer), preview);
+            if (root != null) root.drawImage(layer, bounds.x, bounds.y, null);
         }
-        root.dispose();
-        return new Rendered(image, List.copyOf(sprites), List.copyOf(textNodes));
+        if (root != null) root.dispose();
+        return new Rendered(image, List.copyOf(sprites), List.copyOf(textNodes), width, height);
     }
-
+    private void add(List<Sprite> sprites, Graphic key, Sprite sprite, boolean preview) {
+        sprites.add(sprite);
+        if (preview) return;
+        runtimeSprites.put(key, sprite);
+        cachedPixels += pixels(sprite);
+        var iterator = runtimeSprites.entrySet().iterator();
+        while (runtimeSprites.size() > 512 || cachedPixels > 1_048_576) {
+            cachedPixels -= pixels(iterator.next().getValue());
+            iterator.remove();
+        }
+    }
+    private static long pixels(Sprite sprite) {
+        return sprite.image() == null ? 0 : (long) sprite.width() * sprite.height();
+    }
 }

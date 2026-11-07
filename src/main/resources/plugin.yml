@@ -1,7 +1,7 @@
 name: DialogMenu
 version: ${version}
 main: dev.dialogmenu.DialogMenuPlugin
-api-version: '26.3'
+api-version: '1.21.7'
 softdepend: [Skript, PlaceholderAPI, CraftEngine]
 commands:
   dialogmenu:

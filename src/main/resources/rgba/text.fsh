@@ -22,6 +22,10 @@ layout(location = 6) in vec2 dialogmenuImageCoord;
 layout(location = 0) out vec4 fragColor;
 #endif
 
+#ifdef IS_GUI
+#include <dialogmenu:rgba_fragment.glsl>
+#endif
+
 vec4 calculateFinalColor(vec4 color) {
 #ifdef OIT_ACCUMULATE
     color = sampleColorForAccumulation(color);
@@ -41,12 +45,7 @@ vec4 calculateFinalColor(vec4 color) {
 void main() {
     vec2 uv = texCoord0;
 #ifdef IS_GUI
-    if (dialogmenuMarked == 2) {
-        vec2 atlas = vec2(textureSize(Sampler0, 0));
-        vec2 sourcePixel = (floor(dialogmenuImageCoord) + vec2(0.5)) * dialogmenuImagePixels.zw * atlas;
-        // 恰好落在采样边界时取前一个纹素，再采样其中心。
-        uv = dialogmenuImagePixels.xy + (floor(sourcePixel - vec2(0.0001)) + vec2(0.5)) / atlas;
-    }
+    uv = dialogmenu_uv();
 #endif
 #ifdef IS_GRAYSCALE
     vec4 texColor = texture(Sampler0, uv).rrrr;

@@ -18,13 +18,15 @@ final class EditorFiles {
 
     EditorFiles(Path data) throws IOException {
         this.data = data.toAbsolutePath().normalize();
-        layouts = this.data.resolve("layouts");
+        Path configuredLayouts = this.data.resolve("layouts");
+        Files.createDirectories(configuredLayouts);
+        layouts = configuredLayouts.toRealPath();
         drafts = this.data.resolve("editor-drafts");
         backups = this.data.resolve("editor-backups");
         Files.createDirectories(layouts);
         Files.createDirectories(drafts);
         Files.createDirectories(backups);
-        for (Path root : List.of(layouts, drafts, backups))
+        for (Path root : List.of(drafts, backups))
             if (Files.isSymbolicLink(root)) throw new IOException("Editor directories must not be symlinks");
     }
 

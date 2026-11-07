@@ -57,6 +57,9 @@ final class FontPack {
         FontPack pack = new FontPack();
         pack.shader = renderer.shader;
         String commonCharacters = pack.shader ? RgbaOffsets.commonCharacters() : "";
+        Set<Integer> commonCodes = codes(List.of(commonCharacters));
+        Set<String> commonFonts = new HashSet<>();
+        Map<String, Set<Integer>> dynamicCodes = new HashMap<>();
         pack.textScales = List.copyOf(textScales);
         for (var doc : docs) for (Node node : doc.menu().nodes())
             if (node.reuseTexture() || node.source().startsWith("minecraft:")
@@ -99,8 +102,8 @@ final class FontPack {
                     }
                     boolean dynamic = MenuTemplate.dynamicText(node);
                     Set<Integer> characters = codes(MenuTemplate.textValues(doc, node, active));
-                    if (dynamic) characters.addAll(codes(List.of(MenuTemplate.dynamicCharacters(doc, node, extraCharacters),
-                        commonCharacters)));
+                    if (dynamic) characters.addAll(dynamicCodes.computeIfAbsent(
+                        MenuTemplate.dynamicCharacters(doc, node, extraCharacters), value -> codes(List.of(value))));
                     for (int cp : characters) pack.measure(cp, renderer.assets);
                     for (double scale : textScales) {
                         int size = SpriteCanvas.textSize(doc.menu(), node, width, scale, canvasScale);
@@ -114,16 +117,24 @@ final class FontPack {
                         }
                         int count = dynamic ? (node.maxLines() > 0 ? node.maxLines()
                             : frame.image().getHeight() / (size + 1) + 1) : lines.size();
+                        boolean registeredShaderCharacters = false;
                         for (int line = 0; line < count; line++) {
                             int top = SpriteCanvas.textTop(doc.menu(), node, width, line, size);
                             if (top >= 0 && top + size <= frame.image().getHeight()) {
                                 if (pack.shader && node.interaction() != null)
                                     pack.rgbaHits.prepare(top - nativeRows.get(node.id()) * 9, size);
                                 int offset = rows ? CanvasRows.offset(top) : top;
-                                TextFont font = pack.textFonts.computeIfAbsent(pack.preparedName(offset, size, rows),
+                                String name = pack.preparedName(offset, size, rows);
+                                TextFont font = pack.textFonts.computeIfAbsent(name,
                                     key -> new TextFont(pack.shader ? 0 : offset, size, rows, new TreeSet<>()));
-                                font.characters().addAll(dynamic ? characters
-                                    : codes(lines.get(line)));
+                                if (pack.shader && dynamic) {
+                                    if (!registeredShaderCharacters) font.characters().addAll(characters);
+                                    registeredShaderCharacters = true;
+                                    if (commonFonts.add(name)) {
+                                        for (int cp : commonCodes) pack.measure(cp, renderer.assets);
+                                        font.characters().addAll(commonCodes);
+                                    }
+                                } else font.characters().addAll(dynamic ? characters : codes(lines.get(line)));
                             }
                         }
                     }
@@ -252,7 +263,7 @@ final class FontPack {
     }
     private String spriteKey(Sprite sprite) {
         return (sprite.texture() == null ? key(sprite.image())
-            : sprite.texture() + ":" + sprite.textureRegion() + ":" + sprite.image().getHeight()) + ":" + sprite.y();
+            : sprite.texture() + ":" + sprite.textureRegion() + ":" + sprite.height()) + ":" + sprite.y();
     }
     private void measure(int cp, VanillaAssets assets) throws IOException {
         if (metrics.containsKey(cp)) return;
@@ -382,15 +393,18 @@ final class FontPack {
             characters.add(Map.of("type", "space", "advances", Map.of(" ", (int) Math.round(font.size() / 2.0))));
             writeJson(base.resolve("font/" + entry.getKey() + ".json"), Map.of("providers", characters));
         }
-        writeJson(target.resolve("pack.mcmeta"), Map.of("pack", Map.of("description", "DialogMenu whole sprites",
-            "min_format", shader ? List.of(97, 1) : List.of(88, 0), "max_format", List.of(97, 1))));
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("pack", Map.of("description", "DialogMenu whole sprites", "pack_format", 64,
+            "supported_formats", Map.of("min_inclusive", 64, "max_inclusive", 97),
+            "min_format", List.of(64, 0), "max_format", List.of(97, 1)));
+        if (shader) metadata.put("overlays", RgbaShaders.metadata());
+        writeJson(target.resolve("pack.mcmeta"), metadata);
         if (shader) {
             rgbaImages.write(target);
             rgbaHits.write(target);
             rgba.write(target);
         } else {
-            for (String name : List.of("text.vsh", "text.fsh"))
-                Files.deleteIfExists(target.resolve("assets/minecraft/shaders/core/" + name));
+            RgbaShaders.remove(target);
         }
     }
     static Object bitmap(String texture, int height, int ascent, List<String> chars) {

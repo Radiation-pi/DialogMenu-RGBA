@@ -26,6 +26,8 @@ final class MenuSessions {
     }
     private final Host plugin;
     private final Map<UUID, Session> sessions = new HashMap<>();
+    private record Evaluation(Session session, MenuExpansion expansion) {}
+    private final Map<UUID, Evaluation> evaluations = new HashMap<>();
     private static final class Session {
         final MenuTemplate.Definition definition;
         final Map<String, String> values;
@@ -39,6 +41,7 @@ final class MenuSessions {
         LayoutStore.Document document;
         int width;
         boolean busy, suspended;
+        long presentations;
         Object form;
         List<String> history;
         Session(LayoutStore.Document document, int width, List<String> history) {
@@ -175,6 +178,7 @@ final class MenuSessions {
                 || session.suspended || session.form != identity) return;
             session.form = null;
             try {
+                long before = session.presentations;
                 if (values != null) {
                     Map<String, String> declared = new LinkedHashMap<>();
                     boolean valid = true;
@@ -185,7 +189,7 @@ final class MenuSessions {
                     }
                     if (valid) submitted.accept(Map.copyOf(declared));
                 }
-                if (bound(binding) != null) show(binding.player, session);
+                if (bound(binding) != null && session.presentations == before) show(binding.player, session);
             } catch (Exception error) { fail(binding.player, session, error); }
         };
         try { plugin.showForm(binding.player, form, complete, () -> complete.accept(null)); }
@@ -257,9 +261,12 @@ final class MenuSessions {
     }
     private void show(Player player, Session session) throws Exception {
         if (session.suspended || session.form != null) return;
-        plugin.showApplication(player, session.document.template().document(session.lists,
-            session.externalCollections, text -> expand(player, text)),
-            session.width, session.history);
+        try (var ignored = frame(player)) {
+            plugin.showApplication(player, session.document.template().document(session.lists,
+                session.externalCollections, text -> expand(player, text)),
+                session.width, session.history);
+            session.presentations++;
+        }
     }
     void state(Player player, String action, String value) throws Exception {
         Session session = sessions.get(player.getUniqueId());
@@ -282,8 +289,9 @@ final class MenuSessions {
             if (session.binding == null || bound(session.binding) == null || !permitted(player, session)) return;
             if (session.externalCollections.getOrDefault(parts[0], List.of()).stream()
                 .noneMatch(entry -> entry.id().equals(parts[1]))) return;
+            long before = session.presentations;
             session.callback.accept(parts[1]);
-            if (current(player, session) && !session.suspended) show(player, session);
+            if (current(player, session) && session.presentations == before) show(player, session);
             return;
         }
         if (Boolean.parseBoolean(session.values.get(spec.editState()))) {
@@ -328,37 +336,36 @@ final class MenuSessions {
         } catch (Exception error) { fail(player, session, error); }
     }
     String expand(Player player, String text) {
+        Evaluation evaluation = evaluations.get(player.getUniqueId());
+        return (evaluation == null ? expansion(player) : evaluation.expansion()).apply(text);
+    }
+    final class ExpansionFrame implements AutoCloseable {
+        private final UUID player;
+        private final Evaluation previous;
+        private ExpansionFrame(Player player) {
+            this.player = player.getUniqueId();
+            previous = evaluations.get(this.player);
+            Session session = sessions.get(this.player);
+            if (previous == null || previous.session() != session)
+                evaluations.put(this.player, new Evaluation(session, expansion(player)));
+        }
+        @Override public void close() {
+            if (previous == null) evaluations.remove(player);
+            else evaluations.put(player, previous);
+        }
+    }
+    ExpansionFrame frame(Player player) { return new ExpansionFrame(player); }
+    private MenuExpansion expansion(Player player) {
         Session session = sessions.get(player.getUniqueId());
         Map<String, String> values = new LinkedHashMap<>();
         values.put("player", player.getName());
         values.put("uuid", player.getUniqueId().toString());
         values.put("server", plugin.getDataFolder().getAbsoluteFile().getParentFile().getParentFile().getName());
-        if (session == null) {
-            String expanded = MenuTemplate.expand(text, values);
-            return placeholder(player, expanded, expanded);
-        }
-        values.putAll(session.values);
-        var vars = session.definition.variables;
-        if (vars != null) for (String name : vars.getKeys(false)) {
-            var spec = vars.getConfigurationSection(name);
-            String fallback = spec.getString("fallback", "");
-            String source = spec.getString("source", "");
-            String value = switch (spec.getString("type", "")) {
-                case "literal" -> MenuTemplate.expand(source, values);
-                case "papi" -> placeholder(player, source, fallback);
-                case "skript" -> Objects.toString(variable(key(player, source)), fallback);
-                case "state" -> values.getOrDefault(source, fallback);
-                case "external" -> session.external.getOrDefault(spec.getString("source", name), fallback);
-                default -> fallback;
-            };
-            var mappings = spec.getConfigurationSection("values");
-            if (mappings != null) value = mappings.getString(value, fallback);
-            int limit = spec.getInt("max-length", 0);
-            if (limit > 0) value = shortNumber(value, limit);
-            values.put(name, value);
-        }
-        String expanded = MenuTemplate.expand(text, values);
-        return expanded.contains("%") ? placeholder(player, expanded, expanded) : expanded;
+        if (session != null) values.putAll(session.values);
+        return new MenuExpansion(values, session == null ? null : session.definition.variables,
+            session == null ? Map.of() : session.external,
+            (text, fallback) -> placeholder(player, text, fallback),
+            source -> Objects.toString(variable(key(player, source)), null));
     }
     static String shortNumber(String value, int limit) {
         if (!value.matches("-?[0-9.,]+")) return "-";

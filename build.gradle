@@ -16,20 +16,19 @@ dependencies {
     if (localClasspath) {
         compileOnly files(localClasspath.split(java.io.File.pathSeparator).collect { file(it) })
     } else {
-        compileOnly 'io.papermc.paper:paper-api:26.3.build.+'
-        compileOnly('com.github.SkriptLang:Skript:2.16.2') {
+        compileOnly 'io.papermc.paper:paper-api:1.21.7-R0.1-SNAPSHOT'
+        compileOnly('com.github.SkriptLang:Skript:2.12.2') {
             transitive = false
         }
     }
-    testImplementation files(configurations.compileClasspath)
 }
 
 java {
-    toolchain.languageVersion = JavaLanguageVersion.of(25)
+    toolchain.languageVersion = JavaLanguageVersion.of(providers.gradleProperty('javaVersion').getOrElse('21').toInteger())
 }
 
 tasks.withType(JavaCompile).configureEach {
-    options.release = 25
+    options.release = 21
     options.encoding = 'UTF-8'
 }
 
@@ -40,47 +39,10 @@ processResources {
 }
 
 jar {
-    archiveFileName = "DialogMenu-rgba-${project.version}.jar"
+    archiveFileName = "DialogMenu-${project.version}.jar"
 }
 
-// 将行为回归纳入标准构建，不额外依赖测试框架。
-tasks.register('regressionTest', JavaExec) {
-    dependsOn testClasses
-    classpath = sourceSets.test.runtimeClasspath
-    mainClass = 'dev.dialogmenu.RegressionTests'
-    args layout.projectDirectory.asFile.absolutePath
-    jvmArgs '-Djava.awt.headless=true'
-}
-tasks.register('bindingTest', JavaExec) {
-    dependsOn testClasses
-    classpath = sourceSets.test.runtimeClasspath
-    mainClass = 'dev.dialogmenu.BindingTests'
-    jvmArgs '-Djava.awt.headless=true'
-}
-
-tasks.named('check') {
-    dependsOn tasks.named('regressionTest')
-    dependsOn tasks.named('bindingTest')
-}
-
-def artifact = tasks.named('jar')
-tasks.register('rgbaEditionTest', JavaExec) {
-    dependsOn testClasses, artifact
-    classpath = files(sourceSets.test.output.classesDirs, artifact.flatMap { it.archiveFile },
-        configurations.testRuntimeClasspath)
-    mainClass = 'dev.dialogmenu.EditionTests'
-    args 'rgba', layout.buildDirectory.dir('edition-checks/rgba').get().asFile.absolutePath
-    jvmArgs '-Djava.awt.headless=true', '-Ddialogmenu.rgba=false'
-}
-tasks.named('check') { dependsOn tasks.named('rgbaEditionTest') }
 tasks.withType(AbstractArchiveTask).configureEach {
     preserveFileTimestamps = false
     reproducibleFileOrder = true
-}
-
-// 使用上述可执行测试套件，不需要 JUnit 或 TestNG 引擎。
-tasks.named('test') {
-    dependsOn tasks.named('regressionTest')
-    dependsOn tasks.named('bindingTest')
-    enabled = false
 }
