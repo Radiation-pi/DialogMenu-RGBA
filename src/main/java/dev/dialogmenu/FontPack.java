@@ -48,7 +48,14 @@ final class FontPack {
     static FontPack create(Collection<LayoutStore.Document> docs, MenuRenderer renderer, Context context,
                            Collection<Integer> widths, int maxPixels, String extraCharacters,
                            Collection<Double> textScales, Collection<Double> canvasScales) throws IOException {
+        return create(docs, renderer, context, widths, maxPixels, extraCharacters, textScales, canvasScales, List.of());
+    }
+    static FontPack create(Collection<LayoutStore.Document> docs, MenuRenderer renderer, Context context,
+                           Collection<Integer> widths, int maxPixels, String extraCharacters,
+                           Collection<Double> textScales, Collection<Double> canvasScales,
+                           Collection<Integer> colors) throws IOException {
         FontPack pack = new FontPack();
+        colors.forEach(pack.rgba::add);
         String commonCharacters = RgbaOffsets.commonCharacters();
         Set<Integer> commonCodes = codes(List.of(commonCharacters));
         Set<String> commonFonts = new HashSet<>();
@@ -166,6 +173,16 @@ final class FontPack {
         Set<Integer> result = new TreeSet<>();
         for (String value : values) result.addAll(codes(MenuText.parse(value)));
         return result;
+    }
+    void validateDynamic(LayoutStore.Document doc, Context context, int width, String extra) throws IOException {
+        for (Node node : doc.menu().nodes()) if (node.type().equals("text") && MenuTemplate.dynamicText(node)) {
+            int size = SpriteCanvas.textSize(doc.menu(), node, width, context.textScale(), context.canvasScale());
+            Set<Integer> required = codes(List.of(RgbaOffsets.commonCharacters(),
+                MenuTemplate.dynamicCharacters(doc, node, extra)));
+            var key = textFont(size);
+            if (!textFonts.get(key.value()).characters().containsAll(required))
+                throw new IllegalArgumentException("动态文字字符范围发生变化，请执行 /dialogmenu reload all");
+        }
     }
     private static Set<Integer> codes(net.kyori.adventure.text.Component value) {
         Set<Integer> result = new TreeSet<>();

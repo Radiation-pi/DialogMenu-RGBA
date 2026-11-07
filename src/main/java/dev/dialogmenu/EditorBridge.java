@@ -188,14 +188,14 @@ final class EditorBridge implements PluginMessageListener, Listener, AutoCloseab
         object.remove("click_event");
         for (var entry : object.entrySet()) previewFonts(entry.getValue());
     }
-    private static byte[] previewPack(Path path) throws IOException {
+    static byte[] previewPack(Path path) throws IOException {
         var bytes = new ByteArrayOutputStream();
         try (var input = new ZipInputStream(Files.newInputStream(path)); var output = new ZipOutputStream(bytes)) {
             for (ZipEntry entry; (entry = input.getNextEntry()) != null;) {
                 String name = entry.getName().replace("assets/dialogmenu/", "assets/dialogmenu_preview/");
                 output.putNextEntry(new ZipEntry(name));
                 byte[] data = input.readAllBytes();
-                if (name.endsWith(".json"))
+                if (name.endsWith(".json") || name.endsWith(".glsl") || name.endsWith(".vsh") || name.endsWith(".fsh"))
                     data = new String(data, StandardCharsets.UTF_8).replace("dialogmenu:", "dialogmenu_preview:")
                         .getBytes(StandardCharsets.UTF_8);
                 output.write(data); output.closeEntry();

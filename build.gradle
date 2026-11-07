@@ -21,6 +21,7 @@ dependencies {
             transitive = false
         }
     }
+    testImplementation files(configurations.compileClasspath)
 }
 
 java {
@@ -49,3 +50,14 @@ tasks.withType(AbstractArchiveTask).configureEach {
     preserveFileTimestamps = false
     reproducibleFileOrder = true
 }
+
+tasks.register('regressionTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.dialogmenu.ResourceRegressionTests'
+    systemProperty 'java.awt.headless', 'true'
+    systemProperty 'dialogmenu.test.directory', layout.buildDirectory.dir('regression-data').get().asFile.absolutePath
+}
+check.dependsOn regressionTest
+// 回归入口为上面的JavaExec，无需为main式检查引入测试框架。
+test.failOnNoDiscoveredTests = false
