@@ -1,0 +1,36 @@
+name: Build and publish release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 1
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+      - name: Build from source
+        run: ./gradlew --no-daemon clean build
+      - name: Validate and package release
+        run: python3 scripts/prepare-release.py "${GITHUB_REF_NAME}"
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          gh release create "${GITHUB_REF_NAME}" \
+            "dist/DialogMenu-rgba-${version}.jar" \
+            "dist/DialogMenu-${version}-source.zip" \
+            --title "DialogMenu RGBA ${version}" \
+            --generate-notes

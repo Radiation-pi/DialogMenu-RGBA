@@ -1,0 +1,77 @@
+schema-version: 1
+id: layout-demo
+canvas:
+  width: 300
+  height: 180
+events:
+  open: 'sound: UI_BUTTON_CLICK-0.5-1'
+frontend:
+  panel:
+    type: rectangle
+    width: 300
+    height: 180
+    color: '#ECEDEE'
+  header:
+    type: group
+    offset: {y: 63, z: 1}
+    children:
+      title:
+        type: text
+        content: '&8DialogMenu'
+        size: 8
+        offset: {x: -89}
+      player:
+        type: text
+        content: '&8{player}'
+        size: 8
+        alignment: right
+        offset: {x: 112}
+      rule:
+        type: line
+        width: 260
+        color: '#B8BDC2'
+        offset: {y: -17}
+  portrait:
+    type: image
+    source: minecraft:item/book
+    width: 48
+    height: 48
+    offset: {x: -87, y: -3, z: 1}
+  greeting:
+    type: text
+    content: '&8独立 Dialog'
+    size: 8
+    alignment: left
+    offset: {x: -38, y: 16, z: 1}
+  subline:
+    type: text
+    content: '&8自己的布局，自己的页面'
+    size: 8
+    alignment: left
+    offset: {x: -38, y: -6, z: 1}
+  action:
+    type: group
+    offset: {x: 62, y: -54, z: 1}
+    children:
+      surface:
+        type: rectangle
+        width: 140
+        height: 27
+        color: '#CBD0D5'
+      label:
+        type: text
+        content: '&8打开详情'
+        size: 8
+        offset: {z: 1}
+        clickable: true
+        tooltip: 查看第二页
+        actions:
+          all: 'sound: UI_BUTTON_CLICK-0.5-1'
+          left: 'open: layout-detail'
+  close:
+    type: text
+    content: '&8×'
+    size: 8
+    offset: {x: 133, y: 76, z: 2}
+    clickable: true
+    actions: {left: close}
