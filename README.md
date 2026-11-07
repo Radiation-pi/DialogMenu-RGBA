@@ -26,9 +26,14 @@ gradle build
 
 常用命令：
 
-- `/dialogmenu reload`：只重载 YAML，缺少预备资源时保留原布局。
+- `/dialogmenu reload` 或 `reload yaml`：只重载 YAML，缺少预备资源时保留原布局。
+- `/dialogmenu reload <菜单名>`：只重载该页面所属的 YAML 文件，也可使用不带 `.yml` 的文件名。
 - `/dialogmenu reload resource`：只更新当前已加载布局的资源。
 - `/dialogmenu reload all`：同时更新 YAML 与资源。
 - `/dialogmenu scale <0.75|1>`：调整个人画布倍率。
 
 旧版 `backend` 点击区域需迁移到 `frontend` 的文字或图片元素。新增字符、图片或字号后使用 `reload all`，并重新分发资源包。
+
+资源准备使用单后台线程，`resource-build-cpu-percent` 默认 `80`，可设为 `1..100`，表示平均单线程 CPU 预算，不限制 GC 或 CraftEngine。
+
+CE 图片可写 `source: craftengine:资源包目录/textures后的路径.png`，`.png` 可省略。旧 image/item/icon ID 需在 `craftengine-definitions` 列出定义文件，不自动扫描全部 CE 配置。

@@ -11,24 +11,28 @@ import static dev.dialogmenu.MenuModel.*;
 
 /** 文件解析和资源包准备不接触运行中的 Bukkit 或玩家状态。 */
 final class ReloadEngine implements AutoCloseable {
-    enum Mode {
-        YAML, RESOURCE, ALL;
-        static Mode command(String[] args) {
-            if (args.length == 1) return YAML;
-            if (args.length == 2) for (Mode mode : values())
-                if (mode.name().equalsIgnoreCase(args[1])) return mode;
-            throw new IllegalArgumentException("/dialogmenu reload [yaml|resource|all]");
+    enum Mode { YAML, RESOURCE, ALL }
+    record Request(Mode mode, String menu) {
+        static Request command(String[] args) {
+            if (args.length == 1) return new Request(Mode.YAML, null);
+            if (args.length == 2) for (Mode mode : Mode.values())
+                if (mode.name().equalsIgnoreCase(args[1])) return new Request(mode, null);
+            if (args.length == 2) return new Request(Mode.YAML, LayoutStore.id(args[1]));
+            throw new IllegalArgumentException("/dialogmenu reload [yaml|resource|all|菜单名]");
         }
     }
     record Settings(int width, int maxPixels, String defaultLayout, boolean escape,
                     List<Double> textScales, double defaultTextScale, boolean autoCraftEngine,
-                    Path resourceRoot) {}
+                    Path resourceRoot, int resourceBuildCpuPercent, List<String> craftEngineDefinitions) {}
     record Stamp(long size, FileTime modified) {}
     record Snapshot(Map<String, LayoutStore.Document> documents, VanillaAssets assets, MenuRenderer renderer,
                     FontPack fonts, Settings settings, Path pack, Map<Path, Stamp> inputs,
                     Map<Path, Stamp> resourceInputs, long buildMillis,
                     String buildThread, long generation) {}
-    record Result(Snapshot snapshot, boolean changed, boolean resourcesChanged) {
+    record Result(Snapshot snapshot, boolean changed, boolean resourcesChanged, Set<String> menus) {
+        Result(Snapshot snapshot, boolean changed, boolean resourcesChanged) {
+            this(snapshot, changed, resourcesChanged, Set.of());
+        }
         Result(Snapshot snapshot, boolean changed) { this(snapshot, changed, changed); }
     }
     private final Path data;
@@ -51,10 +55,55 @@ final class ReloadEngine implements AutoCloseable {
 
     CompletableFuture<Result> prepare() { return prepare(Mode.ALL); }
     CompletableFuture<Result> prepare(Mode mode) {
+        return prepare(new Request(mode, null));
+    }
+    CompletableFuture<Result> prepare(Request request) {
         return CompletableFuture.supplyAsync(() -> {
-            try { return mode == Mode.YAML ? layouts() : build(mode); }
+            try {
+                return request.menu() != null ? layout(request.menu())
+                    : request.mode() == Mode.YAML ? layouts() : build(request.mode());
+            }
             catch (Exception error) { throw new CompletionException(error); }
         }, worker);
+    }
+    private Result layout(String id) throws Exception {
+        long start = System.nanoTime();
+        if (latest == null) throw new IllegalStateException("尚无资源，请执行 /dialogmenu reload all");
+        LayoutStore store = new LayoutStore(data.resolve("layouts"));
+        var existing = latest.documents().get(id);
+        String name = existing == null ? LayoutStore.id(id) : LayoutStore.source(existing);
+        Path file = store.file(name);
+        Map<Path, Stamp> input = stamps(Set.of(file));
+        if (input.get(file).equals(latest.inputs().get(file))) return new Result(latest, false, false);
+        var replacements = store.load(name);
+        Map<String, LayoutStore.Document> documents = new LinkedHashMap<>(latest.documents());
+        Set<String> affected = new HashSet<>();
+        documents.entrySet().removeIf(entry -> {
+            if (!LayoutStore.source(entry.getValue()).equals(name)) return false;
+            affected.add(entry.getKey());
+            return true;
+        });
+        for (var entry : replacements.entrySet())
+            if (documents.putIfAbsent(entry.getKey(), entry.getValue()) != null)
+                throw new IllegalArgumentException("重复布局ID：" + entry.getKey());
+        affected.addAll(replacements.keySet());
+        if (!documents.containsKey(latest.settings().defaultLayout()))
+            throw new IllegalArgumentException("default-layout不存在；旧布局保留");
+        LayoutStore.validateLinks(documents);
+        try {
+            validate(MenuTemplate.catalog(replacements.values()), latest.renderer(), latest.fonts(), latest.settings());
+        } catch (IllegalArgumentException error) {
+            throw new IllegalArgumentException("布局不能复用现有资源：" + error.getMessage()
+                + "；旧布局保留，需要新字形时执行 /dialogmenu reload all", error);
+        }
+        Map<Path, Stamp> inputs = new HashMap<>(latest.inputs());
+        inputs.putAll(input);
+        Snapshot next = new Snapshot(Collections.unmodifiableMap(documents), latest.assets(), latest.renderer(),
+            latest.fonts(), latest.settings(), latest.pack(), Map.copyOf(inputs), latest.resourceInputs(),
+            TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start), Thread.currentThread().getName(), ++generation);
+        cache.retain(next, next.pack());
+        latest = next;
+        return new Result(next, true, false, Set.copyOf(affected));
     }
     private Result layouts() throws Exception {
         long start = System.nanoTime();
@@ -63,8 +112,9 @@ final class ReloadEngine implements AutoCloseable {
         if (latest.inputs().equals(current)) return new Result(latest, false, false);
         Settings settings = settings();
         if (!settings.resourceRoot().equals(latest.settings().resourceRoot())
+            || !settings.craftEngineDefinitions().equals(latest.settings().craftEngineDefinitions())
             || !latest.settings().textScales().containsAll(settings.textScales()))
-            throw new IllegalArgumentException("资源目录或字体倍率范围已变化，请执行 /dialogmenu reload all；旧布局保留");
+            throw new IllegalArgumentException("资源目录、CE定义文件或字体倍率范围已变化，请执行 /dialogmenu reload all；旧布局保留");
         var documents = new LayoutStore(data.resolve("layouts")).load();
         if (!documents.containsKey(settings.defaultLayout()))
             throw new IllegalArgumentException("default-layout不存在");
@@ -98,7 +148,9 @@ final class ReloadEngine implements AutoCloseable {
         return new Settings(width, maxPixels, yaml.getString("default-layout", "layout-demo"),
             yaml.getBoolean("close-with-escape", false), List.copyOf(scales), defaultScale,
             yaml.getBoolean("craftengine-auto-reload", true),
-            data.resolve(yaml.getString("craftengine-resources", "../CraftEngine/resources")).normalize());
+            data.resolve(yaml.getString("craftengine-resources", "../CraftEngine/resources")).normalize(),
+            LayoutStore.integer(yaml, "resource-build-cpu-percent", 80, 1, 100),
+            List.copyOf(LayoutStore.strings(yaml.get("craftengine-definitions"))));
     }
     private Result build(Mode mode) throws Exception {
         long start = System.nanoTime();
@@ -107,12 +159,17 @@ final class ReloadEngine implements AutoCloseable {
         boolean all = mode == Mode.ALL || latest == null;
         Map<Path, Stamp> yamlInputs = all ? yamlInputs() : latest.inputs();
         Settings settings = all ? settings() : latest.settings();
+        try (var budget = BuildBudget.open(settings.resourceBuildCpuPercent())) {
+            return build(all, yamlInputs, settings, start);
+        }
+    }
+    private Result build(boolean all, Map<Path, Stamp> yamlInputs, Settings settings, long start) throws Exception {
         if (latest != null && latest.inputs().equals(yamlInputs)
             && latest.resourceInputs().equals(resourceInputs(latest.assets(), settings)))
             return new Result(latest, false, false);
         var documents = all ? new LayoutStore(data.resolve("layouts")).load() : latest.documents();
         if (!documents.containsKey(settings.defaultLayout())) throw new IllegalArgumentException("default-layout不存在");
-        var assets = new VanillaAssets(data.resolve("images"), settings.resourceRoot());
+        var assets = new VanillaAssets(data.resolve("images"), settings.resourceRoot(), settings.craftEngineDefinitions());
         var renderer = new MenuRenderer(assets);
         List<LayoutStore.Document> catalog = MenuTemplate.catalog(documents.values());
         var widths = new TreeSet<>(List.of(300, 360, 420, settings.width()));
@@ -127,6 +184,7 @@ final class ReloadEngine implements AutoCloseable {
         try (var output = new ZipOutputStream(Files.newOutputStream(zip));
              var files = Files.walk(exported)) {
             for (Path path : files.filter(Files::isRegularFile).sorted().toList()) {
+                BuildBudget.checkpoint();
                 output.putNextEntry(new ZipEntry(exported.relativize(path).toString().replace('\\', '/')));
                 Files.copy(path, output);
                 output.closeEntry();
@@ -135,8 +193,10 @@ final class ReloadEngine implements AutoCloseable {
             Files.deleteIfExists(zip);
             throw error;
         }
+        Map<Path, Stamp> dependencies = resourceInputs(assets, settings);
+        BuildBudget.settle();
         Snapshot next = new Snapshot(documents, assets, renderer, fonts, settings, zip, yamlInputs,
-            resourceInputs(assets, settings), TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start),
+            dependencies, TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start),
             Thread.currentThread().getName(), ++generation);
         cache.retain(next, zip);
         latest = next;
@@ -147,6 +207,7 @@ final class ReloadEngine implements AutoCloseable {
         var widths = new TreeSet<>(List.of(300, 360, 420, settings.width()));
         // 可选倍率在玩家选择时校验，不要求每个布局加载时适配所有倍率。
         for (var doc : catalog) for (int size : widths) {
+            BuildBudget.checkpoint();
             var base = MenuTemplate.preview(doc, preview);
             Context active = new Context() {
                 public String expand(String text) { return base.expand(text); }
@@ -166,23 +227,24 @@ final class ReloadEngine implements AutoCloseable {
     }
     private static void scan(Path root, Set<Path> files) throws IOException {
         if (Files.exists(root)) try (var paths = Files.walk(root.toRealPath())) {
-            paths.filter(Files::isRegularFile).forEach(files::add);
+            paths.filter(Files::isRegularFile).forEach(path -> {
+                BuildBudget.checkpoint();
+                files.add(path);
+            });
         }
     }
     private Map<Path, Stamp> resourceInputs(VanillaAssets assets, Settings settings) throws IOException {
         Set<Path> files = new HashSet<>();
         scan(data.resolve("images"), files);
-        Path resources = settings.resourceRoot();
-        if (Files.isDirectory(resources)) try (var paths = Files.walk(resources)) {
-            paths.filter(p -> p.toString().endsWith(".yml") && Files.isRegularFile(p)).forEach(files::add);
-        }
         files.addAll(assets.craftEngine.dependencies());
         return stamps(files);
     }
     private static Map<Path, Stamp> stamps(Set<Path> files) throws IOException {
         Map<Path, Stamp> result = new HashMap<>();
-        for (Path file : files) if (Files.isRegularFile(file))
+        for (Path file : files) if (Files.exists(file)) {
+            BuildBudget.checkpoint();
             result.put(file, new Stamp(Files.size(file), Files.getLastModifiedTime(file)));
+        }
         return Map.copyOf(result);
     }
     CompletableFuture<Void> export(Snapshot snapshot) {

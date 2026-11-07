@@ -33,10 +33,6 @@ final class ActionTokens {
     void publish(UUID player, Page page) { pages.put(player, page); }
     void remove(UUID player) { pages.remove(player); }
     void clear() { pages.clear(); }
-    Runnable take(UUID player, String identifier) {
-        Consumer<DialogResponseView> action = takeResponse(player, identifier);
-        return action == null ? null : () -> action.accept(null);
-    }
     Consumer<DialogResponseView> takeResponse(UUID player, String identifier) {
         String[] parts = identifier.split("/", -1);
         Page page = pages.get(player);

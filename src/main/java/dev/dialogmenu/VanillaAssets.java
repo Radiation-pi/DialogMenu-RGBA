@@ -2,7 +2,6 @@ package dev.dialogmenu;
 
 import java.awt.image.BufferedImage;
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
 import java.util.List;
@@ -14,7 +13,6 @@ final class VanillaAssets {
     record Glyph(byte[] alpha, int width, int height, float advance) {}
     private final Map<Integer, Glyph> glyphs = new HashMap<>();
     private final Map<String, BufferedImage> icons = new HashMap<>();
-    private final Properties materials = new Properties();
     private final Path images;
     private final Map<String, BufferedImage> custom = new HashMap<>();
     final CraftEngineAssets craftEngine;
@@ -24,13 +22,18 @@ final class VanillaAssets {
     }
 
     VanillaAssets(Path images, Path craftEngineResources) throws IOException {
+        this(images, craftEngineResources, List.of());
+    }
+
+    VanillaAssets(Path images, Path craftEngineResources, List<String> definitions) throws IOException {
         this.images = images.toAbsolutePath().normalize();
         Files.createDirectories(this.images);
-        craftEngine = new CraftEngineAssets(craftEngineResources);
+        craftEngine = new CraftEngineAssets(craftEngineResources, definitions);
         try (var input = new DataInputStream(new GZIPInputStream(resource("glyphs.bin.gz")))) {
             if (input.readInt() != 0x534D4631) throw new IOException("Unknown glyph source format");
             int count = input.readInt();
             for (int i = 0; i < count; i++) {
+                if (i % 128 == 0) BuildBudget.checkpoint();
                 int cp = input.readInt(), w = input.readUnsignedShort(), h = input.readUnsignedShort();
                 float advance = input.readFloat();
                 byte[] alpha = input.readNBytes(w * h);
@@ -40,13 +43,11 @@ final class VanillaAssets {
         }
         try (var input = new ZipInputStream(resource("vanilla-icons.zip"))) {
             for (ZipEntry entry; (entry = input.getNextEntry()) != null;) {
+                BuildBudget.checkpoint();
                 byte[] bytes = input.readAllBytes();
                 BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
                 if (image != null) icons.put(entry.getName().replaceFirst("\\.png$", ""), image);
             }
-        }
-        try (var input = new InputStreamReader(resource("icons.properties"), StandardCharsets.UTF_8)) {
-            materials.load(input);
         }
     }
 
@@ -56,12 +57,7 @@ final class VanillaAssets {
         return input;
     }
 
-    BufferedImage icon(String material) {
-        String key = material.toLowerCase(Locale.ROOT).replaceFirst("^minecraft:", "");
-        return icons.get(materials.getProperty(key, ""));
-    }
-
-    BufferedImage image(String source) throws IOException {
+    synchronized BufferedImage image(String source) throws IOException {
         if (source.startsWith("minecraft:")) {
             return vanillaImage(source);
         }
@@ -89,7 +85,11 @@ final class VanillaAssets {
     }
 
     CraftEngineAssets.Reference reference(String source) throws IOException {
-        if (!source.startsWith("minecraft:")) return craftEngine.reference(source);
+        return reference(source, null);
+    }
+
+    CraftEngineAssets.Reference reference(String source, MenuModel.TextureRegion atlas) throws IOException {
+        if (!source.startsWith("minecraft:")) return craftEngine.reference(source, atlas);
         if (source.startsWith("minecraft:preview/"))
             throw new IOException("预览合成图不是原版纹理路径，请使用已有CE方块图标：" + source);
         String texture = source.endsWith(".png") ? source : source + ".png";
@@ -102,11 +102,6 @@ final class VanillaAssets {
         return image;
     }
 
-    void clearImages() { custom.clear(); }
-    Map<String, BufferedImage> imageSnapshot() { return new HashMap<>(custom); }
-    void restoreImages(Map<String, BufferedImage> snapshot) { custom.clear(); custom.putAll(snapshot); }
-    int glyphCount() { return glyphs.size(); }
-    int iconCount() { return materials.size(); }
     Glyph glyph(int codepoint) { return glyphs.get(codepoint); }
 
     List<String> sources() throws IOException {
@@ -118,13 +113,6 @@ final class VanillaAssets {
         }
         result.addAll(craftEngine.sources());
         return List.copyOf(result);
-    }
-
-    record Letter(int code, int color, boolean bold) {}
-    static List<Letter> letters(String text, int initial) {
-        return MenuText.glyphs(MenuText.parse(text)).stream().map(glyph ->
-            new Letter(glyph.code(), glyph.style().color() == null ? initial
-                : (initial & 0xFF000000) | glyph.style().color().value(), glyph.bold())).toList();
     }
 
 }

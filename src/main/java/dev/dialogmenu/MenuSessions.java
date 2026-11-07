@@ -404,6 +404,15 @@ final class MenuSessions {
     }
     boolean active(Player player) { return sessions.containsKey(player.getUniqueId()); }
     void clear() { clear(Reason.RELOAD); }
+    void clear(Set<String> menus) {
+        List<Session> removed = new ArrayList<>();
+        sessions.entrySet().removeIf(entry -> {
+            if (!menus.contains(entry.getValue().document.menu().id())) return false;
+            removed.add(entry.getValue());
+            return true;
+        });
+        for (Session session : removed) notifyClosed(session, Reason.RELOAD);
+    }
     void clear(Reason reason) {
         var previous = List.copyOf(sessions.values());
         sessions.clear();

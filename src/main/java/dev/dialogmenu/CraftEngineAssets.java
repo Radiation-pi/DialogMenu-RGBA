@@ -3,7 +3,6 @@ package dev.dialogmenu;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.*;
@@ -16,6 +15,7 @@ import static dev.dialogmenu.MenuModel.TextureRegion;
 /**
  * 读取 CraftEngine 源资源，不依赖其 Java API，也不复制生成包。
  * YAML 中支持以下资源地址：
+ * craftengine:<pack-directory>/<path-after-textures>[.png]
  * craftengine:item/<namespace:item-id>
  * craftengine:image/<namespace:image-id>
  * craftengine:icon/<namespace:image-id>
@@ -24,6 +24,7 @@ import static dev.dialogmenu.MenuModel.TextureRegion;
 final class CraftEngineAssets {
     private final Path resources;
     private final Map<String, Path> itemTextures = new LinkedHashMap<>();
+    private final Map<String, String> itemModels = new LinkedHashMap<>();
     private final Map<String, Path> registeredImages = new LinkedHashMap<>();
     private final Map<String, String> registeredFiles = new LinkedHashMap<>();
     private final Map<String, ConfigurationSection> imageDefinitions = new LinkedHashMap<>();
@@ -31,31 +32,43 @@ final class CraftEngineAssets {
     private final Map<Path, BufferedImage> textures = new HashMap<>();
     private final Map<String, Reference> references = new HashMap<>();
     private final Set<Path> referencedTextures = new HashSet<>();
+    private final List<String> definitionFiles;
+    private boolean definitionsLoaded;
+    private final Map<String, Path> directPaths = new HashMap<>();
+    private record Selection(String source, TextureRegion region) {}
+    private final Map<Selection, Reference> selections = new HashMap<>();
 
     CraftEngineAssets(Path resources) throws IOException {
-        this.resources = resources == null ? null : resources.toAbsolutePath().normalize();
-        if (this.resources != null && Files.isDirectory(this.resources)) discover();
+        this(resources, List.of());
     }
 
-    Set<String> sources() {
+    CraftEngineAssets(Path resources, List<String> definitionFiles) throws IOException {
+        this.resources = resources == null ? null : resources.toAbsolutePath().normalize();
+        this.definitionFiles = List.copyOf(definitionFiles);
+    }
+
+    synchronized Set<String> sources() throws IOException {
+        definitions();
         var result = new TreeSet<String>();
         for (String id : registeredImages.keySet()) result.add("craftengine:image/" + id);
-        for (String id : itemTextures.keySet()) result.add("craftengine:item/" + id);
+        for (String id : itemModels.keySet()) result.add("craftengine:item/" + id);
+        for (String source : directPaths.keySet()) result.add(source);
         return result;
     }
 
-    BufferedImage image(String source) throws IOException {
+    synchronized BufferedImage image(String source) throws IOException {
         String key = source.toLowerCase(Locale.ROOT);
         if (key.startsWith("craftengine:item/")) {
             String item = source.substring("craftengine:item/".length());
-            Path texture = itemTextures.get(item);
+            Path texture = itemTexture(item);
             if (texture == null) throw new IOException("Unknown CraftEngine item icon: " + item);
             return load(texture, source);
         }
         if (key.startsWith("craftengine:image/") || key.startsWith("craftengine:icon/")) {
+            definitions();
             String id = source.substring(source.indexOf('/') + 1);
             if (atlasReference(source)) return reference(source).image();
-            Path texture = registeredImages.get(id);
+            Path texture = imageTexture(id);
             if (texture == null && !registeredImages.containsKey(id))
                 throw new IOException("Unknown CraftEngine image: " + id);
             if (texture == null) return null;
@@ -67,47 +80,103 @@ final class CraftEngineAssets {
             if (path == null) throw new IOException("Unknown CraftEngine texture: " + texture);
             return load(path, source);
         }
-        throw new IOException("Unknown CraftEngine source: " + source);
+        BufferedImage image = readTexture(directPath(source));
+        if (image.getWidth() > 256 || image.getHeight() > 256)
+            throw new IOException("CE整图超出256像素，请用atlas选择图集格子：" + source);
+        return image;
     }
 
-    int itemCount() { return itemTextures.size(); }
-    int imageCount() { return registeredImages.size(); }
-    boolean hasItem(String id) { return itemTextures.containsKey(id); }
-    Set<String> imageIds() { return Collections.unmodifiableSet(registeredImages.keySet()); }
-    String imageFile(String id) { return registeredFiles.get(id); }
-    Set<Path> dependencies() {
-        Set<Path> result = new HashSet<>(registeredImages.values());
-        result.addAll(itemTextures.values());
-        result.addAll(referencedTextures);
-        result.remove(null);
-        return result;
+    synchronized String imageFile(String id) throws IOException { definitions(); return registeredFiles.get(id); }
+    synchronized Set<Path> dependencies() {
+        return Set.copyOf(referencedTextures);
     }
 
-    boolean atlasReference(String source) {
+    synchronized boolean atlasReference(String source) throws IOException {
         if (!source.startsWith("craftengine:image/") && !source.startsWith("craftengine:icon/")) return false;
+        definitions();
         ConfigurationSection definition = imageDefinitions.get(source.substring(source.indexOf('/') + 1));
         return definition != null && definition.contains("ref");
     }
 
     record Reference(String texture, BufferedImage image, TextureRegion region) {}
-    Reference reference(String source) throws IOException {
+    synchronized Reference reference(String source) throws IOException {
         Reference cached = references.get(source);
         if (cached != null) return cached;
         Path path;
         if (source.startsWith("craftengine:texture/"))
             path = texturePath(source.substring("craftengine:texture/".length()));
         else if (source.startsWith("craftengine:item/"))
-            path = itemTextures.get(source.substring("craftengine:item/".length()));
+            path = itemTexture(source.substring("craftengine:item/".length()));
         else if (source.startsWith("craftengine:image/") || source.startsWith("craftengine:icon/")) {
             Reference result = imageReference(source.substring(source.indexOf('/') + 1));
             references.put(source, result);
             return result;
         }
-        else throw new IOException("reuse-texture须使用craftengine:texture/item/image来源");
+        else path = directPath(source);
         if (path == null) throw new IOException("CE中找不到纹理：" + source);
         Reference result = textureReference(path, null);
         references.put(source, result);
         return result;
+    }
+
+    synchronized Reference reference(String source, TextureRegion region) throws IOException {
+        if (region == null) return reference(source);
+        Selection selection = new Selection(source, region);
+        Reference cached = selections.get(selection);
+        if (cached == null) {
+            cached = textureReference(directPath(source), region);
+            selections.put(selection, cached);
+        }
+        return cached;
+    }
+
+    private Path directPath(String source) throws IOException {
+        Path cached = directPaths.get(source);
+        if (cached != null) return cached;
+        if (resources == null || !Files.isDirectory(resources))
+            throw new IOException("CraftEngine资源目录不存在：" + resources);
+        if (!source.startsWith("craftengine:")) throw new IOException("非法CE路径：" + source);
+        String value = source.substring("craftengine:".length());
+        int slash = value.indexOf('/');
+        if (slash <= 0 || value.indexOf(':') >= 0 || value.indexOf('\\') >= 0)
+            throw new IOException("CE路径须为craftengine:资源包目录/textures后路径：" + source);
+        String packName = value.substring(0, slash), relative = value.substring(slash + 1);
+        if (packName.equals(".") || packName.equals("..") || relative.isBlank()
+            || Arrays.stream(relative.split("/", -1)).anyMatch(p -> p.isBlank() || p.equals(".") || p.equals("..")))
+            throw new IOException("CE路径不能越出资源包：" + source);
+        if (!relative.endsWith(".png")) relative += ".png";
+        Path pack = resources.resolve(packName), assets = pack.resolve("resourcepack/assets");
+        if (!Files.isDirectory(assets)) throw new IOException("CE资源包assets目录不存在：" + source);
+        inside(resources, assets);
+        referencedTextures.add(assets);
+        List<Path> matches = new ArrayList<>();
+        try (var namespaces = Files.list(assets)) {
+            for (Path namespace : namespaces.filter(Files::isDirectory).sorted().toList()) {
+                BuildBudget.checkpoint();
+                Path candidate = namespace.resolve("textures").resolve(relative);
+                Path parent = candidate.getParent();
+                while (!Files.exists(parent) && !parent.equals(namespace)) parent = parent.getParent();
+                inside(pack, parent);
+                referencedTextures.add(parent);
+                if (Files.isRegularFile(candidate)) {
+                    inside(pack, candidate);
+                    matches.add(candidate);
+                }
+            }
+        }
+        if (matches.size() != 1)
+            throw new IOException(matches.isEmpty() ? "CE中找不到PNG：" + source
+                : "CE路径命中多个assets命名空间，请消除同名路径：" + source);
+        Path path = matches.getFirst();
+        referencedTextures.add(path);
+        directPaths.put(source, path);
+        return path;
+    }
+
+    private static void inside(Path root, Path candidate) throws IOException {
+        if (!candidate.normalize().startsWith(root.normalize())
+            || !candidate.toRealPath().startsWith(root.toRealPath()))
+            throw new IOException("CE文件不能越出资源目录：" + candidate);
     }
 
     private Reference textureReference(Path path, TextureRegion region) throws IOException {
@@ -122,7 +191,8 @@ final class CraftEngineAssets {
             int width = image.getWidth() / region.columns(), height = image.getHeight() / region.rows();
             if (width > 256 || height > 256) throw new IOException("CE图集单格超出256像素：" + key);
             image = image.getSubimage(region.column() * width, region.row() * height, width, height);
-        }
+        } else if (image.getWidth() > 256 || image.getHeight() > 256)
+            throw new IOException("CE整图超出256像素，请用atlas选择图集格子：" + key);
         return new Reference(key, image, region);
     }
 
@@ -131,7 +201,7 @@ final class CraftEngineAssets {
         if (definition == null) throw new IOException("Unknown CraftEngine image: " + id);
         String ref = definition.getString("ref", "");
         if (ref.isBlank()) {
-            Path path = registeredImages.get(id);
+            Path path = imageTexture(id);
             if (path == null) throw new IOException("CE中找不到纹理：" + id);
             return textureReference(path, null);
         }
@@ -167,47 +237,77 @@ final class CraftEngineAssets {
         }
         if (rows <= 0 || columns <= 0 || row < 0 || row >= rows || column < 0 || column >= columns)
             throw new IOException("CE图集格子越界：" + id);
-        Path path = registeredImages.get(target);
+        Path path = imageTexture(target);
         if (path == null) throw new IOException("CE中找不到图集：" + target);
         return textureReference(path, new TextureRegion(columns, rows, column, row));
     }
 
-    private void discover() throws IOException {
-        try (Stream<Path> files = Files.walk(resources)) {
-            for (Path file : files.filter(p -> p.toString().endsWith(".yml"))
-                    .filter(p -> p.toString().contains(File.separator + "configuration" + File.separator))
-                    .sorted().toList()) {
-                YamlConfiguration yaml = new YamlConfiguration();
-                try {
-                    yaml.load(file.toFile());
-                } catch (Exception error) {
-                    throw new IOException("Cannot read CraftEngine YAML: " + file, error);
+    private void definitions() throws IOException {
+        if (definitionsLoaded) return;
+        for (String name : definitionFiles) {
+            if (resources == null) throw new IOException("未配置CraftEngine资源目录");
+            Path file = resources.resolve(name).normalize();
+            inside(resources, file);
+            referencedTextures.add(file);
+            BuildBudget.checkpoint();
+            YamlConfiguration yaml = new YamlConfiguration();
+            try {
+                yaml.load(file.toFile());
+            } catch (Exception error) {
+                throw new IOException("Cannot read CraftEngine YAML: " + file, error);
+            }
+            ConfigurationSection items = yaml.getConfigurationSection("items");
+            if (items != null) for (String id : items.getKeys(false)) {
+                BuildBudget.checkpoint();
+                ConfigurationSection item = items.getConfigurationSection(id);
+                if (item == null) continue;
+                String model = item.getString("model.path", "");
+                if (model.isBlank()) continue;
+                itemModels.putIfAbsent(id, model);
+            }
+            ConfigurationSection images = yaml.getConfigurationSection("images");
+            if (images != null) for (String id : images.getKeys(false)) {
+                BuildBudget.checkpoint();
+                ConfigurationSection image = images.getConfigurationSection(id);
+                if (image == null) continue;
+                imageDefinitions.putIfAbsent(id, image);
+                String fileRef = image.getString("file", "");
+                if (fileRef.isBlank()) {
+                    if (image.contains("ref")) registeredImages.putIfAbsent(id, null);
+                    continue;
                 }
-                ConfigurationSection items = yaml.getConfigurationSection("items");
-                if (items != null) for (String id : items.getKeys(false)) {
-                    ConfigurationSection item = items.getConfigurationSection(id);
-                    if (item == null) continue;
-                    String model = item.getString("model.path", "");
-                    if (model.isBlank()) continue;
-                    Path texture = texturePath(model, id);
-                    if (texture != null) itemTextures.putIfAbsent(id, texture);
-                }
-                ConfigurationSection images = yaml.getConfigurationSection("images");
-                if (images != null) for (String id : images.getKeys(false)) {
-                    ConfigurationSection image = images.getConfigurationSection(id);
-                    if (image == null) continue;
-                    imageDefinitions.putIfAbsent(id, image);
-                    String fileRef = image.getString("file", "");
-                    if (fileRef.isBlank()) {
-                        if (image.contains("ref")) registeredImages.putIfAbsent(id, null);
-                        continue;
-                    }
-                    Path texture = texturePath(fileRef);
-                    registeredImages.putIfAbsent(id, texture);
-                    registeredFiles.putIfAbsent(id, fileRef);
-                }
+                registeredImages.putIfAbsent(id, null);
+                registeredFiles.putIfAbsent(id, fileRef);
             }
         }
+        definitionsLoaded = true;
+    }
+
+    private Path itemTexture(String id) throws IOException {
+        definitions();
+        if (!itemModels.containsKey(id)) throw legacyMissing(id);
+        Path path = itemTextures.get(id);
+        if (path == null) {
+            path = texturePath(itemModels.get(id), id);
+            if (path != null) itemTextures.put(id, path);
+        }
+        return path;
+    }
+
+    private Path imageTexture(String id) throws IOException {
+        definitions();
+        if (!imageDefinitions.containsKey(id)) throw legacyMissing(id);
+        Path path = registeredImages.get(id);
+        if (path == null && registeredFiles.containsKey(id)) {
+            path = texturePath(registeredFiles.get(id));
+            if (path != null) registeredImages.put(id, path);
+        }
+        return path;
+    }
+
+    private IOException legacyMissing(String id) {
+        return new IOException("旧CE ID未找到：" + id
+            + "；请在craftengine-definitions列出其定义文件，或改用craftengine:资源包目录/纹理路径");
     }
 
     private Path texturePath(String model) throws IOException {
@@ -251,7 +351,10 @@ final class CraftEngineAssets {
                     Path candidate = (kind.isBlank() ? base : base.resolve(kind))
                         .resolve(path + ".png").normalize();
                     if (candidate.startsWith(pack.resolve("resourcepack").normalize())
-                        && Files.isRegularFile(candidate)) return candidate;
+                        && Files.isRegularFile(candidate)) {
+                        inside(resources, candidate);
+                        return candidate;
+                    }
                 }
             }
         }

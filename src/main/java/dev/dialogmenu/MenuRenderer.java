@@ -17,15 +17,13 @@ import static dev.dialogmenu.MenuModel.*;
 /** 每个图形独立生成精灵，合成图仅用于离线预览。 */
 final class MenuRenderer {
     final VanillaAssets assets;
-    final boolean shader;
     private record Graphic(String id, String type, double x, double y, double sx, double sy, double width,
                            double height, int argb, String source, double thickness, double rotation,
-                           boolean reuse, boolean interactive, int canvasWidth, int canvasHeight,
+                           boolean reuse, TextureRegion atlas, boolean interactive, int canvasWidth, int canvasHeight,
                            int logicalHeight, double zoom) {}
     private final Map<Graphic, Sprite> runtimeSprites = new LinkedHashMap<>(16, .75f, true);
     private long cachedPixels;
-    MenuRenderer(VanillaAssets assets) { this(assets, RenderingEdition.shader()); }
-    MenuRenderer(VanillaAssets assets, boolean shader) { this.assets = assets; this.shader = shader; }
+    MenuRenderer(VanillaAssets assets) { this.assets = assets; }
 
     Rendered draw(Menu menu, Context context, int width, int maxPixels) throws IOException {
         return draw(menu, context, width, maxPixels, true);
@@ -50,7 +48,7 @@ final class MenuRenderer {
                 continue;
             }
             Graphic key = new Graphic(n.id(), n.type(), n.x(), n.y(), n.scaleX(), n.scaleY(), n.width(),
-                n.height(), n.argb(), n.source(), n.thickness(), n.rotation(), n.reuseTexture(),
+                n.height(), n.argb(), n.source(), n.thickness(), n.rotation(), n.reuseTexture(), n.atlas(),
                 n.interaction() != null, width, height, menu.height(), zoom);
             if (!preview) {
                 Sprite cached = runtimeSprites.get(key);
@@ -68,8 +66,8 @@ final class MenuRenderer {
             Rectangle bounds = new Rectangle(left, top,
                 (int) Math.ceil(box.getMaxX() - 1e-7) - left, (int) Math.ceil(box.getMaxY() - 1e-7) - top);
             BufferedImage shaderSource = null;
-            if (shader && n.type().equals("image") && n.rotation() == 0 && n.argb() >>> 24 == 255
-                && !n.source().startsWith("minecraft:") && !n.reuseTexture()
+            if (n.type().equals("image") && n.rotation() == 0 && n.argb() >>> 24 == 255
+                && !n.source().startsWith("minecraft:") && !n.reuseTexture() && n.atlas() == null
                 && !assets.craftEngine.atlasReference(n.source())) {
                 BufferedImage source = assets.image(n.source());
                 int sw = Math.max(1, (int) Math.round(n.width() * n.scaleX() * zoom));
@@ -99,8 +97,9 @@ final class MenuRenderer {
                 if (root != null) root.drawImage(layer, bounds.x, bounds.y, null);
                 continue;
             }
-            if (n.source().startsWith("minecraft:") || n.reuseTexture() || assets.craftEngine.atlasReference(n.source())) {
-                var reference = assets.reference(n.source());
+            if (n.source().startsWith("minecraft:") || n.reuseTexture() || n.atlas() != null
+                || assets.craftEngine.atlasReference(n.source())) {
+                var reference = assets.reference(n.source(), n.atlas());
                 if (n.rotation() != 0 || n.argb() >>> 24 != 255 || !bounds.equals(unclipped)
                     || Math.abs(n.width() * n.scaleX() / (n.height() * n.scaleY())
                         - reference.image().getWidth() / (double) reference.image().getHeight()) > 1e-7)

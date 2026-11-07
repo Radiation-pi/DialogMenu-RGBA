@@ -11,7 +11,7 @@ import java.util.*;
 import javax.imageio.ImageIO;
 import static dev.dialogmenu.MenuModel.*;
 
-/** 按行生成稀疏图形和 Unicode 字形，保留绝对定位兼容路径。 */
+/** 按需生成 RGBA 字形和图形回退资源。 */
 final class FontPack {
     record Glyph(int code, int top, int height, int advance, String texture, BufferedImage image,
                  TextureRegion textureRegion) {
@@ -22,19 +22,13 @@ final class FontPack {
     record TextAtlas(int sourceHeight, List<String> chars, String texture, BufferedImage image) {}
     private record TextCell(int height, int width) {}
     private final Map<String, Glyph> sprites = new LinkedHashMap<>();
-    private final Map<Integer, Integer> advances = new TreeMap<>();
     private final Map<Integer, int[]> metrics = new HashMap<>();
     private final Map<String, List<TextAtlas>> text = new TreeMap<>();
-    private record TextFont(int top, int size, boolean rows, Set<Integer> characters) {}
+    private record TextFont(int size, Set<Integer> characters) {}
     private final Map<String, TextFont> textFonts = new TreeMap<>();
-    private final TextSlices slices = new TextSlices();
     private final RgbaOffsets rgba = new RgbaOffsets();
     private final RgbaHits rgbaHits = new RgbaHits();
     private final RgbaImages rgbaImages = new RgbaImages();
-    private boolean shader;
-    private Collection<Double> textScales;
-    private final Set<String> wholeGraphics = new HashSet<>();
-    private final Set<String> absoluteRows = new HashSet<>();
     private final Map<BufferedImage, String> imageKeys = new WeakHashMap<>();
     private final Gson json = new Gson();
 
@@ -55,51 +49,36 @@ final class FontPack {
                            Collection<Integer> widths, int maxPixels, String extraCharacters,
                            Collection<Double> textScales, Collection<Double> canvasScales) throws IOException {
         FontPack pack = new FontPack();
-        pack.shader = renderer.shader;
-        String commonCharacters = pack.shader ? RgbaOffsets.commonCharacters() : "";
+        String commonCharacters = RgbaOffsets.commonCharacters();
         Set<Integer> commonCodes = codes(List.of(commonCharacters));
         Set<String> commonFonts = new HashSet<>();
         Map<String, Set<Integer>> dynamicCodes = new HashMap<>();
-        pack.textScales = List.copyOf(textScales);
-        for (var doc : docs) for (Node node : doc.menu().nodes())
-            if (node.reuseTexture() || node.source().startsWith("minecraft:")
-                || renderer.assets.craftEngine.atlasReference(node.source()))
-                pack.wholeGraphics.add(doc.menu().id());
-        for (var doc : docs) if (pack.wholeGraphics.contains(doc.menu().id())) {
-            boolean text = false;
-            for (Node node : doc.menu().nodes()) {
-                if (node.type().equals("text")) text = true;
-                else if (text) pack.absoluteRows.add(doc.menu().id());
-            }
-        }
-        for (var doc : docs.stream().sorted(Comparator.comparing(d -> d.menu().id())).toList()) {
+        for (var doc : docs.stream().sorted(Comparator.comparing(d -> d.menu().id())).toList())
             for (double canvasScale : new TreeSet<>(canvasScales))
             for (int requestedWidth : new TreeSet<>(widths)) {
+                BuildBudget.checkpoint();
                 Context active = CanvasScale.context(MenuTemplate.preview(doc, context), canvasScale);
                 Rendered frame = renderer.draw(doc.menu(), active, requestedWidth, maxPixels);
                 int width = frame.image().getWidth();
-                boolean rows = pack.rows(doc.menu(), frame, active, width);
-                boolean graphicRows = pack.graphicRows(doc.menu(), frame, rows);
-                Map<String, Integer> nativeRows = pack.shader ? RgbaRows.plan(doc.menu(), frame) : Map.of();
+                Map<String, Integer> nativeRows = RgbaRows.plan(doc.menu(), frame);
                 for (Sprite sprite : frame.sprites()) {
+                    BuildBudget.checkpoint();
                     try {
-                        Sprite local = pack.shader ? RgbaRows.relative(sprite, nativeRows.get(sprite.id())) : sprite;
+                        Sprite local = RgbaRows.relative(sprite, nativeRows.get(sprite.id()));
                         Node node = doc.menu().nodes().stream().filter(n -> n.id().equals(sprite.id())).findFirst().orElseThrow();
                         if (pack.shaderImage(local, node.interaction() != null)) {
                             pack.rgbaImages.prepare(local, node.interaction() != null);
                             continue;
                         }
-                        for (Sprite part : CanvasRows.parts(local, graphicRows))
-                            pack.register(CanvasRows.local(part, graphicRows));
+                        for (Sprite part : CanvasRows.parts(local)) pack.register(part);
                     }
                     catch (IOException error) { throw new IOException(doc.menu().id()+"/"+width+": "+error.getMessage(), error); }
                 }
                 for (Node node : frame.textNodes()) {
-                    if (pack.shader) {
-                        pack.rgba.prepare(MenuText.parse(active.expand(node.text())), node.argb());
-                        for (String value : MenuTemplate.textValues(doc, node, active))
-                            pack.rgba.prepare(MenuText.parse(value), node.argb());
-                    }
+                    BuildBudget.checkpoint();
+                    pack.rgba.prepare(MenuText.parse(active.expand(node.text())), node.argb());
+                    for (String value : MenuTemplate.textValues(doc, node, active))
+                        pack.rgba.prepare(MenuText.parse(value), node.argb());
                     boolean dynamic = MenuTemplate.dynamicText(node);
                     Set<Integer> characters = codes(MenuTemplate.textValues(doc, node, active));
                     if (dynamic) characters.addAll(dynamicCodes.computeIfAbsent(
@@ -121,13 +100,12 @@ final class FontPack {
                         for (int line = 0; line < count; line++) {
                             int top = SpriteCanvas.textTop(doc.menu(), node, width, line, size);
                             if (top >= 0 && top + size <= frame.image().getHeight()) {
-                                if (pack.shader && node.interaction() != null)
+                                if (node.interaction() != null)
                                     pack.rgbaHits.prepare(top - nativeRows.get(node.id()) * 9, size);
-                                int offset = rows ? CanvasRows.offset(top) : top;
-                                String name = pack.preparedName(offset, size, rows);
+                                String name = fontName(size);
                                 TextFont font = pack.textFonts.computeIfAbsent(name,
-                                    key -> new TextFont(pack.shader ? 0 : offset, size, rows, new TreeSet<>()));
-                                if (pack.shader && dynamic) {
+                                    key -> new TextFont(size, new TreeSet<>()));
+                                if (dynamic) {
                                     if (!registeredShaderCharacters) font.characters().addAll(characters);
                                     registeredShaderCharacters = true;
                                     if (commonFonts.add(name)) {
@@ -140,10 +118,10 @@ final class FontPack {
                     }
                 }
             }
-        }
         Map<TextCell, Set<Integer>> used = new LinkedHashMap<>();
         Map<String, List<TextCell>> cells = new HashMap<>();
         for (var entry : pack.textFonts.entrySet()) {
+            BuildBudget.checkpoint();
             Map<Integer, Set<Integer>> byHeight = new TreeMap<>();
             for (int cp : entry.getValue().characters())
                 byHeight.computeIfAbsent(pack.metrics.get(cp)[1], h -> new TreeSet<>()).add(cp);
@@ -160,6 +138,7 @@ final class FontPack {
         for (var entry : used.entrySet())
             shared.put(entry.getKey(), pack.characters(entry.getValue(), renderer.assets));
         for (var entry : pack.textFonts.entrySet()) {
+            BuildBudget.checkpoint();
             TextFont font = entry.getValue();
             List<TextAtlas> atlases = new ArrayList<>();
             for (TextCell cell : cells.get(entry.getKey())) for (TextAtlas atlas : shared.get(cell)) {
@@ -178,10 +157,9 @@ final class FontPack {
                     atlas.texture(), atlas.image()));
             }
             pack.text.put(entry.getKey(), List.copyOf(atlases));
-            if (pack.shader) pack.rgbaHits.source(font.size(), atlases);
-            if (font.rows()) pack.slices.prepare(entry.getKey(), font.top(), font.size(), atlases);
+            pack.rgbaHits.source(font.size(), atlases);
         }
-        if (pack.shader) pack.rgbaHits.finish();
+        pack.rgbaHits.finish();
         return pack;
     }
     private static Set<Integer> codes(Collection<String> values) {
@@ -281,7 +259,6 @@ final class FontPack {
             measure(cp, assets);
             byHeight.computeIfAbsent(metrics.get(cp)[1], h -> new ArrayList<>()).add(cp);
         }
-        advances.put(32, 4);
         for (var group : byHeight.entrySet()) {
             int h = group.getKey(), cw = group.getValue().stream().mapToInt(cp -> assets.glyph(cp).width()).max().orElseThrow();
             int columns = Math.min(256 / cw, group.getValue().size()), capacity = columns * (256 / h);
@@ -291,20 +268,19 @@ final class FontPack {
                 BufferedImage image = new BufferedImage(columns * cw, rowCount * h, BufferedImage.TYPE_INT_ARGB);
                 List<String> rows = new ArrayList<>();
                 for (int y = 0; y < rowCount; y++) {
+                    BuildBudget.checkpoint();
                     StringBuilder row = new StringBuilder();
                     for (int x = 0; x < columns; x++) {
                         int index = y * columns + x;
                         if (index >= chunk.size()) { row.append('\0'); continue; }
                         int cp = chunk.get(index);
                         var glyph = assets.glyph(cp);
-                        for (int py = 0; py < h; py++) for (int px = 0; px < (shader ? cw : glyph.width()); px++) {
+                        for (int py = 0; py < h; py++) for (int px = 0; px < cw; px++) {
                             int alpha = px < glyph.width()
                                 ? Byte.toUnsignedInt(glyph.alpha()[py * glyph.width() + px]) : 0;
-                            image.setRGB(x * cw + px, y * h + py, alpha << 24
-                                | (shader ? RgbaOffsets.TEXTURE_RGB : 0xFFFFFF));
+                            image.setRGB(x * cw + px, y * h + py, alpha << 24 | RgbaOffsets.TEXTURE_RGB);
                         }
                         row.appendCodePoint(cp);
-                        advances.put(cp, bitmapAdvance(image, x * cw, y * h, cw, h, 8));
                     }
                     rows.add(row.toString());
                 }
@@ -332,26 +308,17 @@ final class FontPack {
             : (int) (.5 + metric[0] * (size / (float) metric[1])) + 1;
         return advance + (glyph.bold() ? 1 : 0);
     }
-    net.kyori.adventure.key.Key textFont(int top, int size) { return textFont(top, size, true); }
-    net.kyori.adventure.key.Key textFont(int top, int size, boolean rows) {
-        String name = preparedName(rows ? CanvasRows.offset(top) : top, size, rows);
+    net.kyori.adventure.key.Key textFont(int size) {
+        String name = fontName(size);
         if (!textFonts.containsKey(name))
             throw new IllegalArgumentException("文字位置已变化，请重新生成字体资源：" + name);
         return net.kyori.adventure.key.Key.key("dialogmenu", name);
     }
-    net.kyori.adventure.key.Key textFont(int top, int size, boolean rows,
-                                       net.kyori.adventure.text.Component value) {
-        var key = textFont(top, size, rows);
+    net.kyori.adventure.key.Key textFont(int size, net.kyori.adventure.text.Component value) {
+        var key = textFont(size);
         for (int cp : codes(value)) if (!textFonts.get(key.value()).characters().contains(cp))
             throw new IllegalArgumentException("文字已变化，请重新生成字体资源：U+" + Integer.toHexString(cp));
         return key;
-    }
-    TextSlices.Part textPart(int top, int size, int part, int code) {
-        return slices.part(fontName(CanvasRows.offset(top), size, true), part, code);
-    }
-    boolean rows(Menu menu, Rendered frame, Context context, int width) {
-        return !shader && !absoluteRows.contains(menu.id())
-            && CanvasRows.enabled(menu, frame, context, width, textScales);
     }
     net.kyori.adventure.text.Component rgbaText(net.kyori.adventure.text.Component text, int fallback, int top) {
         return rgba.encode(text, fallback, top);
@@ -359,15 +326,10 @@ final class FontPack {
     net.kyori.adventure.text.Component rgbaHit(int top, int size, net.kyori.adventure.text.Component text) {
         return rgbaHits.text(top, size, text, this);
     }
-    boolean shader() { return shader; }
     RgbaImages rgbaImages() { return rgbaImages; }
     boolean shaderImage(Sprite sprite, boolean interactive) {
-        return shader && RgbaImages.eligible(sprite) && (!interactive || RgbaImages.exactHits(sprite));
+        return RgbaImages.eligible(sprite) && (!interactive || RgbaImages.exactHits(sprite));
     }
-    boolean graphicRows(Menu menu, Rendered frame, boolean rows) {
-        return rows && !wholeGraphics.contains(menu.id()) && CanvasRows.graphics(frame);
-    }
-    int originalTextCode(String font, int code) { return slices.original(font, code); }
     void write(Path target) throws IOException {
         Path base = target.resolve("assets/dialogmenu");
         if (Files.exists(base)) try (var paths = Files.walk(base)) {
@@ -376,20 +338,22 @@ final class FontPack {
         Files.createDirectories(base.resolve("font"));
         Files.createDirectories(base.resolve("textures/generated"));
         Set<String> written = new HashSet<>();
-        for (var entry : textFonts.entrySet()) if (!entry.getValue().rows())
-            for (TextAtlas atlas : text.get(entry.getKey())) if (written.add(atlas.texture()))
-                ImageIO.write(atlas.image(), "png", base.resolve("textures/" + atlas.texture()).toFile());
+        for (var entry : textFonts.entrySet())
+            for (TextAtlas atlas : text.get(entry.getKey())) if (written.add(atlas.texture())) {
+                BuildBudget.checkpoint();
+                writePng(atlas.image(), base.resolve("textures/" + atlas.texture()));
+            }
         Map<String, Integer> spaces = new LinkedHashMap<>();
         for (int x = -1024; x <= 1024; x++) spaces.put(SpriteCanvas.move(x), x);
         writeJson(base.resolve("font/space.json"), Map.of("providers", List.of(Map.of("type", "space", "advances", spaces))));
         List<Object> graphics = SpriteAtlases.write(sprites.values(), base);
         writeJson(base.resolve("font/sprites.json"), Map.of("providers", graphics));
         for (var entry : textFonts.entrySet()) {
+            BuildBudget.checkpoint();
             TextFont font = entry.getValue();
             List<Object> characters = new ArrayList<>();
-            if (font.rows()) characters.addAll(slices.write(entry.getKey(), base, written));
-            else for (TextAtlas atlas : text.get(entry.getKey()))
-                characters.add(bitmap(atlas.texture(), font.size(), shader ? 0 : 7 - font.top(), atlas.chars()));
+            for (TextAtlas atlas : text.get(entry.getKey()))
+                characters.add(bitmap(atlas.texture(), font.size(), 0, atlas.chars()));
             characters.add(Map.of("type", "space", "advances", Map.of(" ", (int) Math.round(font.size() / 2.0))));
             writeJson(base.resolve("font/" + entry.getKey() + ".json"), Map.of("providers", characters));
         }
@@ -397,30 +361,20 @@ final class FontPack {
         metadata.put("pack", Map.of("description", "DialogMenu whole sprites", "pack_format", 64,
             "supported_formats", Map.of("min_inclusive", 64, "max_inclusive", 97),
             "min_format", List.of(64, 0), "max_format", List.of(97, 1)));
-        if (shader) metadata.put("overlays", RgbaShaders.metadata());
+        metadata.put("overlays", RgbaShaders.metadata());
         writeJson(target.resolve("pack.mcmeta"), metadata);
-        if (shader) {
-            rgbaImages.write(target);
-            rgbaHits.write(target);
-            rgba.write(target);
-        } else {
-            RgbaShaders.remove(target);
-        }
+        rgbaImages.write(target);
+        rgbaHits.write(target);
+        rgba.write(target);
+    }
+    static void writePng(BufferedImage image, Path path) throws IOException {
+        if (!ImageIO.write(image, "png", path.toFile()))
+            throw new IOException("没有PNG编码器：" + path);
     }
     static Object bitmap(String texture, int height, int ascent, List<String> chars) {
         return Map.of("type", "bitmap", "file", texture.contains(":") ? texture : "dialogmenu:" + texture,
             "height", height, "ascent", ascent, "chars", chars);
     }
-    static String fontName(int top, int size) {
-        return fontName(CanvasRows.offset(top), size, true);
-    }
-    private static String fontName(int top, int size, boolean rows) {
-        return (rows ? (top < CanvasRows.HEIGHT ? "text_head_" : "text_shift_") : "text_absolute_")
-            + (rows ? top % CanvasRows.HEIGHT : top) + (size == 8 ? "" : "_" + size);
-    }
-    private String preparedName(int top, int size, boolean rows) {
-        return shader ? "text_rgba_" + size : fontName(top, size, rows);
-    }
+    private static String fontName(int size) { return "text_rgba_" + size; }
     private void writeJson(Path path, Object value) throws IOException { Files.writeString(path, json.toJson(value) + "\n"); }
-    int spriteCount() { return sprites.size(); }
 }

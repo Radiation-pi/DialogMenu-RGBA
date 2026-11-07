@@ -9,8 +9,6 @@ final class RenderingEdition {
 
     private RenderingEdition() {}
 
-    static boolean shader() { return ID.equals("rgba"); }
-
     private static String read() {
         var properties = new Properties();
         try (var input = RenderingEdition.class.getResourceAsStream("/dialogmenu-edition.properties")) {
@@ -20,7 +18,7 @@ final class RenderingEdition {
             throw new IllegalStateException("Cannot read DialogMenu edition", error);
         }
         String edition = properties.getProperty("edition");
-        if (!"native".equals(edition) && !"rgba".equals(edition))
+        if (!"rgba".equals(edition))
             throw new IllegalStateException("Unknown DialogMenu edition: " + edition);
         return edition;
     }

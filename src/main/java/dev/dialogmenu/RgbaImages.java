@@ -5,11 +5,9 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.*;
-import javax.imageio.ImageIO;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.*;
-import net.kyori.adventure.text.format.TextColor;
 import static dev.dialogmenu.MenuModel.*;
 
 /** 共享源 PNG；RGB 携带 9 位宽、9 位高和 5 位有符号行内 Y。 */
@@ -53,13 +51,6 @@ final class RgbaImages {
         Entry entry = images.get(key(sprite));
         if (entry == null) throw new IllegalArgumentException("图片已变化，请重新生成资源包");
         return entry.glyph();
-    }
-
-    Component image(Sprite sprite) {
-        Glyph glyph = glyph(sprite);
-        return Component.text(Character.toString(glyph.code()),
-            TextColor.color(payload(sprite.width(), sprite.height(), sprite.y() % 9)))
-            .font(Key.key("dialogmenu", "images_rgba"));
     }
 
     Component hit(int top, int size, ClickEvent click, HoverEvent<Component> hover) {
@@ -112,8 +103,9 @@ final class RgbaImages {
         List<Object> providers = new ArrayList<>();
         Set<String> written = new HashSet<>();
         for (Entry entry : images.values()) {
+            BuildBudget.checkpoint();
             if (written.add(entry.texture()))
-                ImageIO.write(entry.image(), "png", base.resolve("textures/" + entry.texture()).toFile());
+                FontPack.writePng(entry.image(), base.resolve("textures/" + entry.texture()));
             providers.add(FontPack.bitmap(entry.texture(), 1, -entry.top(),
                 List.of(Character.toString(entry.glyph().code()))));
         }
@@ -122,9 +114,10 @@ final class RgbaImages {
         if (!hits.isEmpty()) {
             BufferedImage pixel = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
             pixel.setRGB(0, 0, 0x01FFFFFF);
-            ImageIO.write(pixel, "png", base.resolve("textures/generated/image_hit.png").toFile());
+            FontPack.writePng(pixel, base.resolve("textures/generated/image_hit.png"));
             List<Object> hitProviders = new ArrayList<>();
             for (var entry : hits.entrySet()) {
+                BuildBudget.checkpoint();
                 Hit hit = entry.getKey();
                 hitProviders.add(FontPack.bitmap("generated/image_hit.png",
                     hit.size(), 7 - hit.top(), List.of(Character.toString(entry.getValue()))));
