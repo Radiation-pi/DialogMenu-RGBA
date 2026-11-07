@@ -6,7 +6,7 @@ DialogMenu 的独立 RGBA 着色器版本。通过共享整字字库、颜色编
 
 ## 中文文档
 
-- [GitHub Wiki](https://github.com/palkane/DialogMenu-RGBA/wiki)：在线文档入口。首次使用需在 GitHub 创建一个首页，才能推送 Wiki Git 仓库。
+- [GitHub Wiki](https://github.com/palkane/DialogMenu-RGBA/wiki)：在线中文文档，包含 18 篇正文、分组导航和可下载示例。
 - [离线手册](docs/index.html)：下载后直接用浏览器打开，支持搜索、目录、前后篇、复制、示例下载和打印。
 - [Wiki 页面源文件](docs/wiki/Home.md)：由离线手册导出，含首页、分组侧栏和 18 篇文档。
 
@@ -117,7 +117,7 @@ python3 scripts/export-wiki.py
 python3 scripts/export-wiki.py --check
 ```
 
-首次在 GitHub 创建 Wiki 首页后，可用 `python3 scripts/publish-wiki.py` 发布这些页面。脚本只推送本项目的 Wiki 仓库，不改旧项目，不强制覆盖历史。
+Wiki 已初始化，可用 `python3 scripts/publish-wiki.py` 发布这些页面。脚本只推送本项目的 Wiki 仓库，不改旧项目，不强制覆盖历史。
 
 ## 发行新版本
 
