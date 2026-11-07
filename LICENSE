@@ -1,0 +1,68 @@
+DialogMenu Free Use, No Sale License
+Version 1.0
+SPDX-License-Identifier: LicenseRef-DialogMenu-No-Sale-1.0
+
+Copyright (c) 2026 palkane and DialogMenu contributors
+
+1. Scope
+
+"Software" means the original DialogMenu code and other original materials
+made available under this License. "Covered Software" means the Software
+and modified versions of it, in source or binary form, including versions
+that incorporate portions of the Software.
+
+Identifiable third-party components, dependencies and assets are not
+relicensed by this License; their respective terms continue to apply.
+This License grants only rights held by the relevant copyright holders.
+Independent plugins that merely use the DialogMenu API are not modified
+versions solely because they use that API.
+
+2. Permissions
+
+Subject to the conditions below, you may use, reproduce, modify and
+distribute the Covered Software without a license fee, for personal,
+non-commercial or commercial purposes.
+
+In particular, use on commercial or monetized servers is permitted.
+Charging for server access, hosting, or in-game goods and services is
+permitted and is not, by itself, a sale of the Covered Software.
+
+3. No sale of the plugin or modified versions
+
+You must not sell, rent, license for a fee, or require payment to obtain
+a copy of the Covered Software. This restriction applies to the original
+plugin and modified versions, whether offered separately or included in
+a paid software bundle. A required donation, paid membership or paid
+early-access arrangement for obtaining the Covered Software is also a
+prohibited charge.
+
+The commercial server activities permitted in section 2 remain allowed,
+but must not be used to disguise a charge for the plugin itself.
+Voluntary donations that do not condition access to the Covered Software
+are permitted.
+
+4. Redistribution
+
+You must distribute Covered Software under this License and include a
+copy of this License and existing copyright notices. You must not replace
+these terms with terms that permit selling the Covered Software.
+Clearly identify modified versions as modified, without claiming they
+are official releases or endorsed by the original authors.
+
+You are not required to publish private modifications or provide source
+code when distributing a binary version.
+
+5. Separate permission and termination
+
+Activities outside these permissions require separate written permission
+from the relevant copyright holders. Your permissions under this License
+terminate if you materially violate its conditions.
+
+6. Disclaimer
+
+THE COVERED SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS FOR
+A PARTICULAR PURPOSE AND NON-INFRINGEMENT. TO THE MAXIMUM EXTENT PERMITTED
+BY APPLICABLE LAW, THE AUTHORS AND COPYRIGHT HOLDERS ARE NOT LIABLE FOR
+ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM THE COVERED SOFTWARE
+OR ITS USE.

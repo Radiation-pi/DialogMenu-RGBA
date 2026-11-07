@@ -40,6 +40,9 @@ processResources {
 
 jar {
     archiveFileName = "DialogMenu-${project.version}.jar"
+    from('LICENSE') {
+        into 'META-INF'
+    }
 }
 
 tasks.withType(AbstractArchiveTask).configureEach {
