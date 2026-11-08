@@ -14,6 +14,7 @@ import com.google.gson.JsonElement;
 final class VanillaAssets {
     record Glyph(byte[] alpha, int width, int height, float advance) {}
     private final Map<Integer, Glyph> glyphs = new HashMap<>();
+    private final String glyphSource;
     private final Map<String, BufferedImage> icons = new HashMap<>();
     private final Path images;
     private final Map<String, BufferedImage> custom = new HashMap<>();
@@ -48,7 +49,10 @@ final class VanillaAssets {
         this.images = images.toAbsolutePath().normalize();
         Files.createDirectories(this.images);
         this.craftEngine = craftEngine;
-        try (var input = new DataInputStream(new GZIPInputStream(resource("glyphs.bin.gz")))) {
+        byte[] source;
+        try (var input = resource("glyphs.bin.gz")) { source = input.readAllBytes(); }
+        glyphSource = SourceFiles.digest(source);
+        try (var input = new DataInputStream(new GZIPInputStream(new ByteArrayInputStream(source)))) {
             if (input.readInt() != 0x534D4631) throw new IOException("Unknown glyph source format");
             int count = input.readInt();
             for (int i = 0; i < count; i++) {
@@ -122,6 +126,7 @@ final class VanillaAssets {
     }
 
     Glyph glyph(int codepoint) { return glyphs.get(codepoint); }
+    String glyphSource() { return glyphSource; }
 
     void verifyInputs() throws IOException { inputs.verify(); craftEngine.verifyInputs(); }
 

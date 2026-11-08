@@ -58,6 +58,11 @@ final class RgbaHits {
         }
     }
 
+    void reuseSources(RgbaHits previous) {
+        previous.byFont.forEach((style, characters) -> byFont.put(style, new HashMap<>(characters)));
+        cells.putAll(previous.cells);
+    }
+
     Component text(int top, int size, Component value, FontPack fonts) {
         return text(top, new TextStyle(size, 1, 1), value, fonts);
     }

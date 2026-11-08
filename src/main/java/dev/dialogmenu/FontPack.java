@@ -8,6 +8,7 @@ import java.nio.*;
 import java.nio.file.*;
 import java.security.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntConsumer;
 import javax.imageio.ImageIO;
 import static dev.dialogmenu.MenuModel.*;
@@ -31,6 +32,8 @@ final class FontPack {
     private record StretchedGlyph(BufferedImage image, int advance) {}
     private final Map<String, TextFont> textFonts = new TreeMap<>();
     private final Map<TextStyle, Map<Integer, StretchedGlyph>> stretchedGlyphs = new HashMap<>();
+    private String glyphSource;
+    private transient boolean reusedGlyphs;
     private final RgbaOffsets rgba = new RgbaOffsets();
     private final RgbaHits rgbaHits = new RgbaHits();
     private final RgbaImages rgbaImages = new RgbaImages();
@@ -73,12 +76,23 @@ final class FontPack {
                            Collection<Integer> widths, int maxPixels, String extraCharacters,
                            Collection<Double> textScales, Collection<Double> canvasScales,
                            Collection<Integer> colors, IntConsumer progress, BuildTasks tasks) throws IOException {
+        return create(docs, renderer, context, widths, maxPixels, extraCharacters, textScales,
+            canvasScales, colors, progress, tasks, null);
+    }
+    static FontPack create(Collection<LayoutStore.Document> docs, MenuRenderer renderer, Context context,
+                           Collection<Integer> widths, int maxPixels, String extraCharacters,
+                           Collection<Double> textScales, Collection<Double> canvasScales,
+                           Collection<Integer> colors, IntConsumer progress, BuildTasks tasks,
+                           FontPack previous) throws IOException {
         FontPack pack = new FontPack();
+        pack.glyphSource = renderer.assets.glyphSource();
+        FontPack cached = previous != null && pack.glyphSource.equals(previous.glyphSource) ? previous : null;
+        if (cached != null) pack.metrics.putAll(cached.metrics);
         colors.forEach(pack.rgba::add);
-        String commonCharacters = RgbaOffsets.commonCharacters();
-        Set<Integer> commonCodes = codes(List.of(commonCharacters));
+        Set<Integer> commonCodes = codes(List.of(RgbaOffsets.commonCharacters()));
         Set<String> commonFonts = new HashSet<>();
         Map<String, Set<Integer>> dynamicCodes = new HashMap<>();
+        Map<String, Set<String>> declarations = new HashMap<>();
         List<FrameJob> jobs = new ArrayList<>();
         for (var doc : docs.stream().sorted(Comparator.comparing(d -> d.menu().id())).toList())
             for (double canvasScale : new TreeSet<>(canvasScales))
@@ -114,17 +128,17 @@ final class FontPack {
                 for (Node node : frame.textNodes()) {
                     BuildBudget.checkpoint();
                     pack.rgba.prepare(MenuText.parse(active.expand(node.text())), node.argb());
-                    for (String value : MenuTemplate.textValues(doc, node, active))
+                    List<String> values = MenuTemplate.textValues(doc, node, active);
+                    for (String value : values)
                         pack.rgba.prepare(MenuText.parse(value), node.argb());
                     boolean dynamic = MenuTemplate.dynamicText(node);
-                    Set<Integer> characters = codes(MenuTemplate.textValues(doc, node, active));
-                    if (dynamic) characters.addAll(dynamicCodes.computeIfAbsent(
-                        MenuTemplate.dynamicCharacters(doc, node, extraCharacters), value -> codes(List.of(value))));
+                    Set<Integer> characters = codes(values);
+                    String declaration = dynamic ? MenuTemplate.dynamicCharacters(doc, node, extraCharacters) : "";
                     for (int cp : characters) pack.measure(cp, renderer.assets);
                     for (double scale : textScales) {
                         int size = SpriteCanvas.textSize(doc.menu(), node, width, scale, canvasScale);
                         TextStyle style = new TextStyle(size, node.scaleX(), node.scaleY());
-                        pack.prepareStretch(style, characters, renderer.assets);
+                        pack.prepareStretch(style, characters, renderer.assets, cached);
                         List<net.kyori.adventure.text.Component> lines;
                         try {
                             lines = dynamic ? List.of() : TextFlow.lines(node, MenuText.parse(active.expand(node.text())),
@@ -146,20 +160,37 @@ final class FontPack {
                                 TextFont font = pack.textFonts.computeIfAbsent(name,
                                     key -> new TextFont(style, new TreeSet<>()));
                                 if (dynamic) {
-                                    if (!registeredShaderCharacters) font.characters().addAll(characters);
+                                    if (!registeredShaderCharacters) {
+                                        font.characters().addAll(characters);
+                                        if (declarations.computeIfAbsent(name, key -> new HashSet<>()).add(declaration)) {
+                                            Set<Integer> declared = dynamicCodes.computeIfAbsent(declaration,
+                                                value -> codes(List.of(value)));
+                                            for (int cp : declared) pack.measure(cp, renderer.assets);
+                                            pack.prepareStretch(style, declared, renderer.assets, cached);
+                                            font.characters().addAll(declared);
+                                        }
+                                    }
                                     registeredShaderCharacters = true;
                                     if (commonFonts.add(name)) {
                                         for (int cp : commonCodes) pack.measure(cp, renderer.assets);
-                                        pack.prepareStretch(style, commonCodes, renderer.assets);
+                                        pack.prepareStretch(style, commonCodes, renderer.assets, cached);
                                         font.characters().addAll(commonCodes);
                                     }
-                                } else font.characters().addAll(dynamic ? characters : codes(lines.get(line)));
+                                } else font.characters().addAll(codes(lines.get(line)));
                             }
                         }
                     }
                 }
                 progress.accept(totalFrames == 0 ? 55 : ++completedFrames[0] * 55 / totalFrames);
             });
+        if (cached != null && pack.textFonts.equals(cached.textFonts)) {
+            pack.text.putAll(cached.text);
+            pack.rgbaHits.reuseSources(cached.rgbaHits);
+            pack.rgbaHits.finish();
+            pack.reusedGlyphs = true;
+            progress.accept(85);
+            return pack;
+        }
         Map<TextCell, Set<Integer>> used = new LinkedHashMap<>();
         Map<String, List<TextCell>> cells = new HashMap<>();
         int fontCount = pack.textFonts.size();
@@ -190,6 +221,10 @@ final class FontPack {
                 progress.accept(65 + (totalCells == 0 ? 10 : ++completedCells[0] * 10 / totalCells));
             });
         int[] finishedFonts = {0};
+        // Restored snapshots keep stretched advances, but omit single-glyph source images.
+        for (TextFont font : pack.textFonts.values())
+            if (!font.style().plain())
+                pack.prepareStretch(font.style(), font.characters(), renderer.assets, null, true);
         BuildTasks.ordered(tasks, new ArrayList<>(pack.textFonts.entrySet()), entry -> {
             BuildBudget.checkpoint();
             TextFont font = entry.getValue();
@@ -221,18 +256,41 @@ final class FontPack {
         progress.accept(85);
         return pack;
     }
+    boolean reusedGlyphs() { return reusedGlyphs; }
+
+    /** One validation pass owns this cache; it is not persisted or retained by the snapshot. */
+    static final class Validation {
+        private record Requirement(String font, String characters) {}
+        private final Set<Integer> commonCodes = FontPack.codes(List.of(RgbaOffsets.commonCharacters()));
+        private final Map<String, Set<Integer>> codes = new ConcurrentHashMap<>();
+        private final Map<String, Boolean> common = new ConcurrentHashMap<>();
+        private final Map<Requirement, Boolean> covered = new ConcurrentHashMap<>();
+
+        Validation() throws IOException {}
+
+        boolean covers(String name, TextFont font, String characters) {
+            return common.computeIfAbsent(name, key -> font.characters().containsAll(commonCodes))
+                && covered.computeIfAbsent(new Requirement(name, characters),
+                    key -> font.characters().containsAll(codes.computeIfAbsent(characters,
+                        value -> FontPack.codes(List.of(value)))));
+        }
+    }
     private static Set<Integer> codes(Collection<String> values) {
         Set<Integer> result = new TreeSet<>();
         for (String value : values) result.addAll(codes(MenuText.parse(value)));
         return result;
     }
     void validateDynamic(LayoutStore.Document doc, Context context, int width, String extra) throws IOException {
+        validateDynamic(doc, context, width, extra, new Validation());
+    }
+    void validateDynamic(LayoutStore.Document doc, Context context, int width, String extra,
+                         Validation validation) throws IOException {
         for (Node node : doc.menu().nodes()) if (node.type().equals("text") && MenuTemplate.dynamicText(node)) {
             int size = SpriteCanvas.textSize(doc.menu(), node, width, context.textScale(), context.canvasScale());
-            Set<Integer> required = codes(List.of(RgbaOffsets.commonCharacters(),
-                MenuTemplate.dynamicCharacters(doc, node, extra)));
             var key = textFont(new TextStyle(size, node.scaleX(), node.scaleY()));
-            if (!textFonts.get(key.value()).characters().containsAll(required))
+            TextFont font = textFonts.get(key.value());
+            if (font == null || !validation.covers(key.value(), font,
+                MenuTemplate.dynamicCharacters(doc, node, extra)))
                 throw new IllegalArgumentException("动态文字字符范围发生变化，请执行 /dialogmenu reload all");
         }
     }
@@ -321,12 +379,19 @@ final class FontPack {
             if (glyph.alpha()[y * glyph.width() + x] != 0) used = Math.max(used, x + 1);
         metrics.put(cp, new int[] {used, glyph.height()});
     }
-    private void prepareStretch(TextStyle style, Set<Integer> codes, VanillaAssets assets) throws IOException {
+    private void prepareStretch(TextStyle style, Set<Integer> codes, VanillaAssets assets, FontPack cached)
+        throws IOException {
+        prepareStretch(style, codes, assets, cached, false);
+    }
+    private void prepareStretch(TextStyle style, Set<Integer> codes, VanillaAssets assets, FontPack cached,
+                                boolean requireImages) throws IOException {
         if (style.plain()) return;
-        Map<Integer, StretchedGlyph> prepared = stretchedGlyphs.computeIfAbsent(style, key -> new TreeMap<>());
+        Map<Integer, StretchedGlyph> prepared = stretchedGlyphs.computeIfAbsent(style, key ->
+            new TreeMap<>(cached == null ? Map.of() : cached.stretchedGlyphs.getOrDefault(style, Map.of())));
         for (int cp : codes) {
             BuildBudget.checkpoint();
-            if (prepared.containsKey(cp)) continue;
+            StretchedGlyph old = prepared.get(cp);
+            if (old != null && (!requireImages || old.image() != null)) continue;
             var glyph = assets.glyph(cp);
             long scaledWidth = Math.round(glyph.width() * style.size() * style.x() / glyph.height());
             if (scaledWidth > 256)

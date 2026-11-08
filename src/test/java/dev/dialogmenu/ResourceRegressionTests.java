@@ -67,6 +67,7 @@ public final class ResourceRegressionTests {
         ReloadTests.run(root);
         MenuReloadTests.main(new String[]{root.toString()});
         PersistenceTests.main(new String[]{root.toString()});
+        GlyphCacheTests.main(new String[]{root.toString()});
         Path input = root.resolve("input.bin"); Files.writeString(input, "A");
         var consumed = new SourceFiles(); consumed.read(input); consumed.verify();
         Files.writeString(input, "B");

@@ -294,7 +294,8 @@ final class ReloadEngine implements AutoCloseable {
         var fonts = FontPack.create(catalog, renderer, preview, widths, settings.maxPixels(),
             MenuTemplate.characters(documents.values()), settings.textScales(), CanvasScale.OPTIONS,
             settings.textColors(), step -> progress.update(24 + step * 48 / 85,
-                step < 55 ? "准备菜单图文" : "生成字形图集"), tasks);
+                step < 55 ? "准备菜单图文" : "生成字形图集"), tasks, latest == null ? null : latest.fonts());
+        progress.update(72, fonts.reusedGlyphs() ? "字体依赖未变化，复用字形图集" : "字形图集生成完成");
         validate(catalog, renderer, fonts, settings, progress, 73, 80, tasks);
         assets.verifyInputs();
         if (all && !yamlInputs.equals(yamlInputs())) throw new IOException("构建期间布局或配置发生变化，请重试");
@@ -366,6 +367,7 @@ final class ReloadEngine implements AutoCloseable {
         int total = Math.max(1, catalog.size() * widths.size());
         int[] completed = {0};
         String characters = MenuTemplate.characters(catalog);
+        var dynamic = new FontPack.Validation();
         List<Validation> jobs = new ArrayList<>();
         // 可选倍率在玩家选择时校验，不要求每个布局加载时适配所有倍率。
         for (var doc : catalog) for (int size : widths) {
@@ -383,7 +385,7 @@ final class ReloadEngine implements AutoCloseable {
             var menu = job.doc().menu();
             var frame = new MenuRenderer(renderer.assets).draw(menu, job.context(), job.width(), settings.maxPixels());
             new SpriteCanvas().encode(menu, frame, job.context(), fonts, region -> null);
-            fonts.validateDynamic(job.doc(), job.context(), job.width(), characters);
+            fonts.validateDynamic(job.doc(), job.context(), job.width(), characters, dynamic);
             return null;
         }, ignored -> progress.update(start + ++completed[0] * (end - start) / total, "校验菜单与资源"));
     }
