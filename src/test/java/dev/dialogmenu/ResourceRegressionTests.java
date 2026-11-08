@@ -53,6 +53,7 @@ public final class ResourceRegressionTests {
         Path root = Path.of(System.getProperty("dialogmenu.test.directory"));
         Files.createDirectories(root);
         root = Files.createTempDirectory(root, "run-");
+        checks += DefaultGlyphTests.run(root);
         cacheAndReload(root);
         formats(root);
         configuration(root);
