@@ -27,7 +27,7 @@
 gradle build
 ```
 
-产物：`build/libs/DialogMenu-0.1.8.jar`。
+产物：`build/libs/DialogMenu-0.1.9.jar`。
 
 1. 正常停服，替换原 DialogMenu JAR，保留 `plugins/DialogMenu/` 后启动；不要同时安装多个版本。
 2. 首次安装或更换插件 JAR 后，手动执行 `/dialogmenu reload all` 准备资源。有 CraftEngine 时自动登记生成的资源包；否则用 `/dialogmenu resources` 导出后自行合包分发。合包需保留 `pack.mcmeta` 的 overlays 和 `dialogmenu_*` 目录。

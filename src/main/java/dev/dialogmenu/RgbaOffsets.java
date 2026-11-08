@@ -15,7 +15,9 @@ final class RgbaOffsets {
     static final int TEXTURE_RGB = 0x174783;
     private final Map<Integer, Integer> palette = new LinkedHashMap<>();
 
-    RgbaOffsets() { NamedTextColor.NAMES.values().forEach(color -> add(color.value())); }
+    RgbaOffsets() {
+        NamedTextColor.NAMES.values().stream().mapToInt(NamedTextColor::value).sorted().forEach(this::add);
+    }
 
     static String commonCharacters() throws IOException {
         try (var input = RgbaOffsets.class.getResourceAsStream("/rgba/characters-3500.txt")) {

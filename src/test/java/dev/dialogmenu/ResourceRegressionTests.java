@@ -61,6 +61,7 @@ public final class ResourceRegressionTests {
         preview(root);
         tintAndTextStretch(root);
         ParallelBuildTests.main(new String[]{root.toString()});
+        IndependentBuildTests.main(new String[]{root.toString()});
         BuildTasksTests.main(new String[]{root.toString()});
         BuildBudgetTests.main(new String[0]);
         ReloadTests.run(root);
