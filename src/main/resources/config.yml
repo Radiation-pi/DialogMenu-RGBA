@@ -8,11 +8,17 @@ default-text-scale: 1
 text-colors: []
 # 仅支持 RGBA 渲染，不由配置切换。
 craftengine-auto-reload: true
+# 开启后直接复用编译缓存，加快开服菜单加载和 ce reload，但不会自动重载菜单或资源。
+# 默认关闭：开服恢复缓存后仅 reload yaml；手动 ce reload 时准备现用资源。
+# 两种模式开服都不自动 reload all；无有效缓存时请手动 /dialogmenu reload all。
+reuse-compiled-cache: false
 # 外部管线在最终包发布成功后，通过API或publish命令提交待发布版本。
 resource-pack-external-publisher: false
 craftengine-resources: ../CraftEngine/resources
 # 仅旧image/item ID需要列出定义文件，相对于craftengine-resources；新PNG路径不需要。
 craftengine-definitions: []
-# 单后台线程资源构建的平均CPU预算，1..100；不限制GC或CraftEngine。
+# 独立资源任务并行数，1..8；默认最多4路，并预留1个逻辑处理器。
+# resource-build-threads: 4
+# 每个构建线程的平均CPU预算，1..100；不是进程总CPU上限，不限制GC或CraftEngine。
 resource-build-cpu-percent: 80
 reload-progress-bossbar: true

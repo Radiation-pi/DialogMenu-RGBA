@@ -18,7 +18,7 @@ final class RgbaImages {
     private record Hit(int top, int size) {}
     private final Map<String, Entry> images = new LinkedHashMap<>();
     private final Map<Hit, Integer> hits = new LinkedHashMap<>();
-    private final Map<BufferedImage, String> hashes = new WeakHashMap<>();
+    private final transient Map<BufferedImage, String> hashes = new WeakHashMap<>();
 
     static boolean eligible(Sprite sprite) {
         return sprite.texture() == null && sprite.original() != null
@@ -32,7 +32,7 @@ final class RgbaImages {
         return 0x800000 | (width - 1) << 14 | (height - 1) << 5 | localY & 31;
     }
 
-    private String key(Sprite sprite, int tint) {
+    private synchronized String key(Sprite sprite, int tint) {
         return hashes.computeIfAbsent(sprite.original(), FontPack::hash) + ":" + wholeTop(sprite.y()) + ":" + tint;
     }
     private static int wholeTop(int top) { return top - top % CanvasRows.HEIGHT; }

@@ -27,10 +27,10 @@
 gradle build
 ```
 
-产物：`build/libs/DialogMenu-0.1.7.jar`。
+产物：`build/libs/DialogMenu-0.1.8.jar`。
 
 1. 正常停服，替换原 DialogMenu JAR，保留 `plugins/DialogMenu/` 后启动；不要同时安装多个版本。
-2. 有 CraftEngine 时自动登记生成的资源包；否则用 `/dialogmenu resources` 导出后自行合包分发。合包需保留 `pack.mcmeta` 的 overlays 和 `dialogmenu_*` 目录。
+2. 首次安装或更换插件 JAR 后，手动执行 `/dialogmenu reload all` 准备资源。有 CraftEngine 时自动登记生成的资源包；否则用 `/dialogmenu resources` 导出后自行合包分发。合包需保留 `pack.mcmeta` 的 overlays 和 `dialogmenu_*` 目录。
 3. 客户端接收资源包后，执行 `/dialogmenu open layout-demo`。默认附带两个示例，可在 `plugins/DialogMenu/layouts/` 中修改。
 
 常用命令：
@@ -43,7 +43,8 @@ gradle build
 
 旧版 `backend` 点击区域需迁移到 `frontend` 的文字或图片元素。新增字符、图片或字号后使用 `reload all`，并重新分发资源包。
 
-资源准备使用单后台线程，`resource-build-cpu-percent` 默认 `80`，可设为 `1..100`，表示平均单线程 CPU 预算，不限制 GC 或 CraftEngine。
+资源准备由后台协调线程分阶段并行处理，`resource-build-threads` 可设为 `1..8`，默认最多4路并预留1个逻辑处理器。`resource-build-cpu-percent` 默认 `80`，可设为 `1..100`，表示每个构建线程的平均 CPU 预算，不是进程总上限，不限制 GC 或 CraftEngine。
+编译结果自动保存。默认 `reuse-compiled-cache: false`，开服恢复缓存后只重载 YAML，不重新编译资源；开启后连 YAML 也只复用缓存，CE 重载不再自动准备 Dialog 资源。缓存缺失或不兼容时提示手动 `reload all`，不会自动全量编译。
 玩家发起重载时默认显示阶段百分比 BossBar；`reload-progress-bossbar: false` 可关闭。控制台每5秒记录重载阶段、百分比与耗时，结束反馈菜单数及耗时。
 
 CE 图片可写 `source: craftengine:资源包目录/textures后的路径.png`，`.png` 可省略。旧 image/item/icon ID 需在 `craftengine-definitions` 列出定义文件，不自动扫描全部 CE 配置。

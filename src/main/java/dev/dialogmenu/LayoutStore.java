@@ -10,7 +10,11 @@ import static dev.dialogmenu.MenuModel.*;
 /** 在本地解析菜单布局文档。 */
 final class LayoutStore {
     record FlowRow(String collection, String id, String text) {}
-    record Document(Menu menu, List<String> open, List<String> close, MenuTemplate template, List<FlowRow> flowRows) {
+    record Document(Menu menu, List<String> open, List<String> close, MenuTemplate template, List<FlowRow> flowRows,
+                    String sourceYaml) {
+        Document(Menu menu, List<String> open, List<String> close, MenuTemplate template, List<FlowRow> flowRows) {
+            this(menu, open, close, template, flowRows, null);
+        }
         Document(Menu menu, List<String> open, List<String> close) { this(menu, open, close, null, List.of()); }
         Document(Menu menu, List<String> open, List<String> close, MenuTemplate template) {
             this(menu, open, close, template, List.of());
@@ -52,10 +56,17 @@ final class LayoutStore {
         return path;
     }
     Map<String, Document> load(String name) throws Exception {
+        return loadText(name, Files.readString(file(name)));
+    }
+    static Map<String, Document> loadText(String name, String text) throws Exception {
         var yaml = new YamlConfiguration();
-        yaml.loadFromString(Files.readString(file(name)));
-        return yaml.isConfigurationSection("pages")
+        yaml.loadFromString(text);
+        Map<String, Document> parsed = yaml.isConfigurationSection("pages")
             ? MenuTemplate.load(name, yaml) : Map.of(name, parse(name, yaml));
+        Map<String, Document> result = new LinkedHashMap<>();
+        parsed.forEach((id, doc) -> result.put(id,
+            new Document(doc.menu(), doc.open(), doc.close(), doc.template(), doc.flowRows(), text)));
+        return Collections.unmodifiableMap(result);
     }
     static String source(Document doc) {
         return doc.template() == null ? doc.menu().id() : doc.template().definition.id;

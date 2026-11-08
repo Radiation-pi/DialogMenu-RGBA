@@ -60,6 +60,12 @@ public final class ResourceRegressionTests {
         publication();
         preview(root);
         tintAndTextStretch(root);
+        ParallelBuildTests.main(new String[]{root.toString()});
+        BuildTasksTests.main(new String[]{root.toString()});
+        BuildBudgetTests.main(new String[0]);
+        ReloadTests.run(root);
+        MenuReloadTests.main(new String[]{root.toString()});
+        PersistenceTests.main(new String[]{root.toString()});
         Path input = root.resolve("input.bin"); Files.writeString(input, "A");
         var consumed = new SourceFiles(); consumed.read(input); consumed.verify();
         Files.writeString(input, "B");
@@ -102,6 +108,13 @@ public final class ResourceRegressionTests {
     }
     private static void configuration(Path root) throws Exception {
         Path data = data(root, "invalid-config", "A");
+        for (String threads : List.of("0", "9", "1.5", "bad")) {
+            Files.writeString(data.resolve("config.yml"),
+                "default-layout: probe\nresource-build-threads: " + threads + "\n");
+            try (var engine = new ReloadEngine(data, PREVIEW)) {
+                rejects(() -> engine.prepare().get(), "invalid parallelism accepted");
+            }
+        }
         for (String value : List.of("'#123456'", "[123]", "['bad']")) {
             Files.writeString(data.resolve("config.yml"), "default-layout: probe\ntext-colors: " + value + "\n");
             try (var engine = new ReloadEngine(data, PREVIEW)) {

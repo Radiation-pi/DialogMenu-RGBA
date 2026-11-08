@@ -190,6 +190,7 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
             getConfig().addDefault("text-scales", List.of(1, 1.5, 2));
             getConfig().addDefault("default-text-scale", 1);
             getConfig().addDefault("craftengine-auto-reload", true);
+            getConfig().addDefault("reuse-compiled-cache", false);
             getConfig().addDefault("reload-progress-bossbar", true);
             getConfig().options().copyDefaults(true);
             saveConfig();
@@ -202,15 +203,16 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
             store = new LayoutStore(getDataFolder().toPath().resolve("layouts"));
             File preferenceFile = new File(getDataFolder(), "player-text-scales.yml");
             if (preferenceFile.isFile()) preferences.load(preferenceFile);
-            reloadEngine = new ReloadEngine(getDataFolder().toPath(), PREVIEW);
+            boolean reuseCompiledCache = getConfig().getBoolean("reuse-compiled-cache", false);
+            reloadEngine = new ReloadEngine(getDataFolder().toPath(), PREVIEW, reuseCompiledCache);
             Objects.requireNonNull(getCommand("dialogmenu")).setExecutor(this);
             getCommand("dialogmenu").setTabCompleter(this);
             Bukkit.getPluginManager().registerEvents(this, this);
             editor = new EditorBridge(this);
+            loadStartup();
             if (Bukkit.getPluginManager().isPluginEnabled("CraftEngine"))
                 craftEngineBridge = new CraftEngineBridge(this);
             Bukkit.getServicesManager().register(DialogMenuApi.class, api, this, ServicePriority.Normal);
-            requestReload(Bukkit.getConsoleSender(), new ReloadEngine.Request(ReloadEngine.Mode.ALL, null));
         } catch (Exception error) {
             getLogger().log(java.util.logging.Level.SEVERE, "Dialog initialization failed", error);
             Bukkit.getPluginManager().disablePlugin(this);
@@ -253,7 +255,30 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         public Icon item(int slot) { return null; }
         public boolean permitted(String permission) { return true; }
     };
-    CompletableFuture<ReloadEngine.Result> prepareResources() { return reloadEngine.prepare(ReloadEngine.Mode.RESOURCE); }
+    private void loadStartup() {
+        long start = System.nanoTime();
+        // 先排入串行队列，再监听 CE，启动缓存事件不能抢先准备资源。
+        reloadEngine.startup().whenComplete((startup, error) -> {
+            if (!isEnabled()) return;
+            Bukkit.getScheduler().runTask(this, () -> {
+                if (error != null) {
+                    getLogger().warning("未恢复Dialog编译快照：" + unwrap(error).getMessage()
+                        + "；请执行 /dialogmenu reload all，不自动重建。");
+                    return;
+                }
+                acceptResources(startup.result());
+                if (startup.yamlError() != null)
+                    getLogger().warning("Dialog启动YAML重载失败，保留缓存菜单："
+                        + startup.yamlError().getMessage());
+                getLogger().info("Dialog startup loaded " + startup.result().snapshot().documents().size()
+                    + " layouts in " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start)
+                    + "ms; no resource compilation");
+            });
+        });
+    }
+    CompletableFuture<ReloadEngine.Result> prepareResources(boolean reloading) {
+        return reloadEngine.prepareForCraftEngine(reloading);
+    }
     CompletableFuture<ReloadEngine.Result> prepareAll() { return reloadEngine.prepare(); }
     ReloadEngine.Snapshot loadedResources() { return loaded; }
     DialogMenuApi.PreparedResources preparedResources() {

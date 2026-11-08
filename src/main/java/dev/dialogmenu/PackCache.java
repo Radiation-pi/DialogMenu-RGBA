@@ -23,7 +23,12 @@ final class PackCache {
     }
 
     synchronized void prune() throws IOException {
+        prune(null);
+    }
+
+    synchronized void prune(Path persisted) throws IOException {
         Set<Path> retained = new HashSet<>();
+        if (persisted != null) retained.add(persisted);
         leases.removeIf(lease -> lease.owner().get() == null);
         for (Lease lease : leases) retained.add(lease.path());
         if (!Files.isDirectory(directory)) return;

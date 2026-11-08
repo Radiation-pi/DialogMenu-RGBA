@@ -7,6 +7,8 @@ import java.util.*;
 import java.util.List;
 import java.util.zip.*;
 import javax.imageio.ImageIO;
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 
 /** 读取原版单字和图标源数据，不将整句文字渲染成图。 */
 final class VanillaAssets {
@@ -17,9 +19,21 @@ final class VanillaAssets {
     private final Map<String, BufferedImage> custom = new HashMap<>();
     private final SourceFiles inputs = new SourceFiles();
     final CraftEngineAssets craftEngine;
+    record State(Map<String, BufferedImage> custom, JsonElement craftEngine) {}
+
+    synchronized State state(Gson codec) {
+        synchronized (craftEngine) {
+            return new State(new HashMap<>(custom), codec.toJsonTree(craftEngine));
+        }
+    }
+    static VanillaAssets restore(Path images, State state, Gson codec) throws IOException {
+        VanillaAssets assets = new VanillaAssets(images, codec.fromJson(state.craftEngine(), CraftEngineAssets.class));
+        assets.custom.putAll(state.custom());
+        return assets;
+    }
 
     VanillaAssets(Path images) throws IOException {
-        this(images, null);
+        this(images, (Path) null);
     }
 
     VanillaAssets(Path images, Path craftEngineResources) throws IOException {
@@ -27,9 +41,13 @@ final class VanillaAssets {
     }
 
     VanillaAssets(Path images, Path craftEngineResources, List<String> definitions) throws IOException {
+        this(images, new CraftEngineAssets(craftEngineResources, definitions));
+    }
+
+    private VanillaAssets(Path images, CraftEngineAssets craftEngine) throws IOException {
         this.images = images.toAbsolutePath().normalize();
         Files.createDirectories(this.images);
-        craftEngine = new CraftEngineAssets(craftEngineResources, definitions);
+        this.craftEngine = craftEngine;
         try (var input = new DataInputStream(new GZIPInputStream(resource("glyphs.bin.gz")))) {
             if (input.readInt() != 0x534D4631) throw new IOException("Unknown glyph source format");
             int count = input.readInt();

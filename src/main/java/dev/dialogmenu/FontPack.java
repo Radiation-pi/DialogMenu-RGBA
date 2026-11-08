@@ -22,6 +22,8 @@ final class FontPack {
     }
     record TextAtlas(int sourceHeight, List<String> chars, String texture, BufferedImage image) {}
     private record TextCell(int height, int width) {}
+    private record FrameJob(LayoutStore.Document doc, Context context, int width, double scale) {}
+    private record PreparedFrame(FrameJob job, Rendered frame) {}
     private final Map<String, Glyph> sprites = new LinkedHashMap<>();
     private final Map<Integer, int[]> metrics = new HashMap<>();
     private final Map<String, List<TextAtlas>> text = new TreeMap<>();
@@ -32,8 +34,8 @@ final class FontPack {
     private final RgbaOffsets rgba = new RgbaOffsets();
     private final RgbaHits rgbaHits = new RgbaHits();
     private final RgbaImages rgbaImages = new RgbaImages();
-    private final Map<BufferedImage, String> imageKeys = new WeakHashMap<>();
-    private final Gson json = new Gson();
+    private final transient Map<BufferedImage, String> imageKeys = new WeakHashMap<>();
+    private final transient Gson json = new Gson();
 
     static FontPack create(Collection<LayoutStore.Document> docs, MenuRenderer renderer, Context context,
                            Collection<Integer> widths, int maxPixels) throws IOException {
@@ -64,20 +66,35 @@ final class FontPack {
                            Collection<Integer> widths, int maxPixels, String extraCharacters,
                            Collection<Double> textScales, Collection<Double> canvasScales,
                            Collection<Integer> colors, IntConsumer progress) throws IOException {
+        return create(docs, renderer, context, widths, maxPixels, extraCharacters, textScales,
+            canvasScales, colors, progress, null);
+    }
+    static FontPack create(Collection<LayoutStore.Document> docs, MenuRenderer renderer, Context context,
+                           Collection<Integer> widths, int maxPixels, String extraCharacters,
+                           Collection<Double> textScales, Collection<Double> canvasScales,
+                           Collection<Integer> colors, IntConsumer progress, BuildTasks tasks) throws IOException {
         FontPack pack = new FontPack();
         colors.forEach(pack.rgba::add);
         String commonCharacters = RgbaOffsets.commonCharacters();
         Set<Integer> commonCodes = codes(List.of(commonCharacters));
         Set<String> commonFonts = new HashSet<>();
         Map<String, Set<Integer>> dynamicCodes = new HashMap<>();
-        int totalFrames = docs.size() * new HashSet<>(canvasScales).size() * new HashSet<>(widths).size();
-        int completedFrames = 0;
+        List<FrameJob> jobs = new ArrayList<>();
         for (var doc : docs.stream().sorted(Comparator.comparing(d -> d.menu().id())).toList())
             for (double canvasScale : new TreeSet<>(canvasScales))
-            for (int requestedWidth : new TreeSet<>(widths)) {
+            for (int requestedWidth : new TreeSet<>(widths))
+                jobs.add(new FrameJob(doc, CanvasScale.context(MenuTemplate.preview(doc, context), canvasScale),
+                    requestedWidth, canvasScale));
+        int totalFrames = jobs.size();
+        int[] completedFrames = {0};
+        BuildTasks.ordered(tasks, jobs,
+            job -> new PreparedFrame(job, new MenuRenderer(renderer.assets).draw(
+                job.doc().menu(), job.context(), job.width(), maxPixels)), prepared -> {
                 BuildBudget.checkpoint();
-                Context active = CanvasScale.context(MenuTemplate.preview(doc, context), canvasScale);
-                Rendered frame = renderer.draw(doc.menu(), active, requestedWidth, maxPixels);
+                var doc = prepared.job().doc();
+                Context active = prepared.job().context();
+                double canvasScale = prepared.job().scale();
+                Rendered frame = prepared.frame();
                 int width = frame.image().getWidth();
                 Map<String, Integer> nativeRows = RgbaRows.plan(doc.menu(), frame);
                 for (Sprite sprite : frame.sprites()) {
@@ -141,9 +158,8 @@ final class FontPack {
                         }
                     }
                 }
-                completedFrames++;
-                progress.accept(totalFrames == 0 ? 55 : completedFrames * 55 / totalFrames);
-            }
+                progress.accept(totalFrames == 0 ? 55 : ++completedFrames[0] * 55 / totalFrames);
+            });
         Map<TextCell, Set<Integer>> used = new LinkedHashMap<>();
         Map<String, List<TextCell>> cells = new HashMap<>();
         int fontCount = pack.textFonts.size();
@@ -166,24 +182,19 @@ final class FontPack {
             progress.accept(55 + (fontCount == 0 ? 10 : completedFonts * 10 / fontCount));
         }
         Map<TextCell, List<TextAtlas>> shared = new HashMap<>();
-        int totalCells = used.size(), completedCells = 0;
-        for (var entry : used.entrySet()) {
-            shared.put(entry.getKey(), pack.characters(entry.getValue(), renderer.assets));
-            completedCells++;
-            progress.accept(65 + (totalCells == 0 ? 10 : completedCells * 10 / totalCells));
-        }
-        completedFonts = 0;
-        for (var entry : pack.textFonts.entrySet()) {
+        int totalCells = used.size();
+        int[] completedCells = {0};
+        BuildTasks.ordered(tasks, new ArrayList<>(used.entrySet()),
+            entry -> Map.entry(entry.getKey(), pack.characters(entry.getValue(), renderer.assets)), entry -> {
+                shared.put(entry.getKey(), entry.getValue());
+                progress.accept(65 + (totalCells == 0 ? 10 : ++completedCells[0] * 10 / totalCells));
+            });
+        int[] finishedFonts = {0};
+        BuildTasks.ordered(tasks, new ArrayList<>(pack.textFonts.entrySet()), entry -> {
             BuildBudget.checkpoint();
             TextFont font = entry.getValue();
-            if (!font.style().plain()) {
-                List<TextAtlas> atlases = pack.stretchedCharacters(font);
-                pack.text.put(entry.getKey(), atlases);
-                pack.rgbaHits.source(font.style(), atlases);
-                completedFonts++;
-                progress.accept(75 + (fontCount == 0 ? 10 : completedFonts * 10 / fontCount));
-                continue;
-            }
+            if (!font.style().plain())
+                return Map.entry(entry.getKey(), pack.stretchedCharacters(font));
             List<TextAtlas> atlases = new ArrayList<>();
             for (TextCell cell : cells.get(entry.getKey())) for (TextAtlas atlas : shared.get(cell)) {
                 List<String> chars = new ArrayList<>();
@@ -200,11 +211,12 @@ final class FontPack {
                 if (visible) atlases.add(new TextAtlas(atlas.sourceHeight(), List.copyOf(chars),
                     atlas.texture(), atlas.image()));
             }
-            pack.text.put(entry.getKey(), List.copyOf(atlases));
-            pack.rgbaHits.source(font.style(), atlases);
-            completedFonts++;
-            progress.accept(75 + (fontCount == 0 ? 10 : completedFonts * 10 / fontCount));
-        }
+            return Map.entry(entry.getKey(), List.copyOf(atlases));
+        }, entry -> {
+            pack.text.put(entry.getKey(), entry.getValue());
+            pack.rgbaHits.source(pack.textFonts.get(entry.getKey()).style(), entry.getValue());
+            progress.accept(75 + (fontCount == 0 ? 10 : ++finishedFonts[0] * 10 / fontCount));
+        });
         pack.rgbaHits.finish();
         progress.accept(85);
         return pack;
@@ -230,7 +242,7 @@ final class FontPack {
             if (glyph.code() != ' ' && glyph.code() != '\n') result.add(glyph.code());
         return result;
     }
-    private String key(BufferedImage image) {
+    private synchronized String key(BufferedImage image) {
         return imageKeys.computeIfAbsent(image, FontPack::hash);
     }
     static String hash(BufferedImage image) {
@@ -372,7 +384,7 @@ final class FontPack {
         List<TextAtlas> result = new ArrayList<>();
         Map<Integer, List<Integer>> byHeight = new TreeMap<>();
         for (int cp : characters) {
-            measure(cp, assets);
+            // 指标已在顺序注册阶段准备；并行图集阶段只读共享状态。
             byHeight.computeIfAbsent(metrics.get(cp)[1], h -> new ArrayList<>()).add(cp);
         }
         for (var group : byHeight.entrySet()) {
@@ -481,6 +493,9 @@ final class FontPack {
     int imageTint(int argb) { return rgba.index(argb); }
     void write(Path target) throws IOException { write(target, ignored -> {}); }
     void write(Path target, IntConsumer progress) throws IOException {
+        write(target, progress, null);
+    }
+    void write(Path target, IntConsumer progress, BuildTasks tasks) throws IOException {
         Path base = target.resolve("assets/dialogmenu");
         if (Files.exists(base)) try (var paths = Files.walk(base)) {
             for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) Files.delete(path);
@@ -488,31 +503,34 @@ final class FontPack {
         Files.createDirectories(base.resolve("font"));
         Files.createDirectories(base.resolve("textures/generated"));
         Set<String> written = new HashSet<>();
-        long atlasCount = text.values().stream().flatMap(Collection::stream)
-            .map(TextAtlas::texture).distinct().count();
-        int total = Math.max(1, Math.toIntExact(atlasCount) + textFonts.size() + 5), completed = 0;
+        List<BuildTasks.Task<Path, Void>> writes = new ArrayList<>();
         for (var entry : textFonts.entrySet())
             for (TextAtlas atlas : text.get(entry.getKey())) if (written.add(atlas.texture())) {
-                BuildBudget.checkpoint();
-                writePng(atlas.image(), base.resolve("textures/" + atlas.texture()));
-                progress.accept(++completed * 100 / total);
+                writes.add(path -> {
+                    writePng(atlas.image(), base.resolve("textures/" + atlas.texture()));
+                    return null;
+                });
             }
         Map<String, Integer> spaces = new LinkedHashMap<>();
         for (int x = -1024; x <= 1024; x++) spaces.put(SpriteCanvas.move(x), x);
         writeJson(base.resolve("font/space.json"), Map.of("providers", List.of(Map.of("type", "space", "advances", spaces))));
-        List<Object> graphics = SpriteAtlases.write(sprites.values(), base);
-        writeJson(base.resolve("font/sprites.json"), Map.of("providers", graphics));
-        progress.accept(++completed * 100 / total);
+        writes.add(path -> {
+            List<Object> graphics = SpriteAtlases.write(sprites.values(), base);
+            writeJson(base.resolve("font/sprites.json"), Map.of("providers", graphics));
+            return null;
+        });
         for (var entry : textFonts.entrySet()) {
-            BuildBudget.checkpoint();
-            TextFont font = entry.getValue();
-            List<Object> characters = new ArrayList<>();
-            for (TextAtlas atlas : text.get(entry.getKey()))
-                characters.add(bitmap(atlas.texture(), font.style().height(), 0, atlas.chars()));
-            characters.add(Map.of("type", "space", "advances",
-                Map.of(" ", font.style().space())));
-            writeJson(base.resolve("font/" + entry.getKey() + ".json"), Map.of("providers", characters));
-            progress.accept(++completed * 100 / total);
+            writes.add(path -> {
+                BuildBudget.checkpoint();
+                TextFont font = entry.getValue();
+                List<Object> characters = new ArrayList<>();
+                for (TextAtlas atlas : text.get(entry.getKey()))
+                    characters.add(bitmap(atlas.texture(), font.style().height(), 0, atlas.chars()));
+                characters.add(Map.of("type", "space", "advances",
+                    Map.of(" ", font.style().space())));
+                writeJson(base.resolve("font/" + entry.getKey() + ".json"), Map.of("providers", characters));
+                return null;
+            });
         }
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("pack", Map.of("description", "DialogMenu whole sprites", "pack_format", 64,
@@ -520,13 +538,12 @@ final class FontPack {
             "min_format", List.of(64, 0), "max_format", List.of(97, 1)));
         metadata.put("overlays", RgbaShaders.metadata());
         writeJson(target.resolve("pack.mcmeta"), metadata);
-        progress.accept(++completed * 100 / total);
-        rgbaImages.write(target);
-        progress.accept(++completed * 100 / total);
-        rgbaHits.write(target);
-        progress.accept(++completed * 100 / total);
-        rgba.write(target);
-        progress.accept(++completed * 100 / total);
+        writes.add(path -> { rgbaImages.write(path); return null; });
+        writes.add(path -> { rgbaHits.write(path); return null; });
+        writes.add(path -> { rgba.write(path); return null; });
+        int[] completed = {0};
+        BuildTasks.ordered(tasks, writes, write -> write.apply(target),
+            ignored -> progress.accept(++completed[0] * 100 / writes.size()));
     }
     static void writePng(BufferedImage image, Path path) throws IOException {
         if (!ImageIO.write(image, "png", path.toFile()))

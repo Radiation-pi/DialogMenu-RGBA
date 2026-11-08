@@ -4,6 +4,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.locks.LockSupport;
+import java.util.function.BooleanSupplier;
 
 /** 仅对资源准备作用域按线程 CPU 时间让出执行时间，不累积空闲额度。 */
 final class BuildBudget implements AutoCloseable {
@@ -12,17 +13,23 @@ final class BuildBudget implements AutoCloseable {
     private static final long SLICE = 5_000_000;
     private final BuildBudget previous;
     private final int percent;
+    private final BooleanSupplier cancelled;
     private long wall;
     private long cpu;
 
     static BuildBudget open(int percent) {
-        if (percent < 1 || percent > 100)
-            throw new IllegalArgumentException("resource-build-cpu-percent须为1..100的整数");
-        return new BuildBudget(percent);
+        return open(percent, () -> false);
     }
 
-    private BuildBudget(int percent) {
+    static BuildBudget open(int percent, BooleanSupplier cancelled) {
+        if (percent < 1 || percent > 100)
+            throw new IllegalArgumentException("resource-build-cpu-percent须为1..100的整数");
+        return new BuildBudget(percent, cancelled);
+    }
+
+    private BuildBudget(int percent, BooleanSupplier cancelled) {
         this.percent = percent;
+        this.cancelled = cancelled;
         if (percent < 100) {
             if (!CPU.isCurrentThreadCpuTimeSupported())
                 throw new IllegalStateException("当前JVM不支持线程CPU计时，请设置resource-build-cpu-percent: 100");
@@ -45,7 +52,7 @@ final class BuildBudget implements AutoCloseable {
     }
 
     private void yieldCpu(boolean force) {
-        if (Thread.currentThread().isInterrupted())
+        if (Thread.currentThread().isInterrupted() || cancelled.getAsBoolean())
             throw new CancellationException("资源构建已取消");
         if (percent == 100) return;
         long now = System.nanoTime();
@@ -55,8 +62,8 @@ final class BuildBudget implements AutoCloseable {
         if (remaining > 0) {
             long until = now + remaining;
             do {
-                LockSupport.parkNanos(remaining);
-                if (Thread.currentThread().isInterrupted())
+                LockSupport.parkNanos(Math.min(remaining, SLICE));
+                if (Thread.currentThread().isInterrupted() || cancelled.getAsBoolean())
                     throw new CancellationException("资源构建已取消");
                 remaining = until - System.nanoTime();
             } while (remaining > 0);
