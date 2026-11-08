@@ -698,7 +698,13 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         if (loaded == null) throw new IllegalStateException("Dialog正在准备资源");
         double scale = CanvasScale.select(preferences, player.getUniqueId(), value, () -> {
             View view = views.get(player.getUniqueId());
-            if (view == null) return;
+            if (view == null) {
+                var document = store.get(loaded.settings().defaultLayout());
+                if (document != null && !MenuRenderer.fits(document.menu(), width,
+                    context(player).canvasScale(), maxPixels))
+                    throw new IllegalArgumentException("当前画布倍率或尺寸超出允许范围，请选择较小倍率");
+                return;
+            }
             Context active = context(player);
             var frame = renderer.draw(view.document.menu(), active, view.width, maxPixels);
             new SpriteCanvas().encode(view.document.menu(), frame, active, fonts, region -> null);
@@ -746,9 +752,9 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
                 }
                 case "scale" -> {
                     if (!(sender instanceof Player player)) throw new IllegalArgumentException("此命令需要玩家");
-                    if (args.length > 2) throw new IllegalArgumentException("/dialogmenu scale <0.75|1>");
+                    if (args.length > 2) throw new IllegalArgumentException("/dialogmenu scale <0.5|0.75|1|2>");
                     if (args.length == 1) player.sendMessage("画布倍率："
-                        + CanvasScale.selected(preferences, player.getUniqueId()) + "；可选：0.75、1");
+                        + CanvasScale.selected(preferences, player.getUniqueId()) + "；可选：" + CanvasScale.CHOICES);
                     else canvasScale(player, args[1]);
                 }
                 case "open" -> {
@@ -767,7 +773,7 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
                     if (!(sender instanceof Player player)) throw new IllegalArgumentException("此命令需要玩家");
                     close(player);
                 }
-                default -> sender.sendMessage("/dialogmenu open <id> [small|medium|large] | edit [menu] | scale <0.75|1> | textscale <倍率> | list | reload [yaml|resource|all|菜单名] | resources | close");
+                default -> sender.sendMessage("/dialogmenu open <id> [small|medium|large] | edit [menu] | scale <0.5|0.75|1|2> | textscale <倍率> | list | reload [yaml|resource|all|菜单名] | resources | close");
             }
         } catch (Exception error) { failure(sender, error); }
         return true;
@@ -781,7 +787,7 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
             : args.length == 2 && args[0].equals("edit") ? layoutIds()
             : args.length == 2 && args[0].equals("textscale") && loaded != null
                 ? loaded.settings().textScales().stream().map(String::valueOf).toList()
-            : args.length == 2 && args[0].equals("scale") ? List.of("0.75", "1")
+            : args.length == 2 && args[0].equals("scale") ? List.of("0.5", "0.75", "1", "2")
             : args.length == 2 && args[0].equals("open") ? layoutIds()
             : args.length == 3 && args[0].equals("open") ? List.of("small", "medium", "large") : List.of();
         String prefix = args.length == 0 ? "" : args[args.length - 1].toLowerCase(Locale.ROOT);

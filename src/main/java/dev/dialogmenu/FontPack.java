@@ -96,9 +96,12 @@ final class FontPack {
         List<FrameJob> jobs = new ArrayList<>();
         for (var doc : docs.stream().sorted(Comparator.comparing(d -> d.menu().id())).toList())
             for (double canvasScale : new TreeSet<>(canvasScales))
-            for (int requestedWidth : new TreeSet<>(widths))
+            for (int requestedWidth : new TreeSet<>(widths)) {
+                // 某些可选倍率不适合当前布局；默认布局仍在后续单独验证。
+                if (!MenuRenderer.fits(doc.menu(), requestedWidth, canvasScale, maxPixels)) continue;
                 jobs.add(new FrameJob(doc, CanvasScale.context(MenuTemplate.preview(doc, context), canvasScale),
                     requestedWidth, canvasScale));
+            }
         int totalFrames = jobs.size();
         int[] completedFrames = {0};
         BuildTasks.ordered(tasks, jobs,
@@ -136,8 +139,14 @@ final class FontPack {
                     String declaration = dynamic ? MenuTemplate.dynamicCharacters(doc, node, extraCharacters) : "";
                     for (int cp : characters) pack.measure(cp, renderer.assets);
                     for (double scale : textScales) {
-                        int size = SpriteCanvas.textSize(doc.menu(), node, width, scale, canvasScale);
-                        TextStyle style = new TextStyle(size, node.scaleX(), node.scaleY());
+                        TextStyle style;
+                        try {
+                            int size = SpriteCanvas.textSize(doc.menu(), node, width, scale, canvasScale);
+                            style = new TextStyle(size, node.scaleX(), node.scaleY());
+                        } catch (IllegalArgumentException error) {
+                            // 不适用的可选倍率不能阻止可用布局生成；默认倍率会在校验阶段检查。
+                            continue;
+                        }
                         pack.prepareStretch(style, characters, renderer.assets, cached);
                         List<net.kyori.adventure.text.Component> lines;
                         try {

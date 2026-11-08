@@ -25,6 +25,14 @@ final class MenuRenderer {
     private long cachedPixels;
     MenuRenderer(VanillaAssets assets) { this.assets = assets; }
 
+    // Dialog 正文宽度上限为 1024，编码时还需额外保留 10 像素。
+    static boolean fits(Menu menu, int width, double scale, int maxPixels) {
+        int actualWidth = (int) Math.round(width * scale);
+        int height = Math.max(1, (int) Math.round(menu.height() * actualWidth / (double) menu.width()));
+        return actualWidth >= 64 && actualWidth <= 1014 && height <= 1024
+            && (long) actualWidth * height <= maxPixels;
+    }
+
     Rendered draw(Menu menu, Context context, int width, int maxPixels) throws IOException {
         return draw(menu, context, width, maxPixels, true);
     }
@@ -32,10 +40,10 @@ final class MenuRenderer {
         return draw(menu, context, width, maxPixels, false);
     }
     private Rendered draw(Menu menu, Context context, int width, int maxPixels, boolean preview) throws IOException {
+        if (!fits(menu, width, context.canvasScale(), maxPixels))
+            throw new IllegalArgumentException("当前画布倍率或尺寸超出允许范围，请选择较小倍率");
         width = (int) Math.round(width * context.canvasScale());
         int height = Math.max(1, (int) Math.round(menu.height() * width / (double) menu.width()));
-        if (width < 64 || width > 512 || height > 1024 || (long) width * height > maxPixels)
-            throw new IllegalArgumentException("当前画布比例/尺寸超出正文范围，请减小尺寸；不自动重排布局");
         BufferedImage image = preview ? new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB) : null;
         Graphics2D root = preview ? image.createGraphics() : null;
         double zoom = width / (double) menu.width();

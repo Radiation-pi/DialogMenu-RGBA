@@ -7,7 +7,8 @@ import static dev.dialogmenu.MenuModel.*;
 
 /** 玩家独立画布倍率，不改变文字偏好或菜单逻辑坐标。 */
 final class CanvasScale {
-    static final List<Double> OPTIONS = List.of(0.75, 1.0);
+    static final List<Double> OPTIONS = List.of(0.5, 0.75, 1.0, 2.0);
+    static final String CHOICES = "0.5、0.75、1、2";
     @FunctionalInterface interface Check { void run() throws Exception; }
 
     static double selected(YamlConfiguration preferences, UUID player) {
@@ -18,8 +19,8 @@ final class CanvasScale {
     static double select(YamlConfiguration preferences, UUID player, String input, Check check) throws Exception {
         double value;
         try { value = Double.parseDouble(input.replaceFirst("[xX]$", "")); }
-        catch (NumberFormatException error) { throw new IllegalArgumentException("画布倍率请选择0.75或1"); }
-        if (!OPTIONS.contains(value)) throw new IllegalArgumentException("画布倍率请选择0.75或1");
+        catch (NumberFormatException error) { throw new IllegalArgumentException("画布倍率请选择：" + CHOICES); }
+        if (!OPTIONS.contains(value)) throw new IllegalArgumentException("画布倍率请选择：" + CHOICES);
         String key = key(player);
         Object previous = preferences.get(key);
         preferences.set(key, value);

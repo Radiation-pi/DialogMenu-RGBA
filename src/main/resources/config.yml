@@ -1,6 +1,6 @@
 default-layout: layout-demo
 canvas-width: 300
-max-canvas-pixels: 131072
+max-canvas-pixels: 524288
 close-with-escape: false
 text-scales: [1, 1.5, 2]
 default-text-scale: 1

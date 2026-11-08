@@ -39,7 +39,7 @@ gradle build
 - `/dialogmenu reload <菜单名>`：只重载该页面所属的 YAML 文件，也可使用不带 `.yml` 的文件名。
 - `/dialogmenu reload resource`：只更新当前已加载布局的资源。
 - `/dialogmenu reload all`：同时更新 YAML 与资源。
-- `/dialogmenu scale <0.75|1>`：调整个人画布倍率。
+- `/dialogmenu scale <0.5|0.75|1|2>`：调整个人画布倍率。可用倍率受布局尺寸、`max-canvas-pixels` 和客户端屏幕空间限制；已有配置保留原有像素上限，需要时可调整并重建资源。
 
 旧版 `backend` 点击区域需迁移到 `frontend` 的文字或图片元素。新增字符、图片或字号后使用 `reload all`，并重新分发资源包。
 

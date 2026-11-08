@@ -230,7 +230,7 @@ final class ReloadEngine implements AutoCloseable {
         var yaml = new YamlConfiguration();
         yaml.loadFromString(Files.readString(data.resolve("config.yml")));
         int width = LayoutStore.integer(yaml, "canvas-width", 300, 64, 512);
-        int maxPixels = LayoutStore.integer(yaml, "max-canvas-pixels", 131072, 4096, 524288);
+        int maxPixels = LayoutStore.integer(yaml, "max-canvas-pixels", 524288, 4096, 1048576);
         List<Double> scales = new ArrayList<>();
         for (Object value : yaml.getList("text-scales", List.of(1.0))) {
             if (!(value instanceof Number n) || !Double.isFinite(n.doubleValue())

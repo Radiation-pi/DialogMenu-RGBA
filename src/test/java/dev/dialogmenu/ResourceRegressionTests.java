@@ -57,6 +57,7 @@ public final class ResourceRegressionTests {
         cacheAndReload(root);
         formats(root);
         configuration(root);
+        canvasScales(root);
         examples(root);
         publication();
         preview(root);
@@ -74,6 +75,45 @@ public final class ResourceRegressionTests {
         Files.writeString(input, "B");
         rejects(consumed::verify, "changed consumed input accepted");
         System.out.println("PASS " + checks + " resource regression checks (offline, no client)");
+    }
+    private static void canvasScales(Path root) throws Exception {
+        var preferences = new YamlConfiguration();
+        var player = UUID.randomUUID();
+        check(CanvasScale.select(preferences, player, "0.5x", () -> {}) == .5,
+            "half scale was not selected");
+        check(CanvasScale.select(preferences, player, "2X", () -> {}) == 2,
+            "double scale was not selected");
+        rejects(() -> CanvasScale.select(preferences, player, "0.5", () -> {
+            throw new IllegalArgumentException("invalid layout");
+        }), "failed scale validation was accepted");
+        check(CanvasScale.selected(preferences, player) == 2, "failed selection was not rolled back");
+        rejects(() -> CanvasScale.select(preferences, player, "NaN", () -> {}), "NaN scale accepted");
+        var document = doc("A");
+        var menu = document.menu();
+        check(MenuRenderer.fits(menu, 480, 2, 1_048_576), "valid double scale rejected");
+        check(!MenuRenderer.fits(menu, 512, 2, 1_048_576), "dialog body width overflow accepted");
+        check(!MenuRenderer.fits(menu, 480, 2, 131_072), "pixel limit bypassed");
+        var renderer = new MenuRenderer(new VanillaAssets(root.resolve("scale-images")));
+        var fonts = FontPack.create(List.of(document), renderer, PREVIEW, List.of(480), 1_048_576,
+            "", List.of(1.0), CanvasScale.OPTIONS);
+        for (double scale : List.of(.5, 2.0)) {
+            var context = CanvasScale.context(PREVIEW, scale);
+            var frame = renderer.draw(menu, context, 480, 1_048_576);
+            var output = new SpriteCanvas().encode(menu, frame, context, fonts, region -> null);
+            check(output.bodyWidth() == (int) (480 * scale) + 10, "scaled dialog width is incorrect");
+        }
+        // 低预算不能让可选 2 倍阻止原有 1 倍布局生成。
+        FontPack.create(List.of(document), renderer, PREVIEW, List.of(300), 131_072,
+            "", List.of(1.0), CanvasScale.OPTIONS);
+        checks++;
+        var bigYaml = new YamlConfiguration();
+        bigYaml.loadFromString(yaml("A") + "    size: 100\n");
+        var bigDocument = LayoutStore.parse("probe", bigYaml);
+        var bigFonts = FontPack.create(List.of(bigDocument), renderer, PREVIEW, List.of(300), 524_288,
+            "", List.of(1.0), CanvasScale.OPTIONS);
+        new SpriteCanvas().encode(bigDocument.menu(), renderer.draw(bigDocument.menu(), PREVIEW, 300, 524_288),
+            PREVIEW, bigFonts, region -> null);
+        checks++;
     }
     private static void cacheAndReload(Path root) throws Exception {
         Path data = data(root, "stamp", "A"), file = data.resolve("layouts/probe.yml");
@@ -159,6 +199,7 @@ public final class ResourceRegressionTests {
             var snapshot = engine.prepare().get().snapshot();
             for (var document : snapshot.documents().values()) for (int width : List.of(300, 360, 420))
                 for (double scale : List.of(1.0, 1.5, 2.0)) for (double canvasScale : CanvasScale.OPTIONS) {
+                    if (!MenuRenderer.fits(document.menu(), width, canvasScale, 524288)) continue;
                     Context base = new Context() {
                         public String expand(String text) { return PREVIEW.expand(text); }
                         public Icon item(int slot) { return null; }
@@ -166,7 +207,7 @@ public final class ResourceRegressionTests {
                         public double textScale() { return scale; }
                     };
                     Context active = CanvasScale.context(base, canvasScale);
-                    var frame = snapshot.renderer().draw(document.menu(), active, width, 131072);
+                    var frame = snapshot.renderer().draw(document.menu(), active, width, 524288);
                     new SpriteCanvas().encode(document.menu(), frame, active, snapshot.fonts(), r -> null);
                     checks++;
                 }

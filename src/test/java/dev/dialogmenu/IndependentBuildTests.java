@@ -58,7 +58,7 @@ public final class IndependentBuildTests {
                         : Arrays.equals(expected, current);
                     check(equal, "independently compiled resource agrees: " + name);
                 }
-                check(components.equals(actual), "independent text/image/hover/click encoding agrees at both scales");
+                check(components.equals(actual), "independent text/image/hover/click encoding agrees at all scales");
             }
         }
         System.out.println("PASS independent JVM build checks=" + checks);
@@ -104,13 +104,14 @@ public final class IndependentBuildTests {
             var snapshot = engine.prepare().get(90, TimeUnit.SECONDS).snapshot();
             Files.copy(snapshot.pack(), data.resolve("built.zip"));
             StringBuilder encoded = new StringBuilder();
-            for (double scale : new double[]{0.75, 1}) for (int width : new int[]{300, 360, 420}) {
-                var context = context(scale);
+            for (double scale : new double[]{0.75, 1}) for (double canvasScale : CanvasScale.OPTIONS)
+              for (int width : new int[]{300, 360, 420}) {
+                var context = CanvasScale.context(context(scale), canvasScale);
                 var menu = snapshot.documents().get("test").menu();
-                var frame = snapshot.renderer().draw(menu, context, width, 131072);
+                var frame = snapshot.renderer().draw(menu, context, width, 524288);
                 var component = new SpriteCanvas().encode(menu, frame, context, snapshot.fonts(),
                     region -> ClickEvent.runCommand("/" + String.join("-", region.actions()))).component();
-                encoded.append(scale).append(':').append(width).append(':')
+                encoded.append(scale).append(':').append(canvasScale).append(':').append(width).append(':')
                     .append(FontPack.hash(frame.image())).append(':')
                     .append(GsonComponentSerializer.gson().serialize(component)).append('\n');
             }
