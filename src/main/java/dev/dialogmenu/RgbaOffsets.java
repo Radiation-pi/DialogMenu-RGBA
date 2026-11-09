@@ -9,9 +9,10 @@ import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 
-/** 仅 GUI 使用的文字编码：RGB 为识别标记、10 位 Y 和 8 位色表索引，A 保持不透明。 */
+/** 可见字形以 shadow_color 携带行切片，普通 pass 隐藏；源图集保持共享。 */
 final class RgbaOffsets {
-    static final int MAGIC = 0xD40000;
+    static final int MAGIC = 0x20000000;
+    static final int INK = 0xBEEF01;
     static final int TEXTURE_RGB = 0x174783;
     private final Map<Integer, Integer> palette = new LinkedHashMap<>();
 
@@ -29,16 +30,8 @@ final class RgbaOffsets {
     void prepare(Component text, int fallback) {
         add(fallback);
         for (var glyph : MenuText.glyphs(text)) {
-            validateStyle(glyph);
             if (glyph.style().color() != null) add(glyph.style().color().value());
         }
-    }
-
-    private static void validateStyle(MenuText.Glyph glyph) {
-        for (var decoration : List.of(TextDecoration.ITALIC, TextDecoration.UNDERLINED,
-            TextDecoration.STRIKETHROUGH, TextDecoration.OBFUSCATED))
-            if (glyph.style().hasDecoration(decoration))
-                throw new IllegalArgumentException("此菜单不支持该文字样式，请移除斜体、下划线、删除线或混淆格式。");
     }
 
     int add(int color) {
@@ -56,18 +49,29 @@ final class RgbaOffsets {
         return index;
     }
 
-    Component encode(Component text, int fallback, int top) {
-        if (top < 0 || top > 1023) throw new IllegalArgumentException("RGBA Y exceeds 0..1023");
+    Component encode(Component text, int fallback, int top, int height, int band) {
+        if (top < -512 || top > 511 || height < 1 || height > 128)
+            throw new IllegalArgumentException("RGBA文字切片超出范围");
         var result = Component.text();
         for (var glyph : MenuText.glyphs(text)) {
-            validateStyle(glyph);
             int rgb = glyph.style().color() == null ? fallback & 0xFFFFFF : glyph.style().color().value();
             Integer index = palette.get(rgb);
             if (index == null) throw new IllegalArgumentException("文字颜色未准备，请在text-colors声明#"
                 + String.format(java.util.Locale.ROOT, "%06X", rgb) + "后执行 /dialogmenu reload all");
-            result.append(glyph.component().color(TextColor.color(MAGIC | top << 8 | index)));
+            result.append(glyph.component().color(TextColor.color(INK))
+                .shadowColor(net.kyori.adventure.text.format.ShadowColor.shadowColor(
+                    MAGIC | (band == 9 ? 1 << 28 : 0) | (height - 1) << 18 | (top & 1023) << 8 | index)));
         }
         return result.build().compact();
+    }
+
+    Component bitmap(Component glyph, int fallback, int top, int height, int band) {
+        if (height < 1 || height > 1024 || top < -1024 || top > 1023)
+            throw new IllegalArgumentException("Bitmap切片超出范围");
+        // 首行原点仅为0..8；借用常规切片不会出现的32..40，避免占用额外偏移位。
+        int encodedTop = band == 0 ? top + 32 : top;
+        return glyph.color(TextColor.color(INK)).shadowColor(net.kyori.adventure.text.format.ShadowColor.shadowColor(
+            0xC0000000 | (height - 1) << 19 | (encodedTop & 2047) << 8 | index(fallback)));
     }
 
     void write(Path pack) throws IOException {

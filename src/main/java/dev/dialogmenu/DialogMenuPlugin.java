@@ -47,7 +47,9 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
     private MenuSessions application;
     private ReloadEngine reloadEngine;
     private EditorBridge editor;
+    private DialogMenuEditorServiceImpl editorService;
     private CraftEngineBridge craftEngineBridge;
+    private MenuOpenerListener openers;
     private volatile ReloadEngine.Snapshot loaded;
     private final ResourcePublication<ReloadEngine.Result> publication = new ResourcePublication<>();
     private boolean reloadRequested;
@@ -187,13 +189,11 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
             getLogger().info("Renderer edition: " + RenderingEdition.ID);
             saveDefaultConfig();
             getConfig().addDefault("close-with-escape", false);
-            getConfig().addDefault("text-scales", List.of(1, 1.5, 2));
+            getConfig().addDefault("text-scales", CanvasScale.DEFAULTS);
             getConfig().addDefault("default-text-scale", 1);
             getConfig().addDefault("craftengine-auto-reload", true);
             getConfig().addDefault("reuse-compiled-cache", false);
             getConfig().addDefault("reload-progress-bossbar", true);
-            getConfig().options().copyDefaults(true);
-            saveConfig();
             try (var jar = new java.util.jar.JarFile(getFile())) {
                 for (var entry : jar.stream().filter(e -> !e.isDirectory() && (e.getName().startsWith("layouts/")
                     || e.getName().startsWith("images/"))).toList())
@@ -208,11 +208,14 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
             Objects.requireNonNull(getCommand("dialogmenu")).setExecutor(this);
             getCommand("dialogmenu").setTabCompleter(this);
             Bukkit.getPluginManager().registerEvents(this, this);
+            openers = new MenuOpenerListener(this);
             editor = new EditorBridge(this);
+            editorService = new DialogMenuEditorServiceImpl(this);
             loadStartup();
             if (Bukkit.getPluginManager().isPluginEnabled("CraftEngine"))
                 craftEngineBridge = new CraftEngineBridge(this);
             Bukkit.getServicesManager().register(DialogMenuApi.class, api, this, ServicePriority.Normal);
+            Bukkit.getServicesManager().register(DialogMenuEditorService.class, editorService, this, ServicePriority.Normal);
         } catch (Exception error) {
             getLogger().log(java.util.logging.Level.SEVERE, "Dialog initialization failed", error);
             Bukkit.getPluginManager().disablePlugin(this);
@@ -224,6 +227,7 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         Bukkit.getServicesManager().unregisterAll(this);
         if (editor != null) editor.close();
         if (craftEngineBridge != null) craftEngineBridge.close();
+        if (openers != null) openers.close();
         if (reloadEngine != null) reloadEngine.close();
         for (UUID id : List.copyOf(views.keySet())) {
             Player player = Bukkit.getPlayer(id);
@@ -246,7 +250,10 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
                 double chosen = preferences.getDouble("players." + player.getUniqueId(), loaded.settings().defaultTextScale());
                 return loaded.settings().textScales().contains(chosen) ? chosen : loaded.settings().defaultTextScale();
             }
-            public double canvasScale() { return CanvasScale.selected(preferences, player.getUniqueId()); }
+            public double canvasScale() {
+                return CanvasScale.selected(preferences, player.getUniqueId(),
+                    loaded.settings().canvasScales(), loaded.settings().defaultCanvasScale());
+            }
         };
     }
     static final Context PREVIEW = new Context() {
@@ -285,6 +292,12 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         var candidate = publication.pending();
         return candidate == null ? null : new DialogMenuApi.PreparedResources(candidate.generation(), candidate.value().snapshot().pack());
     }
+    List<Path> preparedModelPacks() {
+        var candidate = publication.pending();
+        if (candidate == null) return List.of();
+        try { return candidate.value().snapshot().fonts().modelPacks(getDataFolder().toPath()); }
+        catch (java.io.IOException error) { throw new IllegalStateException("无法导出模型包", error); }
+    }
     boolean commitResources(long generation) {
         var candidate = publication.pending();
         if (candidate == null || candidate.generation() != generation)
@@ -318,6 +331,42 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
                 .body(List.of(DialogBody.plainMessage(component, bodyWidth))).build())
             .type(DialogType.dialogList(RegistrySet.keySet(RegistryKey.DIALOG, List.of())).build())));
     }
+    CompletableFuture<String> applyWebEditor(UUID owner, String menu) {
+        var completion = new CompletableFuture<String>();
+        Bukkit.getScheduler().runTask(this, () -> {
+            Player player = Bukkit.getPlayer(owner);
+            if (loaded == null) {
+                completion.completeExceptionally(new IllegalStateException("服务器菜单尚未初始化，请先在控制台执行 /dialogmenu reload all"));
+                return;
+            }
+            if (player == null || !player.hasPermission("dialogmenu.admin") || reloadRequested) {
+                completion.completeExceptionally(new IllegalStateException("未授权或正在重载"));
+                return;
+            }
+            reloadRequested = true;
+            reloadEngine.prepare(new ReloadEngine.Request(ReloadEngine.Mode.YAML, menu)).whenComplete((result, error) -> {
+                if (!isEnabled()) { completion.completeExceptionally(new IllegalStateException("Plugin disabled")); return; }
+                Bukkit.getScheduler().runTask(this, () -> {
+                    reloadRequested = false;
+                    if (error != null) {
+                        failure(player, unwrap(error));
+                        completion.complete("应用失败，旧运行快照保留。详情见游戏；新增资源请执行 /dialogmenu reload all");
+                        return;
+                    }
+                    if (!player.isOnline() || !player.hasPermission("dialogmenu.admin")) {
+                        completion.completeExceptionally(new IllegalStateException("编辑权限已撤销"));
+                        return;
+                    }
+                    try {
+                        acceptResources(result);
+                        player.sendMessage("DialogMenu 网页修改已应用：" + menu);
+                        completion.complete("YAML 已应用；未重建资源包");
+                    } catch (Exception failure) { completion.completeExceptionally(failure); }
+                });
+            });
+        });
+        return completion;
+    }
     boolean publishResources(ReloadEngine.Result result) {
         if (loaded != null && loaded.generation() >= result.snapshot().generation()) return false;
         long start = System.nanoTime();
@@ -337,6 +386,7 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         width = loaded.settings().width();
         maxPixels = loaded.settings().maxPixels();
         store.publish(loaded.documents());
+        openers.sync();
         getLogger().info("Dialog prepared " + store.ids().size() + " layouts in " + loaded.buildMillis()
             + "ms off-thread; main-thread publish=" + (System.nanoTime() - start) / 1_000_000.0 + "ms");
         return true;
@@ -696,7 +746,7 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
     }
     private void canvasScale(Player player, String value) throws Exception {
         if (loaded == null) throw new IllegalStateException("Dialog正在准备资源");
-        double scale = CanvasScale.select(preferences, player.getUniqueId(), value, () -> {
+        double scale = CanvasScale.select(preferences, player.getUniqueId(), value, loaded.settings().canvasScales(), () -> {
             View view = views.get(player.getUniqueId());
             if (view == null) return;
             Context active = context(player);
@@ -714,7 +764,7 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
     @Override public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         try {
             String action = args.length == 0 ? "open" : args[0].toLowerCase(Locale.ROOT);
-            if (Set.of("reload", "resources", "status", "edit", "publish").contains(action)
+            if (Set.of("reload", "resources", "status", "edit", "publish", "give").contains(action)
                 && !sender.hasPermission("dialogmenu.admin")) {
                 sender.sendMessage("§c仅管理员可执行此操作。");
                 return true;
@@ -722,8 +772,11 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
             switch (action) {
                 case "edit" -> {
                     if (!(sender instanceof Player player)) throw new IllegalArgumentException("此命令需要玩家");
-                    if (args.length > 2) throw new IllegalArgumentException("/dialogmenu edit <menu>");
-                    editor.open(player, args.length == 2 ? args[1] : "");
+                    if (args.length > 2) throw new IllegalArgumentException("/dialogmenu edit [菜单ID]");
+                    var launcher = Bukkit.getServicesManager().load(DialogMenuEditorLauncher.class);
+                    if (launcher == null)
+                        throw new IllegalStateException("未安装或未启用 DialogMenuEditor 附属插件");
+                    launcher.open(player, args.length == 2 ? args[1] : "");
                 }
                 case "list" -> sender.sendMessage("Dialog: " + String.join(", ", layoutIds()));
                 case "status" -> sender.sendMessage("Dialog standalone layouts=" + store.ids().size()
@@ -738,6 +791,21 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
                     sender.sendMessage(Component.text("已提交资源版本。", net.kyori.adventure.text.format.TextColor.color(0x60C689)));
                 }
                 case "resources" -> exportResources(sender);
+                case "give" -> {
+                    if (loaded == null) throw new IllegalStateException("Dialog正在准备资源");
+                    if (args.length < 2 || args.length > 3)
+                        throw new IllegalArgumentException("/dialogmenu give <入口ID> [玩家]");
+                    Player target = args.length == 3 ? Bukkit.getPlayerExact(args[2])
+                        : sender instanceof Player player ? player : null;
+                    if (target == null) throw new IllegalArgumentException("需要在线玩家");
+                    var rule = loaded.settings().openers().stream().filter(value -> value.id().equals(args[1]))
+                        .findFirst().orElseThrow(() -> new IllegalArgumentException("入口不存在：" + args[1]));
+                    if (rule.item() == null) throw new IllegalArgumentException("此入口未配置物品");
+                    var item = MenuOpeners.create(rule.item());
+                    if (!target.getInventory().addItem(item).isEmpty())
+                        throw new IllegalStateException("玩家背包已满，未发放物品");
+                    sender.sendMessage("已发放入口物品：" + rule.id());
+                }
                 case "textscale" -> {
                     if (!(sender instanceof Player player)) throw new IllegalArgumentException("此命令需要玩家");
                     if (loaded == null) throw new IllegalStateException("Dialog正在准备资源");
@@ -746,19 +814,21 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
                 }
                 case "scale" -> {
                     if (!(sender instanceof Player player)) throw new IllegalArgumentException("此命令需要玩家");
-                    if (args.length > 2) throw new IllegalArgumentException("/dialogmenu scale <0.75|1>");
+                    if (loaded == null) throw new IllegalStateException("Dialog正在准备资源");
+                    if (args.length > 2) throw new IllegalArgumentException("/dialogmenu scale <倍率>");
                     if (args.length == 1) player.sendMessage("画布倍率："
-                        + CanvasScale.selected(preferences, player.getUniqueId()) + "；可选：0.75、1");
+                        + context(player).canvasScale() + "；可选：" + loaded.settings().canvasScales());
                     else canvasScale(player, args[1]);
                 }
                 case "open" -> {
                     if (!(sender instanceof Player player)) throw new IllegalArgumentException("此命令需要玩家");
-                    if (args.length > 3) throw new IllegalArgumentException("/dialogmenu open <id> [small|medium|large]");
+                    if (args.length > 3) throw new IllegalArgumentException("/dialogmenu open <id> [small|medium|large|max]");
                     int size = args.length > 2 ? switch (args[2].toLowerCase(Locale.ROOT)) {
                         case "small", "小" -> 300;
                         case "medium", "中" -> 360;
                         case "large", "大" -> 420;
-                        default -> throw new IllegalArgumentException("尺寸请选择small/medium/large");
+                        case "max", "最大" -> MenuRenderer.MAX_WIDTH;
+                        default -> throw new IllegalArgumentException("尺寸请选择small/medium/large/max");
                     } : width;
                     open(player, args.length > 1 ? args[1] : loaded == null ? "layout-demo" : loaded.settings().defaultLayout(),
                         size, List.of());
@@ -767,27 +837,32 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
                     if (!(sender instanceof Player player)) throw new IllegalArgumentException("此命令需要玩家");
                     close(player);
                 }
-                default -> sender.sendMessage("/dialogmenu open <id> [small|medium|large] | edit [menu] | scale <0.75|1> | textscale <倍率> | list | reload [yaml|resource|all|菜单名] | resources | close");
+                default -> sender.sendMessage("/dialogmenu open <id> [small|medium|large|max] | edit [menu] | scale <倍率> | textscale <倍率> | list | reload [yaml|resource|all|full|菜单名] | resources | close");
             }
         } catch (Exception error) { failure(sender, error); }
         return true;
     }
     @Override public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        List<String> choices = args.length == 1 ? List.of("open", "list", "close", "reload", "resources", "status", "textscale", "scale", "edit", "publish")
+        List<String> choices = args.length == 1 ? List.of("open", "list", "close", "reload", "resources", "status", "textscale", "scale", "edit", "publish", "give")
             : args.length == 2 && args[0].equalsIgnoreCase("reload")
-                ? java.util.stream.Stream.concat(java.util.stream.Stream.of("yaml", "resource", "all"),
+                ? java.util.stream.Stream.concat(java.util.stream.Stream.of("yaml", "resource", "all", "full"),
                     store.documents().values().stream().flatMap(doc ->
                         java.util.stream.Stream.of(doc.menu().id(), LayoutStore.source(doc)))).distinct().toList()
             : args.length == 2 && args[0].equals("edit") ? layoutIds()
-            : args.length == 2 && args[0].equals("textscale") && loaded != null
-                ? loaded.settings().textScales().stream().map(String::valueOf).toList()
-            : args.length == 2 && args[0].equals("scale") ? List.of("0.75", "1")
+            : args.length == 2 && args[0].equalsIgnoreCase("textscale") && loaded != null
+                ? CanvasScale.completions(loaded.settings().textScales())
+            : args.length == 2 && args[0].equalsIgnoreCase("scale") && loaded != null
+                ? CanvasScale.completions(loaded.settings().canvasScales())
             : args.length == 2 && args[0].equals("open") ? layoutIds()
-            : args.length == 3 && args[0].equals("open") ? List.of("small", "medium", "large") : List.of();
+            : args.length == 2 && args[0].equalsIgnoreCase("give") && loaded != null && sender.hasPermission("dialogmenu.admin")
+                ? loaded.settings().openers().stream().filter(rule -> rule.item() != null).map(MenuOpeners.Rule::id).toList()
+            : args.length == 3 && args[0].equalsIgnoreCase("give") && sender.hasPermission("dialogmenu.admin")
+                ? Bukkit.getOnlinePlayers().stream().map(Player::getName).toList()
+            : args.length == 3 && args[0].equals("open") ? List.of("small", "medium", "large", "max") : List.of();
         String prefix = args.length == 0 ? "" : args[args.length - 1].toLowerCase(Locale.ROOT);
         return choices.stream().filter(v -> v.startsWith(prefix)).toList();
     }
-    private List<String> layoutIds() {
+    List<String> layoutIds() {
         return new ArrayList<>(store.ids());
     }
     private void failure(CommandSender sender, Exception error) {

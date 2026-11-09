@@ -1,4 +1,7 @@
 vec2 dialogmenu_uv() {
+    if (dialogmenuMarked == 3) discard;
+    if (dialogmenuMarked != 0
+        && (dialogmenuSlice.x < dialogmenuSlice.y || dialogmenuSlice.x >= dialogmenuSlice.z)) discard;
     vec2 uv = texCoord0;
     if (dialogmenuMarked == 2) {
         vec2 atlas = vec2(textureSize(Sampler0, 0));

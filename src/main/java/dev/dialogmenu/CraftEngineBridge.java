@@ -50,6 +50,8 @@ final class CraftEngineBridge implements Listener, AutoCloseable {
             plugin.retainPack(eventType.getMethod("cacheData").invoke(event), result.snapshot());
             eventType.getMethod("registerExternalResourcePack", Path.class)
                 .invoke(event, result.snapshot().pack());
+            for (Path path : result.snapshot().fonts().modelPacks(plugin.getDataFolder().toPath()))
+                eventType.getMethod("registerExternalResourcePack", Path.class).invoke(event, path);
             plugin.getLogger().info("CraftEngine registered Dialog pack ("
                 + (result.changed() ? "rebuilt" : "cached") + ")");
         } catch (Exception error) {
@@ -66,7 +68,9 @@ final class CraftEngineBridge implements Listener, AutoCloseable {
                     plugin.retainPack(eventType.getMethod("cacheData").invoke(event), previous);
                     eventType.getMethod("registerExternalResourcePack", Path.class)
                         .invoke(event, previous.pack());
-                } catch (ReflectiveOperationException reflectionError) {
+                    for (Path path : previous.fonts().modelPacks(plugin.getDataFolder().toPath()))
+                        eventType.getMethod("registerExternalResourcePack", Path.class).invoke(event, path);
+                } catch (ReflectiveOperationException | java.io.IOException reflectionError) {
                     throw new IllegalStateException("Unable to register previous Dialog resource pack",
                         reflectionError);
                 }

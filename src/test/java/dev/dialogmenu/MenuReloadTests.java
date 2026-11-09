@@ -32,7 +32,7 @@ public final class MenuReloadTests {
             var request = ReloadEngine.Request.command(new String[]{"reload", name});
             check(request.mode() == ReloadEngine.Mode.YAML && name.equals(request.menu()), "menu command " + name);
         }
-        for (String name : List.of("yaml", "resource", "all"))
+        for (String name : List.of("yaml", "resource", "all", "full"))
             check(ReloadEngine.Request.command(new String[]{"reload", name}).menu() == null, "reserved mode " + name);
         for (String[] command : List.of(new String[]{"reload", "../first"}, new String[]{"reload", "first", "extra"})) {
             try { ReloadEngine.Request.command(command); throw new AssertionError("invalid command accepted"); }

@@ -47,7 +47,7 @@ final class CompiledLayout {
                 fields.add(new Field(path + ".visible", value, Kind.VISIBLE));
                 node.set("visible-if", null);
             }
-            if (node.getString("type", "").equals("image"))
+            if (Set.of("image", "model").contains(node.getString("type", "")))
                 fields.add(new Field(path + ".source", node.getString("source", ""), Kind.TEXT));
             if (node.contains("color"))
                 fields.add(new Field(path + ".color", node.getString("color"), Kind.TEXT));

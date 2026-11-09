@@ -1,7 +1,6 @@
 package dev.dialogmenu;
 
 import com.google.gson.Gson;
-import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.*;
@@ -33,11 +32,13 @@ final class FontPack {
     private final Map<String, TextFont> textFonts = new TreeMap<>();
     private final Map<TextStyle, Map<Integer, StretchedGlyph>> stretchedGlyphs = new HashMap<>();
     private String glyphSource;
+    private ModelPack models;
     private transient boolean reusedGlyphs;
     private final RgbaOffsets rgba = new RgbaOffsets();
     private final RgbaHits rgbaHits = new RgbaHits();
     private final RgbaImages rgbaImages = new RgbaImages();
     private final transient Map<BufferedImage, String> imageKeys = new WeakHashMap<>();
+    private final transient CanvasRows.Cache spriteParts = new CanvasRows.Cache();
     private final transient Gson json = new Gson();
 
     static FontPack create(Collection<LayoutStore.Document> docs, MenuRenderer renderer, Context context,
@@ -84,7 +85,16 @@ final class FontPack {
                            Collection<Double> textScales, Collection<Double> canvasScales,
                            Collection<Integer> colors, IntConsumer progress, BuildTasks tasks,
                            FontPack previous) throws IOException {
+        return create(docs, renderer, context, widths, maxPixels, extraCharacters, textScales,
+            canvasScales, colors, progress, tasks, previous, null);
+    }
+    static FontPack create(Collection<LayoutStore.Document> docs, MenuRenderer renderer, Context context,
+                           Collection<Integer> widths, int maxPixels, String extraCharacters,
+                           Collection<Double> textScales, Collection<Double> canvasScales,
+                           Collection<Integer> colors, IntConsumer progress, BuildTasks tasks,
+                           FontPack previous, ModelPack models) throws IOException {
         FontPack pack = new FontPack();
+        pack.models = models;
         pack.glyphSource = renderer.assets.glyphSource();
         FontPack cached = previous != null && pack.glyphSource.equals(previous.glyphSource) ? previous : null;
         if (cached != null) pack.metrics.putAll(cached.metrics);
@@ -96,32 +106,31 @@ final class FontPack {
         List<FrameJob> jobs = new ArrayList<>();
         for (var doc : docs.stream().sorted(Comparator.comparing(d -> d.menu().id())).toList())
             for (double canvasScale : new TreeSet<>(canvasScales))
-            for (int requestedWidth : new TreeSet<>(widths))
+            for (int requestedWidth : MenuRenderer.preparedWidths(doc.menu(), widths, canvasScale, maxPixels))
                 jobs.add(new FrameJob(doc, CanvasScale.context(MenuTemplate.preview(doc, context), canvasScale),
                     requestedWidth, canvasScale));
         int totalFrames = jobs.size();
         int[] completedFrames = {0};
         BuildTasks.ordered(tasks, jobs,
-            job -> new PreparedFrame(job, new MenuRenderer(renderer.assets).draw(
+            job -> new PreparedFrame(job, renderer.drawRuntime(
                 job.doc().menu(), job.context(), job.width(), maxPixels)), prepared -> {
                 BuildBudget.checkpoint();
                 var doc = prepared.job().doc();
                 Context active = prepared.job().context();
                 double canvasScale = prepared.job().scale();
                 Rendered frame = prepared.frame();
-                int width = frame.image().getWidth();
-                Map<String, Integer> nativeRows = RgbaRows.plan(doc.menu(), frame);
+                int width = frame.width();
                 for (Sprite sprite : frame.sprites()) {
                     BuildBudget.checkpoint();
                     try {
-                        Sprite local = RgbaRows.relative(sprite, nativeRows.get(sprite.id()));
+                        Sprite local = RgbaRows.local(sprite);
                         Node node = doc.menu().nodes().stream().filter(n -> n.id().equals(sprite.id())).findFirst().orElseThrow();
+                        pack.rgba.add(node.argb());
                         if (pack.shaderImage(local, node.interaction() != null)) {
-                            pack.rgbaImages.prepare(local, node.interaction() != null,
-                                pack.rgba.add(node.argb()));
+                            pack.rgbaImages.prepare(local, pack.rgba.add(node.argb()));
                             continue;
                         }
-                        for (Sprite part : CanvasRows.parts(local)) pack.register(part);
+                        for (Sprite part : pack.parts(sprite)) pack.register(RgbaRows.local(part));
                     }
                     catch (IOException error) { throw new IOException(doc.menu().id()+"/"+width+": "+error.getMessage(), error); }
                 }
@@ -133,6 +142,12 @@ final class FontPack {
                         pack.rgba.prepare(MenuText.parse(value), node.argb());
                     boolean dynamic = MenuTemplate.dynamicText(node);
                     Set<Integer> characters = codes(values);
+                    boolean obfuscated = values.stream().map(MenuText::parse).flatMap(value -> MenuText.glyphs(value).stream())
+                        .anyMatch(glyph -> glyph.style().hasDecoration(net.kyori.adventure.text.format.TextDecoration.OBFUSCATED));
+                    if (dynamic || obfuscated) {
+                        for (int cp = 33; cp <= 126; cp++) characters.add(cp);
+                    }
+                    if (obfuscated) characters.addAll(commonCodes);
                     String declaration = dynamic ? MenuTemplate.dynamicCharacters(doc, node, extraCharacters) : "";
                     for (int cp : characters) pack.measure(cp, renderer.assets);
                     for (double scale : textScales) {
@@ -149,14 +164,12 @@ final class FontPack {
                             continue;
                         }
                         int count = dynamic ? (node.maxLines() > 0 ? node.maxLines()
-                            : frame.image().getHeight() / style.stride() + 1) : lines.size();
+                            : frame.height() / style.stride() + 1) : lines.size();
                         boolean registeredShaderCharacters = false;
                         for (int line = 0; line < count; line++) {
                             int top = SpriteCanvas.textTop(doc.menu(), node, width, line, style);
-                            if (top >= 0 && top + style.height() <= frame.image().getHeight()) {
+                            if (top >= 0 && top + style.height() <= frame.height()) {
                                 String name = style.name();
-                                if (node.interaction() != null)
-                                    pack.rgbaHits.prepare(top - nativeRows.get(node.id()) * 9, style);
                                 TextFont font = pack.textFonts.computeIfAbsent(name,
                                     key -> new TextFont(style, new TreeSet<>()));
                                 if (dynamic) {
@@ -176,7 +189,10 @@ final class FontPack {
                                         pack.prepareStretch(style, commonCodes, renderer.assets, cached);
                                         font.characters().addAll(commonCodes);
                                     }
-                                } else font.characters().addAll(codes(lines.get(line)));
+                                } else {
+                                    font.characters().addAll(codes(lines.get(line)));
+                                    if (obfuscated) font.characters().addAll(characters);
+                                }
                             }
                         }
                     }
@@ -185,8 +201,6 @@ final class FontPack {
             });
         if (cached != null && pack.textFonts.equals(cached.textFonts)) {
             pack.text.putAll(cached.text);
-            pack.rgbaHits.reuseSources(cached.rgbaHits);
-            pack.rgbaHits.finish();
             pack.reusedGlyphs = true;
             progress.accept(85);
             return pack;
@@ -249,10 +263,8 @@ final class FontPack {
             return Map.entry(entry.getKey(), List.copyOf(atlases));
         }, entry -> {
             pack.text.put(entry.getKey(), entry.getValue());
-            pack.rgbaHits.source(pack.textFonts.get(entry.getKey()).style(), entry.getValue());
             progress.accept(75 + (fontCount == 0 ? 10 : ++finishedFonts[0] * 10 / fontCount));
         });
-        pack.rgbaHits.finish();
         progress.accept(85);
         return pack;
     }
@@ -303,6 +315,7 @@ final class FontPack {
     private synchronized String key(BufferedImage image) {
         return imageKeys.computeIfAbsent(image, FontPack::hash);
     }
+    List<Sprite> parts(Sprite sprite) { return spriteParts.parts(sprite); }
     static String hash(BufferedImage image) {
         try {
             ByteBuffer bytes = ByteBuffer.allocate(8 + image.getWidth() * image.getHeight() * 4);
@@ -316,7 +329,7 @@ final class FontPack {
         if (sprite.texture() != null) {
             String key = spriteKey(sprite);
             if (!sprites.containsKey(key)) {
-                int height = sprite.image().getHeight();
+                int height = sprite.height();
                 BufferedImage image = sprite.original();
                 int advance = bitmapAdvance(image, 0, 0, image.getWidth(), image.getHeight(), height);
                 sprites.put(key, new Glyph(0xF0000 + sprites.size(), sprite.y(), height,
@@ -327,14 +340,6 @@ final class FontPack {
         BufferedImage source = sprite.image();
         String hash = key(source), key = hash + ":" + sprite.y();
         if (sprites.containsKey(key)) return;
-        int minimumHeight = Math.max(1, 7 - sprite.y());
-        if (source.getHeight() < minimumHeight) {
-            BufferedImage padded = new BufferedImage(source.getWidth(), minimumHeight, BufferedImage.TYPE_INT_ARGB);
-            Graphics2D padding = padded.createGraphics();
-            padding.drawImage(source, 0, 0, null);
-            padding.dispose();
-            source = padded;
-        }
         int divisor = 1;
         while (source.getWidth() / divisor > 256 || source.getHeight() / divisor > 256
             || source.getWidth() % divisor != 0 || source.getHeight() % divisor != 0) {
@@ -541,26 +546,49 @@ final class FontPack {
             throw new IllegalArgumentException("文字已变化，请重新生成字体资源：U+" + Integer.toHexString(cp));
         return key;
     }
-    net.kyori.adventure.text.Component rgbaText(net.kyori.adventure.text.Component text, int fallback, int top) {
-        return rgba.encode(text, fallback, top);
+    net.kyori.adventure.text.Component rgbaText(net.kyori.adventure.text.Component text, int fallback, int top,
+                                               TextStyle style, int band) {
+        return RgbaDecorations.encode(text, fallback, top, style, this, rgba, band);
     }
-    net.kyori.adventure.text.Component rgbaHit(int top, int size, net.kyori.adventure.text.Component text) {
-        return rgbaHits.text(top, size, text, this);
+    net.kyori.adventure.text.Component rgbaHit(int top, int height, TextStyle style,
+                                               net.kyori.adventure.text.Component text,
+                                               net.kyori.adventure.text.event.ClickEvent click,
+                                               net.kyori.adventure.text.event.HoverEvent<net.kyori.adventure.text.Component> hover) {
+        return rgbaHits.text(top, height, style, text, this, click, hover);
     }
-    net.kyori.adventure.text.Component rgbaHit(int top, TextStyle style,
-                                               net.kyori.adventure.text.Component text) {
-        return rgbaHits.text(top, style, text, this);
+    net.kyori.adventure.text.Component rgbaBitmap(net.kyori.adventure.text.Component glyph,
+                                                 int argb, int top, int height, int band) {
+        return rgba.bitmap(glyph, argb, top, height, band);
     }
     RgbaImages rgbaImages() { return rgbaImages; }
     boolean shaderImage(Sprite sprite, boolean interactive) {
-        return RgbaImages.eligible(sprite) && (!interactive || RgbaImages.exactHits(sprite));
+        return RgbaImages.eligible(sprite);
     }
     int imageTint(int argb) { return rgba.index(argb); }
+    void models(ModelPack value) { models = value; }
+    ModelPack modelPack() { return models; }
+    java.awt.Rectangle modelArea(Menu menu, Node node, int width, int height) {
+        if (models == null) throw new IllegalArgumentException("模型未准备，请执行 /dialogmenu reload all");
+        return models.area(menu, node, width, height);
+    }
+    net.kyori.adventure.text.Component model(String id, int size, int offset, int band) {
+        if (models == null) throw new IllegalArgumentException("模型未准备，请执行 /dialogmenu reload all");
+        return models.component(id, size, offset, band);
+    }
+    List<Path> modelPacks(Path data) throws IOException {
+        return models == null ? List.of() : models.paths(data);
+    }
     void write(Path target) throws IOException { write(target, ignored -> {}); }
     void write(Path target, IntConsumer progress) throws IOException {
         write(target, progress, null);
     }
     void write(Path target, IntConsumer progress, BuildTasks tasks) throws IOException {
+        write(target, progress, tasks, false);
+    }
+    void writeBase(Path target, IntConsumer progress, BuildTasks tasks) throws IOException {
+        write(target, progress, tasks, true);
+    }
+    private void write(Path target, IntConsumer progress, BuildTasks tasks, boolean separateModels) throws IOException {
         Path base = target.resolve("assets/dialogmenu");
         if (Files.exists(base)) try (var paths = Files.walk(base)) {
             for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) Files.delete(path);
@@ -606,9 +634,17 @@ final class FontPack {
         writes.add(path -> { rgbaImages.write(path); return null; });
         writes.add(path -> { rgbaHits.write(path); return null; });
         writes.add(path -> { rgba.write(path); return null; });
+        writes.add(path -> {
+            RgbaDecorations.write(base, textFonts.values().stream().map(TextFont::style).toList());
+            return null;
+        });
         int[] completed = {0};
         BuildTasks.ordered(tasks, writes, write -> write.apply(target),
             ignored -> progress.accept(++completed[0] * 100 / writes.size()));
+        if (models != null) {
+            ModelPack.shaders(target);
+            if (!separateModels) models.write(target);
+        }
     }
     static void writePng(BufferedImage image, Path path) throws IOException {
         if (!ImageIO.write(image, "png", path.toFile()))

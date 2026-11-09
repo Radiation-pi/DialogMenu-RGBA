@@ -92,6 +92,12 @@ public final class GlyphCacheTests {
             check(image.fonts().reusedGlyphs(), "image-only resource reload reuses fonts");
             check(!render(image).equals(render(moved)), "new image reaches rendered output");
             compareCold(root, data, image);
+            var full = engine.prepare(ReloadEngine.Mode.FULL).get(90, TimeUnit.SECONDS);
+            check(full.changed() && full.resourcesChanged() && full.snapshot().pack() != image.pack(),
+                "full rebuild cannot return the unchanged snapshot");
+            check(!full.snapshot().fonts().reusedGlyphs(), "full rebuild bypasses reusable glyph atlases");
+            compareCold(root, data, full.snapshot());
+            image = full.snapshot();
             old = image;
         }
         try (var engine = new ReloadEngine(data, CONTEXT)) {

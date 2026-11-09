@@ -60,6 +60,12 @@ public final class ResourceRegressionTests {
         publication();
         preview(root);
         tintAndTextStretch(root);
+        GraphicReuseTests.run(root);
+        DecorationOpenerTests.run(root);
+        MaxWidthTests.run(root);
+        HitFontTests.run(root);
+        ShaderTests.run(root);
+        System.out.println("PASS row pixel/z/hit checks=" + RowPackTests.run(root));
         ParallelBuildTests.main(new String[]{root.toString()});
         IndependentBuildTests.main(new String[]{root.toString()});
         BuildTasksTests.main(new String[]{root.toString()});
@@ -83,7 +89,7 @@ public final class ResourceRegressionTests {
             check(second.changed() && !first.snapshot().pack().equals(second.snapshot().pack()), "same-stamp change missed");
             check(second.snapshot().documents().get("probe").menu().nodes().getFirst().text().equals("B"), "old document retained");
             check(!engine.prepare().get().changed(), "unchanged build not cached");
-            Files.writeString(file, yaml("&oC"));
+            Files.writeString(file, yaml("C").replace("type: text", "type: unsupported"));
             rejects(() -> engine.prepare().get(), "invalid candidate accepted");
             Files.writeString(file, yaml("B")); Files.setLastModifiedTime(file, stamp);
             check(engine.prepare().get().snapshot() == second.snapshot(), "failed build replaced last snapshot");
@@ -134,13 +140,17 @@ public final class ResourceRegressionTests {
             checks++;
         }
         for (String decoration : List.of("&o", "&n", "&m", "&k")) {
-            rejects(() -> FontPack.create(List.of(doc(decoration + "A")), renderer, PREVIEW, List.of(300), 131072), "static style accepted");
-            rejects(() -> fonts.rgbaText(MenuText.parse(decoration + "A"), -1, 0), "runtime style accepted");
+            var styled = doc(decoration + "A");
+            var prepared = FontPack.create(List.of(styled), renderer, PREVIEW, List.of(300), 131072);
+            new SpriteCanvas().encode(styled.menu(), renderer.draw(styled.menu(), PREVIEW, 300, 131072),
+                PREVIEW, prepared, region -> null);
+            fonts.rgbaText(MenuText.parse(decoration + "A"), -1, 9, new TextStyle(8, 1, 1), 9);
+            checks += 2;
         }
-        rejects(() -> fonts.rgbaText(MenuText.parse("&#123456A"), -1, 0), "undeclared HEX accepted");
+        rejects(() -> fonts.rgbaText(MenuText.parse("&#123456A"), -1, 9, new TextStyle(8, 1, 1), 9), "undeclared HEX accepted");
         var declared = FontPack.create(List.of(document), renderer, context("A"), List.of(300), 131072,
             "", List.of(1.0), List.of(1.0), List.of(0x123456));
-        declared.rgbaText(MenuText.parse("&#123456A"), -1, 0); checks++;
+        declared.rgbaText(MenuText.parse("&#123456A"), -1, 9, new TextStyle(8, 1, 1), 9); checks++;
         var palette = new RgbaOffsets();
         for (int color = 0; color < 240; color++) palette.add(0x100000 + color);
         rejects(() -> palette.add(0x123456), "palette overflow accepted");
@@ -157,7 +167,8 @@ public final class ResourceRegressionTests {
         try (var engine = new ReloadEngine(data, PREVIEW)) {
             var snapshot = engine.prepare().get().snapshot();
             for (var document : snapshot.documents().values()) for (int width : List.of(300, 360, 420))
-                for (double scale : List.of(1.0, 1.5, 2.0)) for (double canvasScale : CanvasScale.OPTIONS) {
+                for (double scale : snapshot.settings().textScales())
+                    for (double canvasScale : snapshot.settings().canvasScales()) {
                     Context base = new Context() {
                         public String expand(String text) { return PREVIEW.expand(text); }
                         public Icon item(int slot) { return null; }
@@ -165,7 +176,7 @@ public final class ResourceRegressionTests {
                         public double textScale() { return scale; }
                     };
                     Context active = CanvasScale.context(base, canvasScale);
-                    var frame = snapshot.renderer().draw(document.menu(), active, width, 131072);
+                    var frame = snapshot.renderer().draw(document.menu(), active, width, snapshot.settings().maxPixels());
                     new SpriteCanvas().encode(document.menu(), frame, active, snapshot.fonts(), r -> null);
                     checks++;
                 }
@@ -253,7 +264,7 @@ public final class ResourceRegressionTests {
             && g.style().font().value().equals(stretched.name())),
             "Rendered text references its stretched font");
         check(MenuText.glyphs(output.component()).stream().anyMatch(g -> g.style().font() != null
-            && g.style().font().value().equals("text_hit_all") && g.style().clickEvent() != null),
+            && g.style().font().equals(RgbaHits.FONT) && g.style().clickEvent() != null),
             "Text hit proxy follows the stretched font and keeps its action");
     }
     private static void publication() throws Exception {

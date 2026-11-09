@@ -10,7 +10,7 @@ import static dev.dialogmenu.MenuModel.*;
 final class MenuTemplate {
     private static final java.util.regex.Pattern TEXT_VARIABLE =
         java.util.regex.Pattern.compile("\\{([^{}]+)}|%[^%\\s]+%");
-    record Entry(String label, String image, List<String> actions, TextureRegion atlas) {}
+    record Entry(String label, String image, List<String> actions, TextureRegion atlas, String model) {}
     record CollectionSpec(boolean external, String load, String list, String status, String loading, String ready,
                           String write, String token, String result, int capacity, int timeout,
                           String empty, String editState, List<String> saved) {}
@@ -40,9 +40,13 @@ final class MenuTemplate {
             if (catalog != null) for (String key : catalog.getKeys(false)) {
                 if (!key.matches("[a-zA-Z0-9:_-]+")) throw new IllegalArgumentException("entry ID非法：" + key);
                 var e = Objects.requireNonNull(catalog.getConfigurationSection(key), "entry须为对象");
-                LayoutStore.keys(e, Set.of("label", "image", "actions", "atlas"));
+                LayoutStore.keys(e, Set.of("label", "image", "actions", "atlas", "model"));
+                String model = e.getString("model", "");
+                if (!model.isEmpty() && (!model.matches("[a-z0-9_.-]+:[a-z0-9/._-]+")
+                    || model.contains("..") || e.contains("image") || e.contains("atlas")))
+                    throw new IllegalArgumentException(key + " model须为完整namespace:id，不能同时配置image/atlas");
                 entries.put(key, new Entry(e.getString("label", key), e.getString("image", ""),
-                    LayoutStore.actions(e.get("actions"), false), LayoutStore.atlas(e, e.getString("image", ""))));
+                    LayoutStore.actions(e.get("actions"), false), LayoutStore.atlas(e, e.getString("image", "")), model));
             }
             var sources = yaml.getConfigurationSection("collections");
             if (sources != null) for (String key : sources.getKeys(false)) {
@@ -212,7 +216,7 @@ final class MenuTemplate {
         if (section != null) for (String id : section.getKeys(false)) {
             var grid = Objects.requireNonNull(section.getConfigurationSection(id), "grid须为对象");
             LayoutStore.keys(grid, Set.of("collection", "items", "slots", "columns", "x", "y", "step-x", "step-y",
-                "width", "height", "background", "icon-x", "icon-y", "icon-size", "text-x", "color",
+                "width", "height", "background", "icon-x", "icon-y", "icon-size", "model-size", "text-x", "color",
                 "empty-label", "empty-actions", "unknown-label"));
             if (!definition.collections.containsKey(grid.getString("collection")))
                 throw new IllegalArgumentException("grid collection不存在：" + id);
@@ -220,6 +224,7 @@ final class MenuTemplate {
             LayoutStore.integer(grid, "columns", 4, 1, 64);
             for (String field : List.of("width", "height", "step-x", "step-y", "icon-size"))
                 if (LayoutStore.number(grid, field, 0) <= 0) throw new IllegalArgumentException("grid " + field + "须为正数");
+            if (grid.contains("model-size")) LayoutStore.integer(grid, "model-size", 10, 1, 96);
             if (grid.getString("background", "").isBlank()) throw new IllegalArgumentException("grid缺少background");
             if (grid.contains("items")) {
                 List<String> items = LayoutStore.strings(grid.get("items"));
@@ -356,8 +361,15 @@ final class MenuTemplate {
                 Interaction interaction = new Interaction(true, "", List.of(label), actions);
                 nodes.add(image(prefix + "-base", grid.getString("background"), x, y, w, h,
                     interaction));
-                boolean icon = entry != null && !entry.image().isBlank();
-                if (icon) nodes.add(image(prefix + "-icon", entry.image(), x + grid.getDouble("icon-x"),
+                boolean model = entry != null && !entry.model().isBlank();
+                boolean icon = model || entry != null && !entry.image().isBlank();
+                if (model) {
+                    int size = LayoutStore.integer(grid, "model-size",
+                        Math.max(1, (int) Math.round(grid.getDouble("icon-size"))), 1, 96);
+                    nodes.add(new Node(prefix + "-icon", "model", x + grid.getDouble("icon-x"),
+                        y + grid.getDouble("icon-y"), 0, 1, 1, size, size, 0xFFFFFFFF, "", entry.model(),
+                        "center", size, 1, 0, 9, 18, List.of(), 0, interaction, false));
+                } else if (icon) nodes.add(image(prefix + "-icon", entry.image(), x + grid.getDouble("icon-x"),
                     y + grid.getDouble("icon-y"), grid.getDouble("icon-size"), grid.getDouble("icon-size"),
                     interaction, entry.atlas()));
                 String color = grid.getString("color", "#343537");

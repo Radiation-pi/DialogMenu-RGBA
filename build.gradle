@@ -17,6 +17,7 @@ dependencies {
         compileOnly files(localClasspath.split(java.io.File.pathSeparator).collect { file(it) })
     } else {
         compileOnly 'io.papermc.paper:paper-api:1.21.7-R0.1-SNAPSHOT'
+        compileOnly 'net.kyori:adventure-nbt:4.24.0'
         compileOnly('com.github.SkriptLang:Skript:2.12.2') {
             transitive = false
         }
@@ -34,6 +35,10 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 processResources {
+    from('tools/models') {
+        into 'models/compiler'
+        exclude '**/__pycache__/**', '**/test_*.py'
+    }
     filesMatching('plugin.yml') {
         expand(version: project.version)
     }

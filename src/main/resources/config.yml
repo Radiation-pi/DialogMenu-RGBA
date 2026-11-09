@@ -1,9 +1,13 @@
 default-layout: layout-demo
 canvas-width: 300
-max-canvas-pixels: 131072
+max-canvas-pixels: 1048576
 close-with-escape: false
-text-scales: [1, 1.5, 2]
+text-scales: [0.8, 1, 2]
 default-text-scale: 1
+canvas-scales: [0.8, 1, 2]
+default-canvas-scale: 1
+# 可选菜单入口；升级不会自动写入现有配置。
+openers: {}
 # 动态文本额外使用的HEX色；传统16色已内置。
 text-colors: []
 # 仅支持 RGBA 渲染，不由配置切换。

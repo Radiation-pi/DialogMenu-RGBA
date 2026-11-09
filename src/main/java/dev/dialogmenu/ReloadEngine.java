@@ -12,7 +12,7 @@ import static dev.dialogmenu.MenuModel.*;
 
 /** 文件解析和资源包准备不接触运行中的 Bukkit 或玩家状态。 */
 final class ReloadEngine implements AutoCloseable {
-    enum Mode { YAML, RESOURCE, ALL }
+    enum Mode { YAML, RESOURCE, ALL, FULL }
     record Progress(int percent, String stage) {}
     private record Validation(LayoutStore.Document doc, Context context, int width) {}
     private static final class ProgressReporter {
@@ -30,13 +30,14 @@ final class ReloadEngine implements AutoCloseable {
             if (args.length == 2) for (Mode mode : Mode.values())
                 if (mode.name().equalsIgnoreCase(args[1])) return new Request(mode, null);
             if (args.length == 2) return new Request(Mode.YAML, LayoutStore.id(args[1]));
-            throw new IllegalArgumentException("/dialogmenu reload [yaml|resource|all|菜单名]");
+            throw new IllegalArgumentException("/dialogmenu reload [yaml|resource|all|full|菜单名]");
         }
     }
     record Settings(int width, int maxPixels, String defaultLayout, boolean escape,
                     List<Double> textScales, double defaultTextScale, boolean autoCraftEngine,
                     Path resourceRoot, int resourceBuildCpuPercent, int resourceBuildThreads, List<String> craftEngineDefinitions,
-                    List<Integer> textColors, boolean reloadProgressBossBar, boolean reuseCompiledCache) {}
+                    List<Integer> textColors, boolean reloadProgressBossBar, boolean reuseCompiledCache,
+                    List<Double> canvasScales, double defaultCanvasScale, List<MenuOpeners.Rule> openers) {}
     record Stamp(long size, FileTime modified, String digest) {}
     record Snapshot(Map<String, LayoutStore.Document> documents, VanillaAssets assets, MenuRenderer renderer,
                     FontPack fonts, Settings settings, Path pack, Map<Path, Stamp> inputs,
@@ -173,6 +174,7 @@ final class ReloadEngine implements AutoCloseable {
         if (!documents.containsKey(latest.settings().defaultLayout()))
             throw new IllegalArgumentException("default-layout不存在；旧布局保留");
         LayoutStore.validateLinks(documents);
+        MenuOpeners.validate(latest.settings().openers(), documents.keySet());
         progress.update(65, "校验菜单与资源引用");
         try {
             validate(MenuTemplate.catalog(replacements.values()), latest.renderer(), latest.fonts(),
@@ -204,12 +206,14 @@ final class ReloadEngine implements AutoCloseable {
         if (!settings.resourceRoot().equals(latest.settings().resourceRoot())
             || !settings.craftEngineDefinitions().equals(latest.settings().craftEngineDefinitions())
             || !latest.settings().textScales().containsAll(settings.textScales())
+            || !latest.settings().canvasScales().containsAll(settings.canvasScales())
             || !latest.settings().textColors().containsAll(settings.textColors()))
             throw new IllegalArgumentException("资源目录、CE定义文件、字体倍率或颜色范围已变化，请执行 /dialogmenu reload all；旧布局保留");
         progress.update(35, "解析全部菜单");
         var documents = new LayoutStore(data.resolve("layouts")).load();
         if (!documents.containsKey(settings.defaultLayout()))
             throw new IllegalArgumentException("default-layout不存在");
+        MenuOpeners.validate(settings.openers(), documents.keySet());
         progress.update(60, "校验菜单与已准备资源");
         try {
             validate(MenuTemplate.catalog(documents.values()), latest.renderer(), latest.fonts(),
@@ -230,14 +234,13 @@ final class ReloadEngine implements AutoCloseable {
         var yaml = new YamlConfiguration();
         yaml.loadFromString(Files.readString(data.resolve("config.yml")));
         int width = LayoutStore.integer(yaml, "canvas-width", 300, 64, 512);
-        int maxPixels = LayoutStore.integer(yaml, "max-canvas-pixels", 131072, 4096, 524288);
-        List<Double> scales = new ArrayList<>();
-        for (Object value : yaml.getList("text-scales", List.of(1.0))) {
-            if (!(value instanceof Number n) || !Double.isFinite(n.doubleValue())
-                || n.doubleValue() < .5 || n.doubleValue() > 4)
-                throw new IllegalArgumentException("text-scales须为0.5..4的倍率列表");
-            if (!scales.contains(n.doubleValue())) scales.add(n.doubleValue());
-        }
+        int maxPixels = LayoutStore.integer(yaml, "max-canvas-pixels", 131072, 4096, 1048576);
+        List<Double> scales = CanvasScale.options(yaml, "text-scales", List.of(1.0));
+        // 旧配置缺少此字段时保留原有画布倍率，不回写配置或玩家偏好。
+        List<Double> canvasScales = CanvasScale.options(yaml, "canvas-scales", CanvasScale.OPTIONS);
+        double defaultCanvas = LayoutStore.number(yaml, "default-canvas-scale", 1);
+        if (!canvasScales.contains(defaultCanvas))
+            throw new IllegalArgumentException("default-canvas-scale须在canvas-scales中");
         double defaultScale = LayoutStore.number(yaml, "default-text-scale", 1);
         if (!scales.contains(defaultScale)) throw new IllegalArgumentException("default-text-scale须在text-scales中");
         List<Integer> colors = new ArrayList<>();
@@ -255,7 +258,8 @@ final class ReloadEngine implements AutoCloseable {
             LayoutStore.integer(yaml, "resource-build-cpu-percent", 80, 1, 100),
             LayoutStore.integer(yaml, "resource-build-threads", BuildTasks.defaultThreads(), 1, 8),
             List.copyOf(LayoutStore.strings(yaml.get("craftengine-definitions"))), List.copyOf(colors),
-            yaml.getBoolean("reload-progress-bossbar", true), yaml.getBoolean("reuse-compiled-cache", false));
+            yaml.getBoolean("reload-progress-bossbar", true), yaml.getBoolean("reuse-compiled-cache", false),
+            canvasScales, defaultCanvas, MenuOpeners.parse(yaml));
     }
     private Result build(Mode mode, ProgressReporter progress) throws Exception {
         long start = System.nanoTime();
@@ -265,36 +269,44 @@ final class ReloadEngine implements AutoCloseable {
         if (mode == Mode.RESOURCE && latest == null)
             throw new IllegalStateException("尚无已编译资源，请执行 /dialogmenu reload all");
         // 仅资源重载不读取磁盘上的待应用布局或配置。
-        boolean all = mode == Mode.ALL;
+        boolean all = mode == Mode.ALL || mode == Mode.FULL;
         progress.update(10, "读取重载配置");
         Map<Path, Stamp> yamlInputs = all ? yamlInputs() : latest.inputs();
         Settings settings = all ? settings() : latest.settings();
         progress.update(15, "准备菜单和资源清单");
         try (var budget = BuildBudget.open(settings.resourceBuildCpuPercent());
              var tasks = new BuildTasks(settings.resourceBuildThreads(), settings.resourceBuildCpuPercent())) {
-            return build(all, yamlInputs, settings, start, progress, tasks);
+            return build(mode, yamlInputs, settings, start, progress, tasks);
         }
     }
-    private Result build(boolean all, Map<Path, Stamp> yamlInputs, Settings settings, long start,
+    private Result build(Mode mode, Map<Path, Stamp> yamlInputs, Settings settings, long start,
                          ProgressReporter progress, BuildTasks tasks) throws Exception {
-        if (latest != null && builtInputs.equals(yamlInputs)
+        boolean all = mode == Mode.ALL || mode == Mode.FULL;
+        boolean full = mode == Mode.FULL;
+        var documents = all ? new LayoutStore(data.resolve("layouts")).load() : latest.documents();
+        List<LayoutStore.Document> catalog = MenuTemplate.catalog(documents.values());
+        ModelPack models = full || latest == null || !sameModelInputs(latest.resourceInputs())
+            || !ModelPack.matches(latest.fonts().modelPack(), catalog)
+            ? ModelPack.prepare(data, catalog) : latest.fonts().modelPack();
+        if (!full && latest != null && builtInputs.equals(yamlInputs)
             && latest.resourceInputs().equals(resourceInputs(latest.assets(), settings))) {
             progress.update(95, "资源未变化，复用已准备快照");
             return new Result(latest, false, false);
         }
-        var documents = all ? new LayoutStore(data.resolve("layouts")).load() : latest.documents();
         if (!documents.containsKey(settings.defaultLayout())) throw new IllegalArgumentException("default-layout不存在");
+        MenuOpeners.validate(settings.openers(), documents.keySet());
         progress.update(20, "扫描图像与CraftEngine资源");
         var assets = new VanillaAssets(data.resolve("images"), settings.resourceRoot(), settings.craftEngineDefinitions());
         Map<Path, Stamp> initialResources = resourceInputs(assets, settings);
-        var renderer = new MenuRenderer(assets);
-        List<LayoutStore.Document> catalog = MenuTemplate.catalog(documents.values());
+        // 编译缓存仅活到本轮校验结束，最多保留64MiB像素。
+        var renderer = new MenuRenderer(assets, 16_777_216);
         var widths = new TreeSet<>(List.of(300, 360, 420, settings.width()));
         progress.update(24, "生成字体与图片资源");
         var fonts = FontPack.create(catalog, renderer, preview, widths, settings.maxPixels(),
-            MenuTemplate.characters(documents.values()), settings.textScales(), CanvasScale.OPTIONS,
+            MenuTemplate.characters(documents.values()), settings.textScales(), settings.canvasScales(),
             settings.textColors(), step -> progress.update(24 + step * 48 / 85,
-                step < 55 ? "准备菜单图文" : "生成字形图集"), tasks, latest == null ? null : latest.fonts());
+                step < 55 ? "准备菜单图文" : "生成字形图集"), tasks,
+            !full && latest != null ? latest.fonts() : null, models);
         progress.update(72, fonts.reusedGlyphs() ? "字体依赖未变化，复用字形图集" : "字形图集生成完成");
         validate(catalog, renderer, fonts, settings, progress, 73, 80, tasks);
         assets.verifyInputs();
@@ -309,7 +321,8 @@ final class ReloadEngine implements AutoCloseable {
         Path zip = packDirectory.resolve("dialog-" + UUID.randomUUID() + ".zip");
         try {
             progress.update(81, "写入资源包文件");
-            fonts.write(exported, step -> progress.update(81 + step * 8 / 100, "写入字体与图片"), tasks);
+            fonts.writeBase(exported, step -> progress.update(81 + step * 8 / 100, "写入字体与图片"), tasks);
+            fonts.modelPacks(data);
             List<Path> files;
             try (var paths = Files.walk(exported)) {
                 files = paths.filter(Files::isRegularFile).sorted().toList();
@@ -356,6 +369,14 @@ final class ReloadEngine implements AutoCloseable {
         progress.update(99, "资源快照构建完成");
         return new Result(next, true);
     }
+    private boolean sameModelInputs(Map<Path, Stamp> previousResources) throws IOException {
+        Set<Path> paths = new HashSet<>();
+        ModelPack.inputs(data, paths);
+        Map<Path, Stamp> current = stamps(paths);
+        for (Path path : paths)
+            if (!Objects.equals(current.get(path), previousResources.get(path))) return false;
+        return true;
+    }
     private void validate(List<LayoutStore.Document> catalog, MenuRenderer renderer, FontPack fonts,
                           Settings settings, ProgressReporter progress, int start, int end) throws Exception {
         validate(catalog, renderer, fonts, settings, progress, start, end, null);
@@ -364,13 +385,13 @@ final class ReloadEngine implements AutoCloseable {
                           Settings settings, ProgressReporter progress, int start, int end,
                           BuildTasks tasks) throws Exception {
         var widths = new TreeSet<>(List.of(300, 360, 420, settings.width()));
-        int total = Math.max(1, catalog.size() * widths.size());
         int[] completed = {0};
         String characters = MenuTemplate.characters(catalog);
         var dynamic = new FontPack.Validation();
         List<Validation> jobs = new ArrayList<>();
         // 可选倍率在玩家选择时校验，不要求每个布局加载时适配所有倍率。
-        for (var doc : catalog) for (int size : widths) {
+        for (var doc : catalog) for (int size : MenuRenderer.preparedWidths(doc.menu(), widths,
+            settings.defaultCanvasScale(), settings.maxPixels())) {
             BuildBudget.checkpoint();
             var base = MenuTemplate.preview(doc, preview);
             Context active = new Context() {
@@ -378,12 +399,15 @@ final class ReloadEngine implements AutoCloseable {
                 public Icon item(int slot) { return base.item(slot); }
                 public boolean permitted(String permission) { return base.permitted(permission); }
                 public double textScale() { return settings.defaultTextScale(); }
+                public double canvasScale() { return settings.defaultCanvasScale(); }
             };
             jobs.add(new Validation(doc, active, size));
         }
+        int total = Math.max(1, jobs.size());
         BuildTasks.ordered(tasks, jobs, job -> {
             var menu = job.doc().menu();
-            var frame = new MenuRenderer(renderer.assets).draw(menu, job.context(), job.width(), settings.maxPixels());
+            var frame = renderer.drawRuntime(menu, job.context(), job.width(), settings.maxPixels());
+            if (job.width() == MenuRenderer.MAX_WIDTH && !MenuRenderer.modelProtocolFits(menu, frame)) return null;
             new SpriteCanvas().encode(menu, frame, job.context(), fonts, region -> null);
             fonts.validateDynamic(job.doc(), job.context(), job.width(), characters, dynamic);
             return null;
@@ -407,6 +431,7 @@ final class ReloadEngine implements AutoCloseable {
         Set<Path> files = new HashSet<>();
         scan(data.resolve("images"), files);
         files.addAll(assets.craftEngine.dependencies());
+        ModelPack.inputs(data, files);
         return stamps(files);
     }
     private static Map<Path, Stamp> stamps(Set<Path> files) throws IOException {

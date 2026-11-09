@@ -14,17 +14,15 @@ final class SpriteCanvas {
     private record TextKey(FontPack fonts, String text, double wrapWidth, int maxLines, int size,
                            double stretchX, double stretchY) {}
     private record TextLayout(List<Component> lines, List<Integer> widths) {}
-    private record LabelKey(FontPack fonts, String node, Component text, TextStyle style, int top, int row, int argb) {}
-    private record InkKey(FontPack fonts, String font, int code, int color) {}
+    private record LabelKey(FontPack fonts, String node, Component text, TextStyle style, int top, int band, int argb) {}
     private final Map<TextKey, TextLayout> staticText = new LinkedHashMap<>(16, .75f, true);
     private final Map<LabelKey, Component> staticLabels = new LinkedHashMap<>(16, .75f, true);
-    private final Map<InkKey, Component> staticInks = new LinkedHashMap<>(16, .75f, true);
     static final Key SPACE = Key.key("dialogmenu", "space");
     static String move(int pixels) {
         if (pixels < -1024 || pixels > 1024) throw new IllegalArgumentException("Canvas movement out of range");
         return Character.toString(0xF0000 + pixels + 1024);
     }
-    private static Component space(int pixels) { return Component.text(move(pixels)).font(SPACE); }
+    static Component space(int pixels) { return Component.text(move(pixels)).font(SPACE); }
     private static Component positioned(Component ink, int x, int advance) {
         return Component.empty().append(space(x)).append(ink).append(space(-x - advance));
     }
@@ -52,7 +50,6 @@ final class SpriteCanvas {
     }
     Output encode(Menu menu, Rendered frame, Context context, FontPack fonts, Function<Region, ClickEvent> bind) {
         int width = frame.width(), height = frame.height(), rows = (height + 8) / 9;
-        Map<String, Integer> nativeRows = RgbaRows.plan(menu, frame);
         List<List<Component>> parts = new ArrayList<>();
         for (int row = 0; row < rows; row++) parts.add(new ArrayList<>());
         Map<Region, ClickEvent> clicks = new HashMap<>();
@@ -60,30 +57,46 @@ final class SpriteCanvas {
         for (Sprite sprite : frame.sprites()) sprites.put(sprite.id(), sprite);
         // 文字和图形共用绘制顺序，LayoutStore 已按 Z 排序。
         for (Node node : menu.nodes()) {
-            if (node.type().equals("text")) {
-                addText(parts, menu, node, context, fonts, clicks, bind, width, height, nativeRows.get(node.id()));
+            if (node.type().equals("model")) {
+                double zoom = width / (double) menu.width();
+                int x = (int) Math.round((menu.width() / 2.0 + node.x()) * zoom);
+                int center = (int) Math.round((menu.height() / 2.0 - node.y()) * zoom);
+                int size = (int) Math.round(node.size() * node.scaleX() * zoom);
+                var area = fonts.modelArea(menu, node, width, height);
+                Region region = node.interaction() == null ? null : node.interaction().region(node);
+                ClickEvent click = region != null && region.hasActions() ? clicks.computeIfAbsent(region, bind) : null;
+                var hover = region == null ? null : hover(region, context);
+                for (var slice : RgbaRows.slices(area.y, area.height)) {
+                    parts.get(slice.row()).add(positioned(fonts.model(node.source(), size,
+                        -slice.local(center), slice.band()), x, 0));
+                    if (click != null || hover != null)
+                        parts.get(slice.row()).add(positioned(RgbaHits.rectangle(slice.local(slice.top()),
+                            area.width, slice.height(), click, hover), area.x, 0));
+                }
+            } else if (node.type().equals("text")) {
+                addText(parts, menu, node, context, fonts, clicks, bind, width, height);
             } else {
                 Sprite sprite = sprites.get(node.id());
                 if (sprite == null) continue;
                 Region region = node.interaction() == null ? null : node.interaction().region(node);
-                addSprite(parts, sprite, fonts, node.argb(), nativeRows.get(node.id()),
+                addSprite(parts, sprite, fonts, node.argb(),
                     region != null,
                     region == null || !region.hasActions() ? null : clicks.computeIfAbsent(region, bind),
                     region == null ? null : hover(region, context));
             }
         }
-        Component body = Component.empty();
+        var body = Component.text();
         for (int row = 0; row < rows; row++) {
-            for (Component part : parts.get(row)) body = body.append(part);
-            body = body.append(space(width + 2));
-            if (row + 1 < rows) body = body.append(Component.newline());
+            for (Component part : parts.get(row)) body.append(part);
+            body.append(space(width + 2));
+            if (row + 1 < rows) body.append(Component.newline());
         }
-        return new Output(body.decoration(TextDecoration.BOLD, false).decoration(TextDecoration.ITALIC, false)
+        return new Output(body.build().decoration(TextDecoration.BOLD, false).decoration(TextDecoration.ITALIC, false)
             .shadowColor(ShadowColor.none()), width + 10, rows, frame.sprites().size());
     }
     private void addText(List<List<Component>> parts, Menu menu, Node node, Context context,
                                 FontPack fonts, Map<Region, ClickEvent> clicks,
-                                Function<Region, ClickEvent> bind, int width, int height, int nativeRow) {
+                                Function<Region, ClickEvent> bind, int width, int height) {
         int size = textSize(menu, node, width, context.textScale(), context.canvasScale());
         TextStyle style = new TextStyle(size, node.scaleX(), node.scaleY());
         double zoom = width / (double) menu.width();
@@ -115,58 +128,60 @@ final class SpriteCanvas {
                 default -> advance / 2.0;
             });
             int top = textTop(menu, node, width, line, style);
-            if (top < 0 || top + style.height() > height || x < 0 || x + advance > width)
+            boolean italic = MenuText.glyphs(text).stream()
+                .anyMatch(glyph -> glyph.style().hasDecoration(TextDecoration.ITALIC));
+            int leftOverhang = italic ? (int) Math.ceil(style.height() / 4.0) + 2 : 0;
+            int rightOverhang = italic ? 2 : 0;
+            if (top < 0 || top + style.height() > height || x - leftOverhang < 0
+                || x + advance + rightOverhang > width)
                 throw new IllegalArgumentException(node.id() + " 原生文字超出画布");
             Key font = fonts.textFont(style, text);
-            int relativeTop = top - nativeRow * 9;
             boolean fixedLabel = fixed && region == null;
-            LabelKey labelKey = new LabelKey(fonts, node.id(), text, style, relativeTop, nativeRow, node.argb());
-            Component cachedLabel = fixedLabel ? staticLabels.get(labelKey) : null;
-            if (cachedLabel == null) {
-                cachedLabel = fonts.rgbaText(text, node.argb(), relativeTop).font(font);
-                if (fixedLabel) cache(staticLabels, labelKey, cachedLabel, 2048);
+            for (var slice : RgbaRows.slices(top, style.height())) {
+                int relativeTop = slice.local(top);
+                LabelKey labelKey = new LabelKey(fonts, node.id(), text, style, relativeTop, slice.band(), node.argb());
+                Component cachedLabel = fixedLabel ? staticLabels.get(labelKey) : null;
+                if (cachedLabel == null) {
+                    cachedLabel = fonts.rgbaText(text, node.argb(), relativeTop, style, slice.band()).font(font);
+                    if (fixedLabel) cache(staticLabels, labelKey, cachedLabel, 2048);
+                }
+                parts.get(slice.row()).add(positioned(cachedLabel, x, advance));
+                if (region != null)
+                    parts.get(slice.row()).add(positioned(fonts.rgbaHit(slice.local(slice.top()), slice.height(), style, text,
+                        clicks.get(region), hover(region, context)), x, advance));
             }
-            parts.get(nativeRow).add(positioned(cachedLabel, x, advance));
-            if (region != null)
-                parts.get(nativeRow).add(positioned(fonts.rgbaHit(relativeTop, style, text)
-                    .clickEvent(clicks.get(region)).hoverEvent(hover(region, context)), x, advance));
         }
     }
     private void addSprite(List<List<Component>> parts, Sprite sprite, FontPack fonts, int argb,
-                                  int nativeRow, boolean interactive, ClickEvent click, HoverEvent<Component> hover) {
-        sprite = RgbaRows.relative(sprite, nativeRow);
+                                  boolean interactive, ClickEvent click, HoverEvent<Component> hover) {
         if (fonts.shaderImage(sprite, interactive)) {
             RgbaImages images = fonts.rgbaImages();
             int tint = fonts.imageTint(argb);
             RgbaImages.Glyph glyph = images.glyph(sprite, tint);
-            int color = RgbaImages.payload(sprite.width(), sprite.height(), sprite.y() % 9);
-            Component ink = cachedInk(fonts, "images_rgba", glyph.code(), color,
-                Key.key("dialogmenu", "images_rgba"));
-            parts.get(nativeRow).add(positioned(ink, sprite.x(), glyph.advance()));
-            if (click != null || hover != null)
-                for (var tile : RgbaImages.tiles(sprite.width(), sprite.height()))
-                    parts.get(nativeRow).add(positioned(images.hit(sprite.y() + tile.y(), tile.size(), click, hover),
-                        sprite.x() + tile.x(), tile.size() + 1));
+            for (var slice : RgbaRows.slices(sprite.y(), sprite.height())) {
+                int payload = RgbaImages.payload(sprite.width(), sprite.height(), slice.local(sprite.y()), slice.band());
+                Component ink = Component.text(Character.toString(glyph.code()), TextColor.color(RgbaOffsets.INK))
+                    .font(Key.key("dialogmenu", "images_rgba")).shadowColor(ShadowColor.shadowColor(payload));
+                parts.get(slice.row()).add(positioned(ink, sprite.x(), glyph.advance()));
+                if (click != null || hover != null)
+                    parts.get(slice.row()).add(positioned(RgbaHits.rectangle(slice.local(slice.top()),
+                        sprite.width(), slice.height(), click, hover), sprite.x(), 0));
+            }
             return;
         }
-        for (Sprite part : CanvasRows.parts(sprite)) {
-            FontPack.Glyph glyph = fonts.sprite(part);
+        for (Sprite part : fonts.parts(sprite)) {
+            FontPack.Glyph glyph = fonts.sprite(RgbaRows.local(part));
             int textColor = sprite.texture() != null && sprite.texture().startsWith("minecraft:")
                 ? argb & 0xFFFFFF : 0xFFFFFF;
-            Component ink = cachedInk(fonts, "sprites", glyph.code(), textColor,
-                Key.key("dialogmenu", "sprites"));
-            if (click != null || hover != null) ink = ink.clickEvent(click).hoverEvent(hover);
-            parts.get(nativeRow).add(positioned(ink, part.x(), glyph.advance()));
+            Component source = Component.text(Character.toString(glyph.code())).font(Key.key("dialogmenu", "sprites"));
+            for (var slice : RgbaRows.slices(part.y(), part.height())) {
+                Component ink = fonts.rgbaBitmap(source, textColor, slice.local(part.y()), glyph.height(), slice.band());
+                parts.get(slice.row()).add(positioned(ink, part.x(), glyph.advance()));
+                if (click != null || hover != null)
+                    parts.get(slice.row()).add(positioned(RgbaHits.rectangle(slice.local(slice.top()),
+                        part.width(), slice.height(), click, hover), part.x(), 0));
+            }
         }
-    }
-    private Component cachedInk(FontPack fonts, String font, int code, int color, Key key) {
-        InkKey inkKey = new InkKey(fonts, font, code, color);
-        Component ink = staticInks.get(inkKey);
-        if (ink == null) {
-            ink = Component.text(Character.toString(code), TextColor.color(color)).font(key);
-            cache(staticInks, inkKey, ink, 4096);
-        }
-        return ink;
     }
     private static <K, V> void cache(Map<K, V> values, K key, V value, int limit) {
         values.put(key, value);

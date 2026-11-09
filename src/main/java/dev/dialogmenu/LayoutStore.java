@@ -217,8 +217,8 @@ final class LayoutStore {
             if (!s.getBoolean("visible", true)) continue;
             String type = s.getString("type", "");
             boolean interactive = s.contains("clickable") || s.contains("actions") || s.contains("tooltip");
-            if (interactive && !Set.of("text", "image").contains(type))
-                throw new IllegalArgumentException(key + " 直接点击仅用于text/image");
+            if (interactive && !Set.of("text", "image", "model").contains(type))
+                throw new IllegalArgumentException(key + " 直接点击仅用于text/image/model");
             if (s.contains("clickable") && !(s.get("clickable") instanceof Boolean))
                 throw new IllegalArgumentException(key + " clickable须为true/false");
             double x = ox + number(s, "offset.x", 0) * sx;
@@ -235,7 +235,7 @@ final class LayoutStore {
                 flatten(s.getConfigurationSection("children"), x, y, z, nx, ny, out);
                 continue;
             }
-            if (!Set.of("rectangle", "frame", "line", "text", "image").contains(type))
+            if (!Set.of("rectangle", "frame", "line", "text", "image", "model").contains(type))
                 throw new IllegalArgumentException(key + " 元素尚不支持：" + type + "；模型请勿当成平面图片");
             double w = number(s, "width", type.equals("text") ? 0 : 16);
             double h = number(s, "height", type.equals("text") ? 0 : 16);
@@ -253,6 +253,15 @@ final class LayoutStore {
             if (atlas != null && !type.equals("image"))
                 throw new IllegalArgumentException(key + " atlas仅用于image");
             int textSize = integer(s, "size", 8, 1, 128);
+            if (type.equals("model")) {
+                if (!source.matches("[a-z0-9_.-]+:[a-z0-9/._-]+") || source.contains(".."))
+                    throw new IllegalArgumentException(key + " model需要完整namespace:id");
+                if (nx != ny || rotation != 0 || argb != 0xFFFFFFFF
+                    || s.contains("width") || s.contains("height"))
+                    throw new IllegalArgumentException(key + " model仅支持等比size/scale及offset，不支持width/height/旋转/染色");
+                textSize = integer(s, "size", 32, 1, 96);
+                w = h = textSize;
+            }
             int lines = integer(s, "max-lines", 0, 0, 32);
             if (s.contains("line-width")) w = number(s, "line-width", 0);
             if ((s.contains("line-width") || lines > 0) && (!type.equals("text") || w <= 0 || lines == 0))

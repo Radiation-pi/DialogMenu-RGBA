@@ -27,7 +27,7 @@
 gradle build
 ```
 
-产物：`build/libs/DialogMenu-0.2.0.jar`。
+产物：`build/libs/DialogMenu-<version>.jar`，版本取 `gradle.properties`。
 
 1. 正常停服，替换原 DialogMenu JAR，保留 `plugins/DialogMenu/` 后启动；不要同时安装多个版本。
 2. 首次安装或更换插件 JAR 后，手动执行 `/dialogmenu reload all` 准备资源。有 CraftEngine 时自动登记生成的资源包；否则用 `/dialogmenu resources` 导出后自行合包分发。合包需保留 `pack.mcmeta` 的 overlays 和 `dialogmenu_*` 目录。
@@ -38,8 +38,13 @@ gradle build
 - `/dialogmenu reload` 或 `reload yaml`：只重载 YAML，缺少预备资源时保留原布局。
 - `/dialogmenu reload <菜单名>`：只重载该页面所属的 YAML 文件，也可使用不带 `.yml` 的文件名。
 - `/dialogmenu reload resource`：只更新当前已加载布局的资源。
-- `/dialogmenu reload all`：同时更新 YAML 与资源。
-- `/dialogmenu scale <0.75|1>`：调整个人画布倍率。
+- `/dialogmenu reload all`：同时更新 YAML 与资源；增量准备并复用未变化字形/Shader模型。
+- `/dialogmenu reload full`：强制完整重渲染，重新生成字形与Shader模型资源。
+- `/dialogmenu scale <倍率>`：调整个人画布倍率，Tab 读取当前 `canvas-scales`。
+- `/dialogmenu textscale <倍率>`：调整个人文字倍率，Tab 读取当前 `text-scales`。
+- `/dialogmenu give <入口ID> [玩家]`：管理员发放配置的入口物品。
+
+新装的 `canvas-scales`、`text-scales` 默认均为 `[0.8, 1, 2]`，默认选择为 `1`。升级不自动重写现有 `config.yml` 或玩家倍率文件；旧配置缺少 `canvas-scales` 时保持旧画布选项 `[0.75, 1]`。新增倍率需 `reload all` 后重新接收资源包；已有菜单仍受实际画布/像素预算限制，超限会拒绝选择，不自动缩放或重排。
 
 旧版 `backend` 点击区域需迁移到 `frontend` 的文字或图片元素。新增字符、图片或字号后使用 `reload all`，并重新分发资源包。
 
@@ -51,9 +56,36 @@ CE 图片可写 `source: craftengine:资源包目录/textures后的路径.png`�
 
 ## 动态文本与重载
 
-传统 16 色已预置；动态文字使用额外 HEX 色时，在 `text-colors: ["#123456"]` 中声明后执行 `reload all` 并重新分发资源包。RGBA 模式不支持斜体、下划线、删除线和混淆装饰，准备期与运行时执行相同校验。
+传统 16 色已预置；动态文字使用额外 HEX 色时，在 `text-colors: ["#123456"]` 中声明后执行 `reload all` 并重新分发资源包。支持粗体 `&l`、斜体 `&o`、下划线 `&n`、删除线 `&m`、混淆 `&k` 和重置 `&r`，也支持 `§`。例如 `&c&o&n红色斜体下划线&r`；legacy 颜色码会重置此前装饰，应先写颜色再写装饰。混淆由客户端等宽替换字形，不需要服务器定时刷新。下划线/删除线跟随实际字号与缩放，不增加点击区域；首次使用新实现需 `reload all` 并更新资源包。
 
-YAML 重载复用当前字库，缺少动态字符范围时拒绝应用。已应用的 YAML 与已构建的资源分别记录，后续 `reload resource/all` 会按新输入重建。缓存使用内容摘要，保留文件大小和时间戳的修改同样可发现；构建期间变化的输入会导致本轮失败，保留上一版可用 ZIP。
+YAML 重载复用当前字库，缺少动态字符范围时拒绝应用。已应用的 YAML 与已构建的资源分别记录，后续 `reload resource/all` 会按新输入增量重建。`reload full` 无视可复用缓存，强制重建字形与 Shader 模型资源。缓存使用内容摘要，保留文件大小和时间戳的修改同样可发现；构建期间变化的输入会导致本轮失败，保留上一版可用 ZIP。
+
+## 菜单打开入口
+
+在 `config.yml` 的可选 `openers` 配置入口。默认 `{}`，不自动给已有服务器添加快捷键或物品。
+
+```yaml
+openers:
+  handbook:
+    menu: layout-demo
+    permission: dialogmenu.use
+    commands: [handbook]
+    keys: [SHIFT+F]
+    item:
+      material: BOOK
+      name: '&6菜单手册'
+      lore: ['&7右键打开']
+      nbt: '{dialogmenu:{entry:"handbook",version:1b}}'
+      action: RIGHT_CLICK
+```
+
+- `commands` 注册玩家指令，例如 `/handbook`；不接收参数。已被其他插件占用时不覆盖，改用 `/dialogmenu:handbook`，控制台会提示。
+- `keys` 是游戏动作组合：`F` 换手、`Q` 丢弃、`LEFT_CLICK`、`RIGHT_CLICK`；可加 `SHIFT`（潜行）或 `SPRINT`（冲刺状态），如 `SHIFT+F`、`SHIFT+RIGHT_CLICK`。它们不是原始键盘监听，玩家改绑后跟随游戏动作；不支持任意字母或 Alt/Ctrl 物理按键。
+- `commands`、`keys`、`item` 是独立打开方式。物品仅响应主手，默认右键；需要潜行使用时设置 `action: SHIFT+RIGHT_CLICK`。物品不消耗；打开成功才取消对应换手、丢弃或物品使用动作，已被其他插件禁止的动作不抢占。
+- `item` 的 `material` 与 `craftengine` 二选一。CE 写完整 ID，例如 `craftengine: 'example:handbook'`。可覆盖 `name`、`lore` 和自定义 NBT；不填写的名称/Lore 不参与匹配。
+- `nbt` 是 `minecraft:custom_data` 内的 SNBT 复合标签，不是整件物品存档。按嵌套子集匹配，列表/数组及数值类型精确匹配；例如 `1b` 不等于 `1`。发放时递归合并，保留其余 CE/PDC 数据。
+- 管理员执行 `/dialogmenu give handbook [玩家]` 获取物品。所有入口都检查 `dialogmenu.use`、入口 `permission` 和菜单权限；只打开菜单，不代替业务校验。
+- 修改入口后执行全局 `/dialogmenu reload yaml`；不需要仅为指令/物品/按键规则重新生成资源包。重复指令/组合键或不存在的菜单会拒绝应用并保留旧快照。多个物品规则同时匹配时按配置顺序使用第一个有权限且打开成功的入口。
 
 ## 外部发布接口
 

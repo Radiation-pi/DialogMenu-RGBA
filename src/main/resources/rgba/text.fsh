@@ -17,6 +17,7 @@ layout(location = 3) in vec2 texCoord0;
 layout(location = 4) flat in int dialogmenuMarked;
 layout(location = 5) flat in vec4 dialogmenuImagePixels;
 layout(location = 6) in vec2 dialogmenuImageCoord;
+layout(location = 8) in vec3 dialogmenuSlice;
 #endif
 #ifndef OIT_ALPHA_ONLY
 layout(location = 0) out vec4 fragColor;

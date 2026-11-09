@@ -18,6 +18,7 @@ out vec2 texCoord0;
 flat out int dialogmenuMarked;
 flat out vec4 dialogmenuImagePixels;
 out vec2 dialogmenuImageCoord;
+out vec3 dialogmenuSlice;
 
 #moj_import <dialogmenu:rgba_vertex.glsl>
 

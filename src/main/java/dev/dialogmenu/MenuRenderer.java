@@ -16,14 +16,48 @@ import static dev.dialogmenu.MenuModel.*;
 
 /** 每个图形独立生成精灵，合成图仅用于离线预览。 */
 final class MenuRenderer {
+    static final int MAX_WIDTH = 1014;
+    static java.util.SortedSet<Integer> preparedWidths(Menu menu, java.util.Collection<Integer> widths,
+                                                      double canvasScale, int maxPixels) {
+        var result = new java.util.TreeSet<>(widths);
+        int width = (int) Math.round(MAX_WIDTH * canvasScale);
+        int height = Math.max(1, (int) Math.round(menu.height() * width / (double) menu.width()));
+        boolean modelsFit = menu.nodes().stream().filter(node -> node.type().equals("model"))
+            .allMatch(node -> {
+                long size = Math.round(node.size() * node.scaleX() * width / menu.width());
+                return size >= 1 && size <= 127;
+            });
+        if (width >= 64 && width <= MAX_WIDTH && height <= 1024 && (long) width * height <= maxPixels && modelsFit)
+            result.add(MAX_WIDTH);
+        return result;
+    }
+    static boolean modelProtocolFits(Menu menu, Rendered frame) {
+        double zoom = frame.width() / (double) menu.width();
+        for (Node node : menu.nodes()) {
+            if (!node.type().equals("model")) continue;
+            long size = Math.round(node.size() * node.scaleX() * zoom);
+            if (size < 1 || size > 127) return false;
+        }
+        return true;
+    }
     final VanillaAssets assets;
     private record Graphic(String id, String type, double x, double y, double sx, double sy, double width,
                            double height, int argb, String source, double thickness, double rotation,
                            boolean reuse, TextureRegion atlas, boolean interactive, int canvasWidth, int canvasHeight,
                            int logicalHeight, double zoom) {}
     private final Map<Graphic, Sprite> runtimeSprites = new LinkedHashMap<>(16, .75f, true);
+    private final long pixelBudget;
+    private final int spriteBudget;
     private long cachedPixels;
-    MenuRenderer(VanillaAssets assets) { this.assets = assets; }
+    MenuRenderer(VanillaAssets assets) { this(assets, 1_048_576, 512); }
+    MenuRenderer(VanillaAssets assets, long pixelBudget) {
+        this(assets, pixelBudget, 4096);
+    }
+    private MenuRenderer(VanillaAssets assets, long pixelBudget, int spriteBudget) {
+        this.assets = assets;
+        this.pixelBudget = pixelBudget;
+        this.spriteBudget = spriteBudget;
+    }
 
     Rendered draw(Menu menu, Context context, int width, int maxPixels) throws IOException {
         return draw(menu, context, width, maxPixels, true);
@@ -34,7 +68,7 @@ final class MenuRenderer {
     private Rendered draw(Menu menu, Context context, int width, int maxPixels, boolean preview) throws IOException {
         width = (int) Math.round(width * context.canvasScale());
         int height = Math.max(1, (int) Math.round(menu.height() * width / (double) menu.width()));
-        if (width < 64 || width > 512 || height > 1024 || (long) width * height > maxPixels)
+        if (width < 64 || width > MAX_WIDTH || height > 1024 || (long) width * height > maxPixels)
             throw new IllegalArgumentException("当前画布比例/尺寸超出正文范围，请减小尺寸；不自动重排布局");
         BufferedImage image = preview ? new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB) : null;
         Graphics2D root = preview ? image.createGraphics() : null;
@@ -42,6 +76,7 @@ final class MenuRenderer {
         List<Sprite> sprites = new ArrayList<>();
         List<Node> textNodes = new ArrayList<>();
         for (Node n : menu.nodes()) {
+            if (n.type().equals("model")) continue;
             if (n.type().equals("text")) {
                 if (n.rotation() != 0) throw new IllegalArgumentException(n.id() + " 原生文字不支持旋转");
                 textNodes.add(n);
@@ -51,7 +86,7 @@ final class MenuRenderer {
                 n.height(), n.argb(), n.source(), n.thickness(), n.rotation(), n.reuseTexture(), n.atlas(),
                 n.interaction() != null, width, height, menu.height(), zoom);
             if (!preview) {
-                Sprite cached = runtimeSprites.get(key);
+                Sprite cached = cached(key);
                 if (cached != null) { sprites.add(cached); continue; }
             }
             double h = n.type().equals("line") ? n.thickness() : n.height();
@@ -84,7 +119,7 @@ final class MenuRenderer {
             if (shaderSource != null && bounds.equals(unclipped)) {
                 Sprite reference = new Sprite(n.id(), bounds.x, bounds.y, null, null, shaderSource, null,
                     bounds.width, bounds.height);
-                if (!preview && (n.interaction() == null || RgbaImages.exactHits(reference))) {
+                if (!preview) {
                     add(sprites, key, reference, false);
                     continue;
                 }
@@ -148,13 +183,16 @@ final class MenuRenderer {
         if (root != null) root.dispose();
         return new Rendered(image, List.copyOf(sprites), List.copyOf(textNodes), width, height);
     }
-    private void add(List<Sprite> sprites, Graphic key, Sprite sprite, boolean preview) {
+    private synchronized Sprite cached(Graphic key) { return runtimeSprites.get(key); }
+    private synchronized void add(List<Sprite> sprites, Graphic key, Sprite sprite, boolean preview) {
+        if (preview) { sprites.add(sprite); return; }
+        Sprite existing = runtimeSprites.get(key);
+        if (existing != null) { sprites.add(existing); return; }
         sprites.add(sprite);
-        if (preview) return;
         runtimeSprites.put(key, sprite);
         cachedPixels += pixels(sprite);
         var iterator = runtimeSprites.entrySet().iterator();
-        while (runtimeSprites.size() > 512 || cachedPixels > 1_048_576) {
+        while (runtimeSprites.size() > spriteBudget || cachedPixels > pixelBudget) {
             cachedPixels -= pixels(iterator.next().getValue());
             iterator.remove();
         }

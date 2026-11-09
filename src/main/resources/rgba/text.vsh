@@ -1,4 +1,4 @@
-#version 330
+#version 460
 #extension GL_ARB_separate_shader_objects : require
 
 #if !defined(IS_GUI) && !defined(IS_SEE_THROUGH)
@@ -25,6 +25,7 @@ uniform sampler2D Sampler0;
 layout(location = 4) flat out int dialogmenuMarked;
 layout(location = 5) flat out vec4 dialogmenuImagePixels;
 layout(location = 6) out vec2 dialogmenuImageCoord;
+layout(location = 8) out vec3 dialogmenuSlice;
 #endif
 
 #ifdef IS_GUI
@@ -39,6 +40,7 @@ void main() {
     dialogmenuMarked = 0;
     dialogmenuImagePixels = vec4(0.0);
     dialogmenuImageCoord = vec2(0.0);
+    dialogmenuSlice = vec3(0.0);
     dialogmenu_transform(position, imageUv);
 #endif
     gl_Position = ProjMat * ModelViewMat * vec4(position, 1.0);

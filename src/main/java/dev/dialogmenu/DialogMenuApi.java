@@ -22,6 +22,8 @@ public final class DialogMenuApi {
     /** 外部发布方在主线程获取候选 ZIP 与代次；最终上传成功后提交同一代次。 */
     public record PreparedResources(long generation, Path zip) {}
     public PreparedResources preparedResources() { requireReady(); return plugin.preparedResources(); }
+    /** 与候选 ZIP 同代的独立模型包；外部发布方须一并发布，不能只上传字体 ZIP。 */
+    public java.util.List<Path> preparedModelPacks() { requireReady(); return plugin.preparedModelPacks(); }
     /** 上传失败时不调用此方法；调用方必须已确认对应最终包发布成功。 */
     public boolean commitResources(long generation) { requireReady(); return plugin.commitResources(generation); }
     public boolean open(Player player, String id) {

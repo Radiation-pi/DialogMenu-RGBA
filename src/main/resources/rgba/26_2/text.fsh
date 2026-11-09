@@ -15,6 +15,7 @@ in vec2 texCoord0;
 flat in int dialogmenuMarked;
 flat in vec4 dialogmenuImagePixels;
 in vec2 dialogmenuImageCoord;
+in vec3 dialogmenuSlice;
 #moj_import <dialogmenu:rgba_fragment.glsl>
 #endif
 out vec4 fragColor;

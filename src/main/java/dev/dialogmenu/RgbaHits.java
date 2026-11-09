@@ -7,105 +7,77 @@ import java.util.*;
 import com.google.gson.Gson;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.event.*;
+import net.kyori.adventure.text.format.*;
 
-/** 原生命中几何保留在目标 Y；alpha=1 的字格由原版 text.fsh 丢弃。 */
+/** 固定小空白覆盖一行；不扫描字形、不登记画布位置。 */
 final class RgbaHits {
-    private record Location(int top, TextStyle style) {}
-    private record Cell(int height, int width) {
-        String texture() { return "generated/hit_" + height + "_" + width + ".png"; }
+    static final Key FONT = Key.key("dialogmenu", "row_hit");
+    record Tile(int x, int y, int width, int height) {}
+    private record Cell(int width, int height) {
+        String texture() { return "generated/row_hit_" + width + "_" + height + ".png"; }
     }
-    private record Hit(Location location, Cell cell) {}
-    private final Set<Location> locations = new LinkedHashSet<>();
-    private final Map<TextStyle, Map<Integer, Cell>> byFont = new HashMap<>();
-    private final Map<String, Cell> cells = new LinkedHashMap<>();
-    private final Map<Hit, Integer> glyphs = new LinkedHashMap<>();
+    private static final List<Cell> CELLS = cells();
 
-    void prepare(int top, TextStyle style) {
-        if (top + style.height() < 7)
-            throw new IllegalArgumentException("文字命中超出原生基线范围，请将该小字号元素下移至第7像素后");
-        locations.add(new Location(top, style));
+    private static List<Cell> cells() {
+        List<Cell> cells = new ArrayList<>();
+        for (int height = 1; height <= 9; height++)
+            for (int width = 1; width <= 2; width++) cells.add(new Cell(width, height));
+        return List.copyOf(cells);
     }
 
-    void source(TextStyle style, List<FontPack.TextAtlas> atlases) {
-        Map<Integer, Cell> characters = byFont.computeIfAbsent(style, key -> new HashMap<>());
-        for (var atlas : atlases) {
-            int columns = atlas.chars().getFirst().codePointCount(0, atlas.chars().getFirst().length());
-            int width = atlas.image().getWidth() / columns, height = atlas.sourceHeight();
-            for (int row = 0; row < atlas.chars().size(); row++) {
-                BuildBudget.checkpoint();
-                int[] codes = atlas.chars().get(row).codePoints().toArray();
-                for (int column = 0; column < codes.length; column++) {
-                    if (codes[column] == 0) continue;
-                    int used = 0;
-                    for (int x = 0; x < width; x++) for (int y = 0; y < height; y++)
-                        if (atlas.image().getRGB(column * width + x, row * height + y) >>> 24 != 0)
-                            used = Math.max(used, x + 1);
-                    int hitWidth = Math.max(1, used);
-                    Cell cell = cells.computeIfAbsent(height + "/" + hitWidth, key -> new Cell(height, hitWidth));
-                    characters.put(codes[column], cell);
-                }
-            }
+    static List<Tile> tiles(int width, int height) {
+        List<Tile> result = new ArrayList<>();
+        for (int y = 0; y < height; y += 9)
+            for (int x = 0; x < width; x += 2)
+                result.add(new Tile(x, y, Math.min(2, width - x), Math.min(9, height - y)));
+        return result;
+    }
+
+    static Component rectangle(int top, int width, int height, ClickEvent click, HoverEvent<Component> hover) {
+        var result = Component.text();
+        for (Tile tile : tiles(width, height)) {
+            int y = top + tile.y();
+            Cell cell = new Cell(tile.width(), Math.max(tile.height(), 7 - y));
+            int index = CELLS.indexOf(cell);
+            if (index < 0 || y < 0 || y > 17)
+                throw new IllegalArgumentException("命中切片须位于当前原生行内");
+            int code = 0xF0000 + index * 18 + y;
+            result.append(SpriteCanvas.space(tile.x()))
+                .append(Component.text(Character.toString(code)).font(FONT).clickEvent(click).hoverEvent(hover))
+                .append(SpriteCanvas.space(-tile.x() - tile.width()));
         }
+        return result.build().decoration(TextDecoration.BOLD, false).decoration(TextDecoration.ITALIC, false)
+            .shadowColor(ShadowColor.none());
     }
 
-    void finish() {
-        for (Location location : locations) {
-            BuildBudget.checkpoint();
-            for (Cell cell : cells.values())
-                if (byFont.get(location.style()).containsValue(cell))
-                    glyphs.computeIfAbsent(new Hit(location, cell), key -> 0xF0000 + glyphs.size());
-        }
-    }
-
-    void reuseSources(RgbaHits previous) {
-        previous.byFont.forEach((style, characters) -> byFont.put(style, new HashMap<>(characters)));
-        cells.putAll(previous.cells);
-    }
-
-    Component text(int top, int size, Component value, FontPack fonts) {
-        return text(top, new TextStyle(size, 1, 1), value, fonts);
-    }
-    Component text(int top, TextStyle style, Component value, FontPack fonts) {
-        Location location = new Location(top, style);
-        if (!locations.contains(location)) throw new IllegalArgumentException("RGBA hit position changed; rebuild resources");
+    Component text(int top, int height, TextStyle style, Component value, FontPack fonts,
+                   ClickEvent click, HoverEvent<Component> hover) {
         var builder = Component.text();
         for (var glyph : MenuText.glyphs(value)) {
             int advance = fonts.glyphWidth(glyph, style);
-            if (glyph.code() == ' ') {
-                builder.append(Component.text(SpriteCanvas.move(advance)).font(SpriteCanvas.SPACE));
-                continue;
-            }
-            Cell cell = byFont.get(style).get(glyph.code());
-            if (cell == null) throw new IllegalArgumentException("RGBA hit character not prepared");
-            builder.append(Component.text(Character.toString(glyphs.get(new Hit(location, cell)))));
-            int proxyAdvance = (int) (.5 + cell.width() * (style.height() / (float) cell.height())) + 1;
-            if (advance != proxyAdvance)
-                builder.append(Component.text(SpriteCanvas.move(advance - proxyAdvance)).font(SpriteCanvas.SPACE));
+            if (glyph.code() != ' ') builder.append(rectangle(top, Math.max(1, advance), height, click, hover));
+            builder.append(SpriteCanvas.space(advance));
         }
-        return builder.build().font(Key.key("dialogmenu", "text_hit_all"))
-            .decoration(TextDecoration.BOLD, false).decoration(TextDecoration.ITALIC, false);
+        return builder.build().decoration(TextDecoration.BOLD, false).decoration(TextDecoration.ITALIC, false);
     }
 
     void write(Path pack) throws IOException {
         Path base = pack.resolve("assets/dialogmenu");
-        for (Cell cell : cells.values()) {
-            BuildBudget.checkpoint();
-            BufferedImage image = new BufferedImage(cell.width(), cell.height(), BufferedImage.TYPE_INT_ARGB);
-            for (int y = 0; y < cell.height(); y++)
-                for (int x = 0; x < cell.width(); x++) image.setRGB(x, y, 0x01FFFFFF);
-            FontPack.writePng(image, base.resolve("textures/" + cell.texture()));
-        }
-        var json = new Gson();
         List<Object> providers = new ArrayList<>();
-        for (var entry : glyphs.entrySet()) {
+        for (int index = 0; index < CELLS.size(); index++) {
             BuildBudget.checkpoint();
-            Location location = entry.getKey().location();
-            Cell cell = entry.getKey().cell();
-            providers.add(FontPack.bitmap(cell.texture(), location.style().height(), 7 - location.top(),
-                List.of(Character.toString(entry.getValue()))));
+            Cell cell = CELLS.get(index);
+            BufferedImage image = new BufferedImage(cell.width(), cell.height(), BufferedImage.TYPE_INT_ARGB);
+            // 原生命中宽度是advance，不是贴图宽度。alpha=1可计宽，仍低于原生0.1丢弃阈值。
+            if (cell.width() == 2) image.setRGB(0, 0, 0x01000000);
+            FontPack.writePng(image, base.resolve("textures/" + cell.texture()));
+            for (int top = Math.max(0, 7 - cell.height()); top <= 17; top++) {
+                boolean needed = top + cell.height() <= (top < 9 ? 9 : 18);
+                if (needed) providers.add(FontPack.bitmap(cell.texture(), cell.height(), 7 - top,
+                    List.of(Character.toString(0xF0000 + index * 18 + top))));
+            }
         }
-        Files.writeString(base.resolve("font/text_hit_all.json"),
-            json.toJson(Map.of("providers", providers)) + "\n");
+        Files.writeString(base.resolve("font/row_hit.json"), new Gson().toJson(Map.of("providers", providers)) + "\n");
     }
 }
