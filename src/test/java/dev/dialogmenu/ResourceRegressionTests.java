@@ -12,6 +12,11 @@ import static dev.dialogmenu.MenuModel.*;
 
 /** 离线验证缓存、重载、动态格式及资源发布合同，不启动 Bukkit。 */
 public final class ResourceRegressionTests {
+    static net.kyori.adventure.text.Component textOnly(net.kyori.adventure.text.Component component) {
+        var text = component instanceof net.kyori.adventure.text.TextComponent value
+            ? value : net.kyori.adventure.text.Component.empty().style(component.style());
+        return text.children(component.children().stream().map(ResourceRegressionTests::textOnly).toList());
+    }
     private static int checks;
     private static final Context PREVIEW = context("Player");
     private static Context context(String value) {
@@ -61,11 +66,13 @@ public final class ResourceRegressionTests {
         publication();
         preview(root);
         tintAndTextStretch(root);
+        UnifiedGeometryTests.run(root);
         GraphicReuseTests.run(root);
         DecorationOpenerTests.run(root);
         MaxWidthTests.run(root);
         HitFontTests.run(root);
         ShaderTests.run(root);
+        ImageRegistryTests.run(root);
         System.out.println("PASS row pixel/z/hit checks=" + RowPackTests.run(root));
         ParallelBuildTests.main(new String[]{root.toString()});
         IndependentBuildTests.main(new String[]{root.toString()});
@@ -229,6 +236,7 @@ public final class ResourceRegressionTests {
               label:
                 type: text
                 content: 'A中'
+                color: '#55AAFF'
                 size: 8
                 width: 100
                 scale: {x: 1.5, y: 2}
@@ -239,32 +247,40 @@ public final class ResourceRegressionTests {
         var renderer = new MenuRenderer(new VanillaAssets(data.resolve("images")));
         var fonts = FontPack.create(List.of(document), renderer, PREVIEW, List.of(300), 131072);
         TextStyle stretched = new TextStyle(8, 1.5, 2);
-        check(fonts.textFont(stretched, MenuText.parse("A中")).value().equals(stretched.name()),
-            "Text scale uses a prepared independent font variant");
+        check(fonts.textFont(stretched, MenuText.parse("A中")).equals(fonts.textFont(8)),
+            "Text scale shares the fixed source font");
         check(fonts.textWidth(MenuText.parse("A中"), stretched) > fonts.textWidth(MenuText.parse("A中"), 8),
             "Horizontal stretch changes measured text advance");
         Path pack = data.resolve("pack");
         fonts.write(pack);
-        String json = Files.readString(pack.resolve("assets/dialogmenu/font/" + stretched.name() + ".json"));
+        String json = Files.readString(pack.resolve("assets/dialogmenu/font/" + RgbaText.FONT + ".json"));
         check(JsonParser.parseString(json).getAsJsonObject().getAsJsonArray("providers").get(0)
-            .getAsJsonObject().get("height").getAsInt() == stretched.height(),
-            "Vertical stretch changes exported glyph height");
-        Path imageAtlas = pack.resolve("assets/dialogmenu/textures/generated/rgba_image_atlas_0.png");
+            .getAsJsonObject().get("height").getAsInt() == 1,
+            "Vertical stretch does not change native provider height");
+        Path imageAtlas;
+        try (var files = Files.list(pack.resolve("assets/dialogmenu/textures/registered"))) {
+            imageAtlas = files.filter(p -> p.toString().endsWith(".png")).findFirst().orElseThrow();
+        }
         BufferedImage atlas = ImageIO.read(imageAtlas.toFile());
-        check((atlas.getRGB(1, 0) >>> 24) == fonts.imageTint(0xFF55AAFF),
-            "Image atlas stores tint index in metadata alpha");
+        check((atlas.getRGB(1, 0) >>> 24) == fonts.imageTint(0xFFFFFF),
+            "Automatically registered image keeps original color instead of preparing a tint");
         List<String> callbacks = new ArrayList<>();
         var output = new SpriteCanvas().encode(document.menu(),
             renderer.draw(document.menu(), PREVIEW, 300, 131072), PREVIEW, fonts, region -> {
                 callbacks.add(region.id());
                 return ClickEvent.runCommand("/" + region.id());
             });
+        var textGlyphs = MenuText.glyphs(textOnly(output.component())).stream()
+            .filter(g -> g.code() == 'A' || g.code() == '中').toList();
+        check(!textGlyphs.isEmpty() && textGlyphs.stream().allMatch(g -> g.style().shadowColor() != null
+                && (g.style().shadowColor().value() & 255) == fonts.imageTint(0x55AAFF)),
+            "Text retains its configured tint while the image remains untinted");
         check(callbacks.equals(List.of("frontend.icon", "frontend.label")),
             "Tint and stretched elements preserve their bound interactions");
-        check(MenuText.glyphs(output.component()).stream().anyMatch(g -> g.style().font() != null
-            && g.style().font().value().equals(stretched.name())),
-            "Rendered text references its stretched font");
-        check(MenuText.glyphs(output.component()).stream().anyMatch(g -> g.style().font() != null
+        check(MenuText.glyphs(textOnly(output.component())).stream().anyMatch(g -> g.style().font() != null
+            && g.style().font().value().equals(RgbaText.FONT)),
+            "Rendered text references the fixed source font");
+        check(MenuText.glyphs(textOnly(output.component())).stream().anyMatch(g -> g.style().font() != null
             && g.style().font().equals(RgbaHits.FONT) && g.style().clickEvent() != null),
             "Text hit proxy follows the stretched font and keeps its action");
     }

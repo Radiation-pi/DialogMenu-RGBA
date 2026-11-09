@@ -117,15 +117,15 @@ public final class GlyphCacheTests {
             changed = changed.replace("x: 1.5", "x: 1.25");
             Files.writeString(menu, changed);
             var stretched = build(engine);
-            check(!stretched.fonts().reusedGlyphs(), "stretch change invalidates fonts");
+            check(stretched.fonts().reusedGlyphs(), "stretch change preserves source glyph resources");
             compareCold(root, data, stretched);
             Files.writeString(data.resolve("config.yml"), CONFIG.replace("[0.75, 1]", "[1]"));
             var scaled = build(engine);
-            check(!scaled.fonts().reusedGlyphs(), "text scale change invalidates font demands");
+            check(scaled.fonts().reusedGlyphs(), "text scale change preserves fixed source glyphs");
             compareCold(root, data, scaled);
             Files.writeString(menu, changed.replace("content: 中", "content: Ω"));
             var letter = build(engine);
-            check(!letter.fonts().reusedGlyphs(), "new plain character invalidates fonts");
+            check(letter.fonts().reusedGlyphs(), "An already prepared character is shared across old style boundaries");
             compareCold(root, data, letter);
             byte[] persisted = Files.readAllBytes(data.resolve("pack-cache/compiled.json.gz"));
             Files.writeString(menu, changed.replace("button.png", "missing.png"));

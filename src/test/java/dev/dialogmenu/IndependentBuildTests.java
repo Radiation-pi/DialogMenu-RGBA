@@ -42,8 +42,9 @@ public final class IndependentBuildTests {
                 }
             }
             check(resources.containsKey("assets/dialogmenu/shaders/include/rgba_palette.glsl")
-                && resources.containsKey("assets/dialogmenu/textures/generated/rgba_image_atlas_0.png"),
-                "comparison includes actual palette shader and encoded image atlas");
+                && resources.keySet().stream().anyMatch(name -> name.startsWith("assets/dialogmenu/textures/registered/")
+                    && name.endsWith(".png")),
+                "comparison includes actual palette shader and whole registered image");
             String actual = Files.readString(data.resolve("components.json"));
             if (baseline == null) {
                 baseline = resources;

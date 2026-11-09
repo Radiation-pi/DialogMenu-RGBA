@@ -28,15 +28,14 @@ final class FontPack {
     private final Map<Integer, int[]> metrics = new HashMap<>();
     private final Map<String, List<TextAtlas>> text = new TreeMap<>();
     private record TextFont(TextStyle style, Set<Integer> characters) {}
-    private record StretchedGlyph(BufferedImage image, int advance) {}
     private final Map<String, TextFont> textFonts = new TreeMap<>();
-    private final Map<TextStyle, Map<Integer, StretchedGlyph>> stretchedGlyphs = new HashMap<>();
     private String glyphSource;
     private ModelPack models;
     private transient boolean reusedGlyphs;
     private final RgbaOffsets rgba = new RgbaOffsets();
     private final RgbaHits rgbaHits = new RgbaHits();
     private final RgbaImages rgbaImages = new RgbaImages();
+    private final RegisteredImages registeredImages = new RegisteredImages();
     private final transient Map<BufferedImage, String> imageKeys = new WeakHashMap<>();
     private final transient CanvasRows.Cache spriteParts = new CanvasRows.Cache();
     private final transient Gson json = new Gson();
@@ -125,9 +124,12 @@ final class FontPack {
                     try {
                         Sprite local = RgbaRows.local(sprite);
                         Node node = doc.menu().nodes().stream().filter(n -> n.id().equals(sprite.id())).findFirst().orElseThrow();
-                        pack.rgba.add(node.argb());
+                        int argb = node.type().equals("image")
+                            ? renderer.assets.imageColor(node.source(), node.argb()) : node.argb();
+                        pack.rgba.add(argb);
+                        if (ImageRegistry.source(local.texture())) continue;
                         if (pack.shaderImage(local, node.interaction() != null)) {
-                            pack.rgbaImages.prepare(local, pack.rgba.add(node.argb()));
+                            pack.rgbaImages.prepare(local, pack.rgba.add(argb));
                             continue;
                         }
                         for (Sprite part : pack.parts(sprite)) pack.register(RgbaRows.local(part));
@@ -153,7 +155,6 @@ final class FontPack {
                     for (double scale : textScales) {
                         int size = SpriteCanvas.textSize(doc.menu(), node, width, scale, canvasScale);
                         TextStyle style = new TextStyle(size, node.scaleX(), node.scaleY());
-                        pack.prepareStretch(style, characters, renderer.assets, cached);
                         List<net.kyori.adventure.text.Component> lines;
                         try {
                             lines = dynamic ? List.of() : TextFlow.lines(node, MenuText.parse(active.expand(node.text())),
@@ -169,9 +170,11 @@ final class FontPack {
                         for (int line = 0; line < count; line++) {
                             int top = SpriteCanvas.textTop(doc.menu(), node, width, line, style);
                             if (top >= 0 && top + style.height() <= frame.height()) {
-                                String name = style.name();
+                                String name = RgbaText.FONT;
                                 TextFont font = pack.textFonts.computeIfAbsent(name,
-                                    key -> new TextFont(style, new TreeSet<>()));
+                                    key -> new TextFont(new TextStyle(8, 1, 1), new TreeSet<>()));
+                                pack.measure(RgbaText.RULE, renderer.assets);
+                                font.characters().add(RgbaText.RULE);
                                 if (dynamic) {
                                     if (!registeredShaderCharacters) {
                                         font.characters().addAll(characters);
@@ -179,14 +182,12 @@ final class FontPack {
                                             Set<Integer> declared = dynamicCodes.computeIfAbsent(declaration,
                                                 value -> codes(List.of(value)));
                                             for (int cp : declared) pack.measure(cp, renderer.assets);
-                                            pack.prepareStretch(style, declared, renderer.assets, cached);
                                             font.characters().addAll(declared);
                                         }
                                     }
                                     registeredShaderCharacters = true;
                                     if (commonFonts.add(name)) {
                                         for (int cp : commonCodes) pack.measure(cp, renderer.assets);
-                                        pack.prepareStretch(style, commonCodes, renderer.assets, cached);
                                         font.characters().addAll(commonCodes);
                                     }
                                 } else {
@@ -199,6 +200,13 @@ final class FontPack {
                 }
                 progress.accept(totalFrames == 0 ? 55 : ++completedFrames[0] * 55 / totalFrames);
             });
+        pack.registeredImages.prepare(renderer.assets.registeredImages(), pack.rgba.indices(), pack.rgba.index(0xFFFFFF));
+        if (docs.stream().flatMap(doc -> doc.menu().nodes().stream()).anyMatch(node ->
+            SymbolImages.source(node.source()) || Set.of("rectangle", "frame", "line").contains(node.type())))
+            for (String symbol : SymbolImages.SYMBOLS) for (int tint : pack.rgba.indices()) {
+                BufferedImage source = renderer.assets.image("symbol:" + symbol);
+                pack.rgbaImages.prepare(new Sprite("symbol", 0, 0, null, null, source, null, 1, 1), tint);
+            }
         if (cached != null && pack.textFonts.equals(cached.textFonts)) {
             pack.text.putAll(cached.text);
             pack.reusedGlyphs = true;
@@ -211,7 +219,6 @@ final class FontPack {
         int completedFonts = 0;
         for (var entry : pack.textFonts.entrySet()) {
             BuildBudget.checkpoint();
-            if (!entry.getValue().style().plain()) continue;
             Map<Integer, Set<Integer>> byHeight = new TreeMap<>();
             for (int cp : entry.getValue().characters())
                 byHeight.computeIfAbsent(pack.metrics.get(cp)[1], h -> new TreeSet<>()).add(cp);
@@ -235,15 +242,9 @@ final class FontPack {
                 progress.accept(65 + (totalCells == 0 ? 10 : ++completedCells[0] * 10 / totalCells));
             });
         int[] finishedFonts = {0};
-        // Restored snapshots keep stretched advances, but omit single-glyph source images.
-        for (TextFont font : pack.textFonts.values())
-            if (!font.style().plain())
-                pack.prepareStretch(font.style(), font.characters(), renderer.assets, null, true);
         BuildTasks.ordered(tasks, new ArrayList<>(pack.textFonts.entrySet()), entry -> {
             BuildBudget.checkpoint();
             TextFont font = entry.getValue();
-            if (!font.style().plain())
-                return Map.entry(entry.getKey(), pack.stretchedCharacters(font));
             List<TextAtlas> atlases = new ArrayList<>();
             for (TextCell cell : cells.get(entry.getKey())) for (TextAtlas atlas : shared.get(cell)) {
                 List<String> chars = new ArrayList<>();
@@ -382,83 +383,18 @@ final class FontPack {
         int used = 0;
         for (int y = 0; y < glyph.height(); y++) for (int x = 0; x < glyph.width(); x++)
             if (glyph.alpha()[y * glyph.width() + x] != 0) used = Math.max(used, x + 1);
-        metrics.put(cp, new int[] {used, glyph.height()});
-    }
-    private void prepareStretch(TextStyle style, Set<Integer> codes, VanillaAssets assets, FontPack cached)
-        throws IOException {
-        prepareStretch(style, codes, assets, cached, false);
-    }
-    private void prepareStretch(TextStyle style, Set<Integer> codes, VanillaAssets assets, FontPack cached,
-                                boolean requireImages) throws IOException {
-        if (style.plain()) return;
-        Map<Integer, StretchedGlyph> prepared = stretchedGlyphs.computeIfAbsent(style, key ->
-            new TreeMap<>(cached == null ? Map.of() : cached.stretchedGlyphs.getOrDefault(style, Map.of())));
-        for (int cp : codes) {
-            BuildBudget.checkpoint();
-            StretchedGlyph old = prepared.get(cp);
-            if (old != null && (!requireImages || old.image() != null)) continue;
-            var glyph = assets.glyph(cp);
-            long scaledWidth = Math.round(glyph.width() * style.size() * style.x() / glyph.height());
-            if (scaledWidth > 256)
-                throw new IllegalArgumentException("拉伸后单字纹理宽度须不超过256");
-            int width = Math.max(1, (int) scaledWidth);
-            BufferedImage image = new BufferedImage(width, style.height(), BufferedImage.TYPE_INT_ARGB);
-            for (int y = 0; y < image.getHeight(); y++) for (int x = 0; x < width; x++) {
-                int px = Math.min(glyph.width() - 1, (int) ((x + .5) * glyph.width() / width));
-                int py = Math.min(glyph.height() - 1, (int) ((y + .5) * glyph.height() / image.getHeight()));
-                int alpha = Byte.toUnsignedInt(glyph.alpha()[py * glyph.width() + px]);
-                image.setRGB(x, y, alpha << 24 | RgbaOffsets.TEXTURE_RGB);
-            }
-            prepared.put(cp, new StretchedGlyph(image,
-                bitmapAdvance(image, 0, 0, width, image.getHeight(), style.height())));
-        }
-    }
-    private List<TextAtlas> stretchedCharacters(TextFont font) {
-        TextStyle style = font.style();
-        Map<Integer, StretchedGlyph> glyphs = stretchedGlyphs.get(style);
-        Map<Integer, List<Integer>> byWidth = new TreeMap<>();
-        for (int cp : font.characters())
-            byWidth.computeIfAbsent(glyphs.get(cp).image().getWidth(), key -> new ArrayList<>()).add(cp);
-        List<TextAtlas> atlases = new ArrayList<>();
-        for (var group : byWidth.entrySet()) {
-            int cellWidth = group.getKey(), cellHeight = style.height();
-            int columns = Math.min(256 / cellWidth, group.getValue().size());
-            int capacity = columns * (256 / cellHeight);
-            for (int start = 0; start < group.getValue().size(); start += capacity) {
-                BuildBudget.checkpoint();
-                List<Integer> chunk = group.getValue().subList(start, Math.min(start + capacity, group.getValue().size()));
-                int rows = (chunk.size() + columns - 1) / columns;
-                BufferedImage image = new BufferedImage(columns * cellWidth, rows * cellHeight,
-                    BufferedImage.TYPE_INT_ARGB);
-                List<String> chars = new ArrayList<>();
-                for (int row = 0; row < rows; row++) {
-                    StringBuilder line = new StringBuilder();
-                    for (int column = 0; column < columns; column++) {
-                        int i = row * columns + column;
-                        if (i >= chunk.size()) { line.append('\0'); continue; }
-                        int cp = chunk.get(i);
-                        BufferedImage glyph = glyphs.get(cp).image();
-                        image.setRGB(column * cellWidth, row * cellHeight, cellWidth, cellHeight,
-                            glyph.getRGB(0, 0, cellWidth, cellHeight, null, 0, cellWidth), 0, cellWidth);
-                        line.appendCodePoint(cp);
-                    }
-                    chars.add(line.toString());
-                }
-                atlases.add(new TextAtlas(cellHeight, List.copyOf(chars),
-                    "generated/text_" + cellHeight + "_" + hash(image) + ".png", image));
-            }
-        }
-        return List.copyOf(atlases);
+        metrics.put(cp, new int[] {used, glyph.height(), glyph.width()});
     }
     private List<TextAtlas> characters(Set<Integer> characters, VanillaAssets assets) throws IOException {
         List<TextAtlas> result = new ArrayList<>();
         Map<Integer, List<Integer>> byHeight = new TreeMap<>();
         for (int cp : characters) {
             // 指标已在顺序注册阶段准备；并行图集阶段只读共享状态。
-            byHeight.computeIfAbsent(metrics.get(cp)[1], h -> new ArrayList<>()).add(cp);
+            int cell = Integer.highestOneBit(Math.max(metrics.get(cp)[1], metrics.get(cp)[2]) + 1) << 1;
+            byHeight.computeIfAbsent(cell, h -> new ArrayList<>()).add(cp);
         }
         for (var group : byHeight.entrySet()) {
-            int h = group.getKey(), cw = group.getValue().stream().mapToInt(cp -> assets.glyph(cp).width()).max().orElseThrow();
+            int h = group.getKey(), cw = h;
             int columns = Math.min(256 / cw, group.getValue().size()), capacity = columns * (256 / h);
             for (int start = 0; start < group.getValue().size(); start += capacity) {
                 List<Integer> chunk = group.getValue().subList(start, Math.min(start + capacity, group.getValue().size()));
@@ -472,12 +408,9 @@ final class FontPack {
                         int index = y * columns + x;
                         if (index >= chunk.size()) { row.append('\0'); continue; }
                         int cp = chunk.get(index);
-                        var glyph = assets.glyph(cp);
-                        for (int py = 0; py < h; py++) for (int px = 0; px < cw; px++) {
-                            int alpha = px < glyph.width()
-                                ? Byte.toUnsignedInt(glyph.alpha()[py * glyph.width() + px]) : 0;
-                            image.setRGB(x * cw + px, y * h + py, alpha << 24 | RgbaOffsets.TEXTURE_RGB);
-                        }
+                        BufferedImage wrapped = RgbaText.wrap(assets.glyph(cp));
+                        if (wrapped.getWidth() != cw) throw new IOException("Mixed source glyph cell sizes");
+                        image.setRGB(x * cw, y * h, cw, h, wrapped.getRGB(0, 0, cw, h, null, 0, cw), 0, cw);
                         row.appendCodePoint(cp);
                     }
                     rows.add(row.toString());
@@ -510,15 +443,10 @@ final class FontPack {
     }
     int glyphWidth(MenuText.Glyph glyph, TextStyle style) {
         if (glyph.code() == 32) return style.space() + (glyph.bold() ? 1 : 0);
-        if (!style.plain()) {
-            StretchedGlyph prepared = stretchedGlyphs.getOrDefault(style, Map.of()).get(glyph.code());
-            if (prepared == null) throw new IllegalArgumentException("文字拉伸或字符已变化，请执行 /dialogmenu reload all");
-            return prepared.advance() + (glyph.bold() ? 1 : 0);
-        }
         int[] metric = metrics.get(glyph.code());
         if (metric == null)
             throw new IllegalArgumentException("文字已变化，请重新生成字体资源：U+" + Integer.toHexString(glyph.code()));
-        int advance = (int) (.5 + metric[0] * (style.size() / (float) metric[1])) + 1;
+        int advance = (int) Math.round(metric[0] * style.size() * style.x() / metric[1]) + 1;
         return advance + (glyph.bold() ? 1 : 0);
     }
     net.kyori.adventure.key.Key textFont(int size) {
@@ -528,7 +456,7 @@ final class FontPack {
         return textFont(new TextStyle(size, stretchX, stretchY));
     }
     net.kyori.adventure.key.Key textFont(TextStyle style) {
-        String name = style.name();
+        String name = RgbaText.FONT;
         if (!textFonts.containsKey(name))
             throw new IllegalArgumentException("文字位置已变化，请重新生成字体资源：" + name);
         return net.kyori.adventure.key.Key.key("dialogmenu", name);
@@ -550,6 +478,16 @@ final class FontPack {
                                                TextStyle style, int band) {
         return RgbaDecorations.encode(text, fallback, top, style, this, rgba, band);
     }
+    int glyphPixels(int cp, TextStyle style) {
+        int[] metric = metrics.get(cp);
+        if (metric == null) throw new IllegalArgumentException("未准备字形 U+" + Integer.toHexString(cp));
+        return Math.max(1, (int) Math.round(metric[2] * style.size() * style.x() / metric[1]));
+    }
+    net.kyori.adventure.key.Key obfuscatedFont(int cp) {
+        int[] metric = metrics.get(cp);
+        return net.kyori.adventure.key.Key.key("dialogmenu",
+            RgbaText.FONT + "_obf_" + metric[0] + "_" + metric[1] + "_" + metric[2]);
+    }
     net.kyori.adventure.text.Component rgbaHit(int top, int height, TextStyle style,
                                                net.kyori.adventure.text.Component text,
                                                net.kyori.adventure.text.event.ClickEvent click,
@@ -561,6 +499,7 @@ final class FontPack {
         return rgba.bitmap(glyph, argb, top, height, band);
     }
     RgbaImages rgbaImages() { return rgbaImages; }
+    RegisteredImages registeredImages() { return registeredImages; }
     boolean shaderImage(Sprite sprite, boolean interactive) {
         return RgbaImages.eligible(sprite);
     }
@@ -618,10 +557,31 @@ final class FontPack {
                 TextFont font = entry.getValue();
                 List<Object> characters = new ArrayList<>();
                 for (TextAtlas atlas : text.get(entry.getKey()))
-                    characters.add(bitmap(atlas.texture(), font.style().height(), 0, atlas.chars()));
+                    characters.add(bitmap(atlas.texture(), 1, 0, atlas.chars()));
                 characters.add(Map.of("type", "space", "advances",
                     Map.of(" ", font.style().space())));
                 writeJson(base.resolve("font/" + entry.getKey() + ".json"), Map.of("providers", characters));
+                Map<String, Set<Integer>> groups = new TreeMap<>();
+                for (int cp : font.characters())
+                    groups.computeIfAbsent(obfuscatedFont(cp).value(), key -> new TreeSet<>()).add(cp);
+                for (var group : groups.entrySet()) {
+                    List<Object> providers = new ArrayList<>();
+                    for (TextAtlas atlas : text.get(entry.getKey())) {
+                        boolean present = false;
+                        List<String> rows = new ArrayList<>();
+                        for (String row : atlas.chars()) {
+                            StringBuilder mask = new StringBuilder();
+                            for (int cp : row.codePoints().toArray()) {
+                                boolean allowed = group.getValue().contains(cp);
+                                present |= allowed;
+                                mask.appendCodePoint(allowed ? cp : 0);
+                            }
+                            rows.add(mask.toString());
+                        }
+                        if (present) providers.add(bitmap(atlas.texture(), 1, 0, rows));
+                    }
+                    writeJson(base.resolve("font/" + group.getKey() + ".json"), Map.of("providers", providers));
+                }
                 return null;
             });
         }
@@ -634,10 +594,6 @@ final class FontPack {
         writes.add(path -> { rgbaImages.write(path); return null; });
         writes.add(path -> { rgbaHits.write(path); return null; });
         writes.add(path -> { rgba.write(path); return null; });
-        writes.add(path -> {
-            RgbaDecorations.write(base, textFonts.values().stream().map(TextFont::style).toList());
-            return null;
-        });
         int[] completed = {0};
         BuildTasks.ordered(tasks, writes, write -> write.apply(target),
             ignored -> progress.accept(++completed[0] * 100 / writes.size()));
@@ -645,6 +601,7 @@ final class FontPack {
             ModelPack.shaders(target);
             if (!separateModels) models.write(target);
         }
+        registeredImages.write(target);
     }
     static void writePng(BufferedImage image, Path path) throws IOException {
         if (!ImageIO.write(image, "png", path.toFile()))

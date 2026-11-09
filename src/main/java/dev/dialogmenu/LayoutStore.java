@@ -248,6 +248,10 @@ final class LayoutStore {
             String alignment = s.getString("alignment", "center");
             if (!Set.of("left", "center", "right").contains(alignment)) throw new IllegalArgumentException("alignment非法");
             String source = s.getString("source", "");
+            if (type.equals("image") && source.startsWith("model:")) {
+                type = "model";
+                source = source.substring("model:".length());
+            }
             if (type.equals("image") && source.isBlank()) throw new IllegalArgumentException(key + " 缺少source");
             TextureRegion atlas = atlas(s, source);
             if (atlas != null && !type.equals("image"))

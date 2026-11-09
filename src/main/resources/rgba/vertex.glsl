@@ -14,9 +14,62 @@ void dialogmenu_transform(inout vec3 position, inout vec2 imageUv) {
     }
     bool tagged = (payload & 0xE0000000u) == 0x20000000u;
     bool direct = (payload & 0xE0000000u) == 0xC0000000u;
-    if (!tagged && !direct) return;
-    // FontTexture insets bitmap UV endpoints by 0.01 texel, independently of draw offsets.
     vec2 edge = step(vec2(0.5), fract(UV0 * vec2(textureSize(Sampler0, 0))));
+    if (all(equal(texel.rg, ivec2(29, 85))) && texel.b >= 149 && texel.b <= 152) {
+        ivec2 pixel = ivec2(UV0 * textureSize(Sampler0, 0));
+        ivec4 meta = ivec4(round(texelFetch(Sampler0, pixel + ivec2(edge.x == 0.0 ? 1 : -1, 0), 0) * 255.0));
+        int geometry = int((payload >> 17u) & 16383u) - 1;
+        if (meta.b == 177 && geometry >= 0 && geometry < 10432) {
+            int height = int(floor((sqrt(float(8 * geometry + 1225)) - 33.0) / 2.0));
+            int row = geometry - (height - 1) * (height + 34) / 2;
+            int band = row >= height + 8 ? 0 : 1;
+            int top = band == 0 ? row - height - 8 : row - height + 10;
+            vec2 target = vec2(float(((payload >> 8u) & 511u) + 1u), float(height));
+            vec2 content = vec2(meta.rg);
+            float cell = exp2(ceil(log2(max(content.x, content.y) + 2.0)));
+            vec2 origin = vec2(pixel) - edge * (cell - 1.0) + vec2(1.0);
+            position.xy += vec2(-1.0, float(top) - 8.0) + edge * (target - vec2(1.0));
+            if ((payload & 0x80000000u) != 0u) position.x += 1.0 - edge.y * target.y / 4.0;
+            imageUv = (origin + edge * content) / vec2(textureSize(Sampler0, 0));
+            dialogmenuImagePixels = vec4(origin, content / target)
+                / vec4(vec2(textureSize(Sampler0, 0)), vec2(textureSize(Sampler0, 0)));
+            dialogmenuImageCoord = edge * target;
+            vertexColor = vec4(dialogmenu_color(int(payload & 255u)), 1.0);
+            dialogmenuMarked = 2;
+            dialogmenu_slice(float(top) + edge.y * target.y, band);
+            return;
+        }
+    }
+    if (!tagged && !direct) return;
+    // Native-atlas object sprites preserve complete 256px sources, unlike bitmap cells with borders.
+    if (tagged) {
+        ivec2 atlasSize = textureSize(Sampler0, 0);
+        ivec2 endpoint = ivec2(round(UV0 * vec2(atlasSize)));
+        for (int corner = 0; corner < 4; corner++) {
+            vec2 side = vec2(corner >= 2 ? 1.0 : 0.0, corner == 1 || corner == 2 ? 1.0 : 0.0);
+            ivec2 pixel = endpoint - ivec2(side);
+            if (any(lessThan(pixel, ivec2(0))) || any(greaterThanEqual(pixel, atlasSize))) continue;
+            ivec4 marker = ivec4(round(texelFetch(Sampler0, pixel, 0) * 255.0));
+            if (!all(equal(marker, ivec4(29, 84, 149 + corner, 252 + corner)))) continue;
+            ivec4 metadata = ivec4(round(texelFetch(Sampler0, pixel + ivec2(side.x == 0.0 ? 1 : -1, 0), 0) * 255.0));
+            if (metadata.b != 177) continue;
+            vec2 contentSize = vec2(metadata.rg + ivec2(1));
+            vec2 cellSize = exp2(ceil(log2(contentSize + vec2(4.0))));
+            vec2 target = vec2(float(((payload >> 19u) & 511u) + 1u), float(((payload >> 10u) & 511u) + 1u));
+            int top = int(payload & 1023u);
+            if (top >= 512) top -= 1024;
+            vec2 origin = vec2(pixel) - side * (cellSize - vec2(1.0)) + vec2(2.0);
+            position.xy += vec2(-1.0, float(top)) + side * (target - vec2(8.0));
+            imageUv = (origin + side * contentSize) / vec2(atlasSize);
+            dialogmenuImagePixels = vec4(origin, contentSize / target) / vec4(vec2(atlasSize), vec2(atlasSize));
+            dialogmenuImageCoord = side * target;
+            vertexColor = vec4(dialogmenu_color(metadata.a), 1.0);
+            dialogmenuMarked = 2;
+            dialogmenu_slice(float(top) + side.y * target.y, int((payload >> 28u) & 1u));
+            return;
+        }
+    }
+    // FontTexture insets bitmap UV endpoints by 0.01 texel, independently of draw offsets.
     if (all(equal(texel, ivec3(23, 71, 131))) && tagged) {
         int top = int((payload >> 8u) & 1023u);
         if (top >= 512) top -= 1024;

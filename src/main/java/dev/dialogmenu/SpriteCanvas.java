@@ -79,7 +79,9 @@ final class SpriteCanvas {
                 Sprite sprite = sprites.get(node.id());
                 if (sprite == null) continue;
                 Region region = node.interaction() == null ? null : node.interaction().region(node);
-                addSprite(parts, sprite, fonts, node.argb(),
+                int argb = node.type().equals("image")
+                    ? fonts.registeredImages().color(node.source(), node.argb()) : node.argb();
+                addSprite(parts, sprite, fonts, argb,
                     region != null,
                     region == null || !region.hasActions() ? null : clicks.computeIfAbsent(region, bind),
                     region == null ? null : hover(region, context));
@@ -154,6 +156,18 @@ final class SpriteCanvas {
     }
     private void addSprite(List<List<Component>> parts, Sprite sprite, FontPack fonts, int argb,
                                   boolean interactive, ClickEvent click, HoverEvent<Component> hover) {
+        if (ImageRegistry.source(sprite.texture())) {
+            int tint = fonts.imageTint(argb);
+            for (var slice : RgbaRows.slices(sprite.y(), sprite.height())) {
+                Component ink = fonts.registeredImages().component(sprite.texture(), tint, sprite.width(), sprite.height(),
+                    slice.local(sprite.y()), slice.band());
+                parts.get(slice.row()).add(positioned(ink, sprite.x(), 8));
+                if (click != null || hover != null)
+                    parts.get(slice.row()).add(positioned(RgbaHits.rectangle(slice.local(slice.top()),
+                        sprite.width(), slice.height(), click, hover), sprite.x(), 0));
+            }
+            return;
+        }
         if (fonts.shaderImage(sprite, interactive)) {
             RgbaImages images = fonts.rgbaImages();
             int tint = fonts.imageTint(argb);

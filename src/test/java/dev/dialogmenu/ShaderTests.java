@@ -7,6 +7,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import javax.imageio.ImageIO;
 import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import org.bukkit.configuration.file.YamlConfiguration;
 import static dev.dialogmenu.MenuModel.*;
 
@@ -71,26 +72,29 @@ final class ShaderTests {
             return ClickEvent.runCommand("/test/" + region.id());
         });
         check(bound.equals(List.of("frontend.image", "frontend.text")), "Callbacks belong only to enabled elements");
-        var glyphs = MenuText.glyphs(output.component());
-        var visible = glyphs.stream().filter(g -> g.style().font() != null
-            && g.style().font().value().equals("images_rgba")).toList();
+        var glyphs = MenuText.glyphs(ResourceRegressionTests.textOnly(output.component()));
+        var parts = new ArrayList<JsonObject>();
+        parts(JsonParser.parseString(GsonComponentSerializer.gson().serialize(output.component())), parts);
+        var visible = parts.stream().filter(p -> p.has("sprite")).toList();
         check(visible.size() > 2, "Cross-row images are emitted into their physical row bands");
-        check(visible.stream().allMatch(g -> g.style().clickEvent() == null && g.style().hoverEvent() == null),
+        check(visible.stream().allMatch(g -> !g.has("click_event") && !g.has("hover_event")),
             "Visible shader glyphs must not publish a source-size hit box");
-        var sample = visible.stream().filter(g -> ((g.style().shadowColor().value() >> 19) & 511) + 1 == 143)
+        var sample = visible.stream().filter(g -> ((g.get("shadow_color").getAsInt() >> 19) & 511) + 1 == 143)
             .findFirst().orElseThrow();
-        check(((sample.style().shadowColor().value() >> 19) & 511) + 1 == 143
-            && ((sample.style().shadowColor().value() >> 10) & 511) + 1 == 37,
+        check(((sample.get("shadow_color").getAsInt() >> 19) & 511) + 1 == 143
+            && ((sample.get("shadow_color").getAsInt() >> 10) & 511) + 1 == 37,
             "Actual YAML dimensions reach the outgoing payload");
         int imageAt = -1;
         int textAt = -1;
-        for (int i = 0; i < glyphs.size(); i++)
-            if (glyphs.get(i).style().font() != null && glyphs.get(i).style().font().value().startsWith("text_rgba_")) {
+        for (int i = 0; i < parts.size(); i++)
+            if (parts.get(i).has("font") && parts.get(i).get("font").getAsString().startsWith("dialogmenu:text_rgba_")) {
                 textAt = i;
                 break;
             }
-        for (int i = textAt - 1; i >= 0 && glyphs.get(i).code() != '\n'; i--)
-            if (glyphs.get(i).style().font() != null && glyphs.get(i).style().font().value().equals("images_rgba")) imageAt = i;
+        for (int i = textAt - 1; i >= 0; i--) {
+            if (parts.get(i).has("text") && parts.get(i).get("text").getAsString().contains("\n")) break;
+            if (parts.get(i).has("sprite")) imageAt = i;
+        }
         check(imageAt >= 0 && imageAt < textAt, "Within each shared row, text remains above the lower image");
         check(glyphs.stream().anyMatch(g -> g.style().font() != null
             && g.style().font().equals(RgbaHits.FONT) && g.style().clickEvent() != null),
@@ -103,7 +107,8 @@ final class ShaderTests {
         stretchedText(data, renderer);
         List<Path> pngs;
         try (var files = Files.walk(pack)) {
-            pngs = files.filter(p -> p.getFileName().toString().startsWith("rgba_image_")).toList();
+            pngs = files.filter(p -> p.toString().contains("/textures/registered/")
+                && p.toString().endsWith(".png")).toList();
         }
         check(pngs.size() == 1, "Different sizes and baselines share one image PNG");
         try (var files = Files.list(pack.resolve("assets/dialogmenu/font"))) {
@@ -112,9 +117,9 @@ final class ShaderTests {
         }
         BufferedImage wrapped = ImageIO.read(pngs.getFirst().toFile());
         for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++)
-            check(wrapped.getRGB(x + 1, y + 1) == image.getRGB(x, y), "Source RGB and transparency are unchanged");
-        check((wrapped.getRGB(1, 0) >>> 24) == fonts.imageTint(0xFF55AAFF),
-            "Image tint is encoded in shared wrapper metadata without changing source pixels");
+            check(wrapped.getRGB(x + 2, y + 2) == image.getRGB(x, y), "Source RGB and transparency are unchanged");
+        check((wrapped.getRGB(1, 0) >>> 24) == fonts.imageTint(0xFFFFFF),
+            "Image metadata selects original color unless explicitly registered as tintable");
         for (String file : List.of("rendertype_text.vsh", "rendertype_text.fsh"))
             check(Files.exists(pack.resolve("assets/minecraft/shaders/core/" + file)), "Shader resources are bundled");
 
@@ -182,6 +187,13 @@ final class ShaderTests {
         return checks;
     }
 
+    private static void parts(JsonElement value, List<JsonObject> result) {
+        if (!value.isJsonObject()) return;
+        JsonObject object = value.getAsJsonObject();
+        result.add(object);
+        if (object.has("extra")) for (JsonElement child : object.getAsJsonArray("extra")) parts(child, result);
+    }
+
     private static void narrowHitBounds(Path data, MenuRenderer renderer) throws Exception {
         var doc = parse("""
             schema-version: 1
@@ -232,7 +244,7 @@ final class ShaderTests {
         var frame = renderer.draw(doc.menu(), CONTEXT, 300, 131072);
         var output = new SpriteCanvas().encode(doc.menu(), frame, CONTEXT, fonts,
             region -> ClickEvent.runCommand("/" + region.id()));
-        String variant = new TextStyle(8, 1.5, 2).name();
+        String variant = RgbaText.FONT;
         var ink = MenuText.glyphs(output.component()).stream()
             .filter(g -> g.style().font() != null && g.style().font().value().equals(variant))
             .findFirst().orElseThrow();
@@ -241,8 +253,8 @@ final class ShaderTests {
             "assets/dialogmenu/font/" + variant + ".json"))).getAsJsonObject()
             .getAsJsonArray("providers");
         var bitmap = providers.get(0).getAsJsonObject();
-        check(bitmap.get("height").getAsInt() == 16,
-            "Y stretch changes exported bitmap-font height");
+        check(bitmap.get("height").getAsInt() == 1,
+            "Y stretch keeps a fixed bitmap-font height");
         Path texture = pack.resolve(bitmap.get("file").getAsString()
             .replace("dialogmenu:", "assets/dialogmenu/textures/"));
         BufferedImage atlas = ImageIO.read(texture.toFile());

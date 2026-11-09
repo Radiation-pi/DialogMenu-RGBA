@@ -38,7 +38,8 @@ final class CompiledSnapshot {
             else {
                 ByteArrayOutputStream bytes = new ByteArrayOutputStream();
                 for (String name : List.of("CompiledSnapshot.class", "ReloadEngine.class", "FontPack.class",
-                    "RgbaImages.class", "RgbaHits.class", "RgbaOffsets.class", "RgbaDecorations.class",
+                    "RgbaImages.class", "RegisteredImages.class", "ImageRegistry.class",
+                    "RgbaHits.class", "RgbaOffsets.class", "RgbaDecorations.class",
                     "CanvasScale.class", "MenuOpeners.class", "MenuRenderer.class",
                     "SpriteCanvas.class", "LayoutStore.class", "MenuTemplate.class", "ModelPack.class",
                     "VanillaAssets.class", "CraftEngineAssets.class", "/glyphs.bin.gz",
@@ -138,14 +139,6 @@ final class CompiledSnapshot {
 
     private static Gson codec(Images images) {
         return new GsonBuilder().serializeNulls().enableComplexMapKeySerialization()
-            .addSerializationExclusionStrategy(new ExclusionStrategy() {
-                public boolean shouldSkipClass(Class<?> type) { return false; }
-                public boolean shouldSkipField(FieldAttributes field) {
-                    // 单字拉伸源图仅供编译使用；运行/导出用已编译atlas和advance。
-                    return field.getDeclaringClass().getSimpleName().equals("StretchedGlyph")
-                        && field.getName().equals("image");
-                }
-            })
             .registerTypeHierarchyAdapter(Path.class, new PathCodec())
             .registerTypeAdapter(FileTime.class, new TimeCodec())
             .registerTypeHierarchyAdapter(BufferedImage.class, images)

@@ -9,6 +9,7 @@ import java.util.*;
 import javax.imageio.ImageIO;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import org.bukkit.configuration.file.YamlConfiguration;
 import static dev.dialogmenu.MenuModel.*;
 
@@ -18,6 +19,7 @@ final class RowPackTests {
     private final Path pack;
     private final Map<String, Map<Integer, Ink>> fonts = new HashMap<>();
     private final Map<Integer, Integer> palette = new HashMap<>();
+    private final Map<String, Integer> objects = new HashMap<>();
 
     private RowPackTests(Path pack) throws Exception {
         this.pack = pack;
@@ -150,22 +152,24 @@ final class RowPackTests {
                 ImageIO.write(actual, "png", exported.resolve("canvas-" + canvasScale + ".png").toFile());
             checks++;
             Set<String> hits = new HashSet<>();
-            for (var glyph : MenuText.glyphs(output.component()))
+            for (var glyph : replay.glyphs(output.component()))
                 if (glyph.style().clickEvent() != null) hits.add(glyph.style().clickEvent().toString());
             if (hits.size() != 2) throw new AssertionError("Clipping must retain two independent semantic click targets");
             checks++;
             Sprite hit = frame.sprites().stream().filter(s -> s.id().equals("frontend.repeated-b"))
                 .findFirst().orElseThrow();
             String target = ClickEvent.runCommand("/test/frontend.repeated-b").toString();
-            for (int y = 0; y < hit.image().getHeight(); y++) {
+            BufferedImage hitImage = hit.image() == null ? hit.original() : hit.image();
+            for (int y = 0; y < hit.height(); y++) {
                 int visibleX = -1;
-                for (int x = 0; x < hit.image().getWidth(); x++)
-                    if (hit.image().getRGB(x, y) >>> 24 != 0) { visibleX = x; break; }
+                for (int x = 0; x < hit.width(); x++)
+                    if (hitImage.getRGB(x * hitImage.getWidth() / hit.width(),
+                        y * hitImage.getHeight() / hit.height()) >>> 24 != 0) { visibleX = x; break; }
                 if (visibleX >= 0 && !target.equals(replay.hit(output.component(), hit.x() + visibleX, hit.y() + y)))
                     throw new AssertionError("The clickable image has an unclickable visible row at y=" + (hit.y() + y));
             }
             if (target.equals(replay.hit(output.component(), hit.x() + 2, hit.y() - 1))
-                || target.equals(replay.hit(output.component(), hit.x() + 2, hit.y() + hit.image().getHeight())))
+                || target.equals(replay.hit(output.component(), hit.x() + 2, hit.y() + hit.height())))
                 throw new AssertionError("Padding creates a ghost click outside the image");
             checks += 2;
         }
@@ -193,12 +197,6 @@ final class RowPackTests {
             }
             String[] texture = provider.get("file").getAsString().split(":", 2);
             BufferedImage image = ImageIO.read(pack.resolve("assets/" + texture[0] + "/textures/" + texture[1]).toFile());
-            if (name.startsWith("dialogmenu:text_rgba_") || name.startsWith("dialogmenu:rule_")) {
-                BufferedImage white = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
-                for (int py = 0; py < image.getHeight(); py++) for (int px = 0; px < image.getWidth(); px++)
-                    white.setRGB(px, py, image.getRGB(px, py) & 0xFF000000 | 0xFFFFFF);
-                image = white;
-            }
             JsonArray rows = provider.getAsJsonArray("chars");
             int columns = rows.get(0).getAsString().codePoints().toArray().length;
             int cw = image.getWidth() / columns, ch = image.getHeight() / rows.size();
@@ -221,7 +219,7 @@ final class RowPackTests {
     private BufferedImage render(Component component, int width, int height) throws Exception {
         BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         int x = 0, y = 0;
-        for (var glyph : MenuText.glyphs(component)) {
+        for (var glyph : glyphs(component)) {
             if (glyph.code() == '\n') { x = 0; y += 9; continue; }
             String font = glyph.style().font().asString();
             Ink ink = font(font).get(glyph.code());
@@ -230,29 +228,45 @@ final class RowPackTests {
             int payload = glyph.style().shadowColor() == null ? 0 : glyph.style().shadowColor().value();
             int band = (payload >>> 28 & 1) * 9;
             BufferedImage layer = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-            if (font.equals("dialogmenu:images_rgba")) {
+            if (font.startsWith("dialogmenu:text_rgba_")) {
+                int[] geometry = textGeometry(payload);
+                int dh = geometry[0], top = geometry[1];
+                band = geometry[2];
+                int dw = ((payload >>> 8) & 511) + 1;
+                int metadata = ink.image().getRGB(ink.x() + 1, ink.y());
+                int sw = metadata >>> 16 & 255, sh = metadata >>> 8 & 255;
+                color = palette.get(payload & 255);
+                for (int py = 0; py < dh; py++) for (int px = 0; px < dw; px++) {
+                    int sx = (int) Math.floor((px + .5) * sw / dw - .0001);
+                    int sy = (int) Math.floor((py + .5) * sh / dh - .0001);
+                    int alpha = ink.image().getRGB(ink.x() + 1 + sx, ink.y() + 1 + sy) >>> 24;
+                    blend(layer, x + px, y + top + py, alpha << 24 | color);
+                    if (glyph.bold()) blend(layer, x + px + 1, y + top + py, alpha << 24 | color);
+                }
+            } else if (font.equals("dialogmenu:images_rgba") || font.equals("dialogmenu:test_object")) {
                 int widthPixels = ((payload >> 19) & 511) + 1, heightPixels = ((payload >> 10) & 511) + 1;
                 int localY = payload & 1023;
                 if (localY >= 512) localY -= 1024;
-                int metadata = ink.image().getRGB(ink.x() + 1, ink.y());
-                int sourceWidth = metadata >> 16 & 255, sourceHeight = metadata >> 8 & 255;
+                boolean object = font.equals("dialogmenu:test_object");
+                int metadata = ink.image().getRGB(object ? 1 : ink.x() + 1, object ? 0 : ink.y());
+                int sourceWidth = (metadata >> 16 & 255) + (object ? 1 : 0);
+                int sourceHeight = (metadata >> 8 & 255) + (object ? 1 : 0);
+                int tint = palette.get(metadata >>> 24);
                 for (int py = 0; py < heightPixels; py++) for (int px = 0; px < widthPixels; px++) {
                     int sx = (int) Math.floor((px + .5) * sourceWidth / widthPixels - .0001);
                     int sy = (int) Math.floor((py + .5) * sourceHeight / heightPixels - .0001);
-                    blend(layer, x + px, y + localY + py,
-                        ink.image().getRGB(ink.x() + 1 + sx, ink.y() + 1 + sy));
+                    int pixel = ink.image().getRGB(ink.x() + (object ? 0 : 1) + sx,
+                        ink.y() + (object ? 0 : 1) + sy);
+                    blend(layer, x + px, y + localY + py, pixel & 0xFF000000
+                        | ((pixel >> 16 & 255) * (tint >> 16 & 255) / 255) << 16
+                        | ((pixel >> 8 & 255) * (tint >> 8 & 255) / 255) << 8
+                        | (pixel & 255) * (tint & 255) / 255);
                 }
             } else if (ink.image() != null && !font.equals("dialogmenu:row_hit")) {
-                int top;
-                if (font.startsWith("dialogmenu:text_rgba_") || font.startsWith("dialogmenu:rule_")) {
-                    top = payload >> 8 & 1023;
-                    if (top >= 512) top -= 1024;
-                } else {
-                    top = payload >> 8 & 2047;
-                    if (top >= 1024) top -= 2048;
-                    band = top >= 32 ? 0 : 9;
-                    if (band == 0) top -= 32;
-                }
+                int top = payload >> 8 & 2047;
+                if (top >= 1024) top -= 2048;
+                band = top >= 32 ? 0 : 9;
+                if (band == 0) top -= 32;
                 color = palette.get(payload & 255);
                 draw(layer, ink, x, y + top, color);
                 if (glyph.bold()) draw(layer, ink, x + 1, y + top, color);
@@ -264,10 +278,21 @@ final class RowPackTests {
         return result;
     }
 
+    static int[] textGeometry(int payload) {
+        int row = ((payload >>> 17) & 16383) - 1;
+        for (int height = 1; height <= 128; height++) {
+            if (row < height + 17) return row >= height + 8
+                ? new int[]{height, row - height - 8, 0}
+                : new int[]{height, row - height + 10, 9};
+            row -= height + 17;
+        }
+        throw new AssertionError("Invalid text geometry");
+    }
+
     private String hit(Component component, int testX, int testY) throws Exception {
         int x = 0, y = 0;
         String result = null;
-        for (var glyph : MenuText.glyphs(component)) {
+        for (var glyph : glyphs(component)) {
             if (glyph.code() == '\n') { x = 0; y += 9; continue; }
             Ink ink = font(glyph.style().font().asString()).get(glyph.code());
             double width = ink.image() == null ? 0 : ink.advance() + (glyph.bold() ? 1 : 0);
@@ -279,13 +304,60 @@ final class RowPackTests {
         return result;
     }
 
+    private List<MenuText.Glyph> glyphs(Component component) throws Exception {
+        var serializer = GsonComponentSerializer.gson();
+        JsonElement tree = JsonParser.parseString(serializer.serialize(component));
+        replaceObjects(tree);
+        return MenuText.glyphs(serializer.deserialize(tree.toString()));
+    }
+
+    private void replaceObjects(JsonElement value) throws Exception {
+        if (!value.isJsonObject()) return;
+        JsonObject object = value.getAsJsonObject();
+        if (object.has("sprite")) {
+            String sprite = object.get("sprite").getAsString();
+            if (!objects.containsKey(sprite)) {
+                int code = 0xE000 + objects.size();
+                String[] key = sprite.split(":", 2);
+                BufferedImage image = ImageIO.read(pack.resolve(
+                    "assets/" + key[0] + "/textures/" + key[1] + ".png").toFile());
+                objects.put(sprite, code);
+                fonts.computeIfAbsent("dialogmenu:test_object", ignored -> new HashMap<>())
+                    .put(code, new Ink(image, 2, 2, 0, 0, 8, 0, 8));
+            }
+            object.remove("type");
+            object.remove("sprite");
+            object.remove("atlas");
+            object.addProperty("text", new String(Character.toChars(objects.get(sprite))));
+            object.addProperty("font", "dialogmenu:test_object");
+        }
+        if (object.has("extra"))
+            for (JsonElement child : object.getAsJsonArray("extra")) replaceObjects(child);
+    }
+
     private static BufferedImage expected(Menu menu, Rendered frame, VanillaAssets assets, FontPack fonts,
                                            Context context, int width) {
         BufferedImage result = new BufferedImage(width, frame.image().getHeight(), BufferedImage.TYPE_INT_ARGB);
         for (Node node : menu.nodes()) {
             if (!node.type().equals("text")) {
-                for (Sprite sprite : frame.sprites()) if (sprite.id().equals(node.id()))
-                    overlay(result, sprite.image(), sprite.x(), sprite.y());
+                for (Sprite sprite : frame.sprites()) if (sprite.id().equals(node.id())) {
+                    if (sprite.image() != null) overlay(result, sprite.image(), sprite.x(), sprite.y());
+                    else {
+                        var graphics = result.createGraphics();
+                        BufferedImage source = sprite.original();
+                        int rgb = node.type().equals("image") ? assets.imageColor(node.source(), node.argb()) : node.argb();
+                        BufferedImage colored = new BufferedImage(source.getWidth(), source.getHeight(), BufferedImage.TYPE_INT_ARGB);
+                        for (int sy = 0; sy < source.getHeight(); sy++) for (int sx = 0; sx < source.getWidth(); sx++) {
+                            int pixel = source.getRGB(sx, sy);
+                            colored.setRGB(sx, sy, pixel & 0xFF000000
+                                | ((pixel >> 16 & 255) * (rgb >> 16 & 255) / 255) << 16
+                                | ((pixel >> 8 & 255) * (rgb >> 8 & 255) / 255) << 8
+                                | (pixel & 255) * (rgb & 255) / 255);
+                        }
+                        graphics.drawImage(colored, sprite.x(), sprite.y(), sprite.width(), sprite.height(), null);
+                        graphics.dispose();
+                    }
+                }
             } else {
                 int size = (int) Math.round(node.size() * context.textScale()
                     * (menu.scaleTextWithCanvas() ? width / (double) menu.width() : context.canvasScale()));
@@ -298,10 +370,15 @@ final class RowPackTests {
                     var image = new BufferedImage(source.width(), source.height(), BufferedImage.TYPE_INT_ARGB);
                     for (int py = 0; py < source.height(); py++) for (int px = 0; px < source.width(); px++)
                         image.setRGB(px, py, Byte.toUnsignedInt(source.alpha()[py * source.width() + px]) << 24 | 0xFFFFFF);
-                    var ink = new Ink(image, 0, 0, source.width(), source.height(), size, 0, 0);
                     int color = glyph.style().color() == null ? node.argb() & 0xFFFFFF : glyph.style().color().value();
-                    draw(result, ink, x, y, color);
-                    if (glyph.bold()) draw(result, ink, x + 1, y, color);
+                    int targetWidth = Math.max(1, (int) Math.round(source.width() * size / (double) source.height()));
+                    for (int py = 0; py < size; py++) for (int px = 0; px < targetWidth; px++) {
+                        int sx = (int) Math.floor((px + .5) * source.width() / targetWidth - .0001);
+                        int sy = (int) Math.floor((py + .5) * source.height() / size - .0001);
+                        int pixel = image.getRGB(sx, sy) & 0xFF000000 | color;
+                        blend(result, x + px, y + py, pixel);
+                        if (glyph.bold()) blend(result, x + px + 1, y + py, pixel);
+                    }
                     x += fonts.glyphWidth(glyph, size);
                 }
             }

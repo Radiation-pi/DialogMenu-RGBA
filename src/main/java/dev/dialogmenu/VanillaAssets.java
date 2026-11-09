@@ -18,18 +18,20 @@ final class VanillaAssets {
     private final Map<String, BufferedImage> icons = new HashMap<>();
     private final Path images;
     private final Map<String, BufferedImage> custom = new HashMap<>();
+    private final Map<String, ImageRegistry.Entry> registered = new TreeMap<>();
     private final SourceFiles inputs = new SourceFiles();
     final CraftEngineAssets craftEngine;
-    record State(Map<String, BufferedImage> custom, JsonElement craftEngine) {}
+    record State(Map<String, BufferedImage> custom, JsonElement craftEngine, Map<String, ImageRegistry.Entry> registered) {}
 
     synchronized State state(Gson codec) {
         synchronized (craftEngine) {
-            return new State(new HashMap<>(custom), codec.toJsonTree(craftEngine));
+            return new State(new HashMap<>(custom), codec.toJsonTree(craftEngine), new TreeMap<>(registered));
         }
     }
     static VanillaAssets restore(Path images, State state, Gson codec) throws IOException {
         VanillaAssets assets = new VanillaAssets(images, codec.fromJson(state.craftEngine(), CraftEngineAssets.class));
         assets.custom.putAll(state.custom());
+        assets.registered.putAll(state.registered());
         return assets;
     }
 
@@ -43,6 +45,7 @@ final class VanillaAssets {
 
     VanillaAssets(Path images, Path craftEngineResources, List<String> definitions) throws IOException {
         this(images, new CraftEngineAssets(craftEngineResources, definitions));
+        registered.putAll(ImageRegistry.load(this.images, craftEngine, inputs));
     }
 
     private VanillaAssets(Path images, CraftEngineAssets craftEngine) throws IOException {
@@ -81,6 +84,16 @@ final class VanillaAssets {
     }
 
     synchronized BufferedImage image(String source) throws IOException {
+        if (SymbolImages.source(source)) {
+            if (!custom.containsKey(source)) custom.put(source, SymbolImages.image(source, this));
+            return custom.get(source);
+        }
+        String registeredSource = ImageRegistry.key(source);
+        if (ImageRegistry.source(registeredSource)) {
+            ImageRegistry.Entry entry = registered.get(registeredSource);
+            if (entry == null) throw new IOException("未准备注册材质：" + source + "；请检查 images/registry.json 后执行 /dialogmenu reload all");
+            return entry.image();
+        }
         if (source.startsWith("minecraft:")) {
             return vanillaImage(source);
         }
@@ -93,18 +106,7 @@ final class VanillaAssets {
                 return vanillaImage("minecraft:" + file);
             throw new IOException("Unresolved CraftEngine image: " + source);
         }
-        BufferedImage cached = custom.get(source);
-        if (cached != null) return cached;
-        Path path = images.resolve(source.startsWith("/") ? source.substring(1) : source).normalize();
-        if (!path.startsWith(images) || !Files.isRegularFile(path)
-            || !path.toRealPath().startsWith(images.toRealPath())) throw new IOException("Image outside images/: " + source);
-        BufferedImage image = ImageIO.read(new ByteArrayInputStream(inputs.read(path)));
-        if (image == null || image.getWidth() < 16 || image.getHeight() < 16
-            || image.getWidth() > 256 || image.getHeight() > 256
-            || image.getWidth() % 16 != 0 || image.getHeight() % 16 != 0)
-            throw new IOException("PNG dimensions must be multiples of 16, within 16..256: " + source);
-        custom.put(source, image);
-        return image;
+        throw new IOException("Unknown image source: " + source);
     }
 
     CraftEngineAssets.Reference reference(String source) throws IOException {
@@ -125,17 +127,29 @@ final class VanillaAssets {
         return image;
     }
 
-    Glyph glyph(int codepoint) { return glyphs.get(codepoint); }
+    Glyph glyph(int codepoint) {
+        return codepoint == RgbaText.RULE ? new Glyph(new byte[]{(byte) 255}, 1, 1, 1) : glyphs.get(codepoint);
+    }
     String glyphSource() { return glyphSource; }
+    synchronized Map<String, ImageRegistry.Entry> registeredImages() { return Map.copyOf(registered); }
+    synchronized String registeredSource(String source) {
+        String key = ImageRegistry.key(source);
+        return registered.containsKey(key) ? key : null;
+    }
+    synchronized int imageColor(String source, int argb) {
+        if (SymbolImages.source(source)) return argb;
+        ImageRegistry.Entry entry = registered.get(ImageRegistry.key(source));
+        return entry != null && entry.tintable() ? argb : argb | 0xFFFFFF;
+    }
 
     void verifyInputs() throws IOException { inputs.verify(); craftEngine.verifyInputs(); }
 
     List<String> sources() throws IOException {
         var result = new TreeSet<String>();
         for (String source : icons.keySet()) result.add("minecraft:" + source);
-        try (var paths = Files.walk(images)) {
-            paths.filter(p -> Files.isRegularFile(p, LinkOption.NOFOLLOW_LINKS) && p.toString().endsWith(".png"))
-                .forEach(p -> result.add(images.relativize(p).toString().replace('\\', '/')));
+        for (String source : registered.keySet()) {
+            String id = source.substring(ImageRegistry.PREFIX.length());
+            result.add(id.contains(":") ? source : id);
         }
         result.addAll(craftEngine.sources());
         return List.copyOf(result);

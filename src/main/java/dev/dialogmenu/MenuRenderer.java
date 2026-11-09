@@ -27,7 +27,11 @@ final class MenuRenderer {
                 long size = Math.round(node.size() * node.scaleX() * width / menu.width());
                 return size >= 1 && size <= 127;
             });
-        if (width >= 64 && width <= MAX_WIDTH && height <= 1024 && (long) width * height <= maxPixels && modelsFit)
+        boolean imagesFit = menu.nodes().stream().filter(node -> node.type().equals("image")
+            && ImageRegistry.source(ImageRegistry.key(node.source())))
+            .allMatch(node -> Math.round(node.width() * node.scaleX() * width / menu.width()) <= 512
+                && Math.round(node.height() * node.scaleY() * width / menu.width()) <= 512);
+        if (width >= 64 && width <= MAX_WIDTH && height <= 1024 && (long) width * height <= maxPixels && modelsFit && imagesFit)
             result.add(MAX_WIDTH);
         return result;
     }
@@ -82,8 +86,9 @@ final class MenuRenderer {
                 textNodes.add(n);
                 continue;
             }
+            int argb = n.type().equals("image") ? assets.imageColor(n.source(), n.argb()) : n.argb();
             Graphic key = new Graphic(n.id(), n.type(), n.x(), n.y(), n.scaleX(), n.scaleY(), n.width(),
-                n.height(), n.argb(), n.source(), n.thickness(), n.rotation(), n.reuseTexture(), n.atlas(),
+                n.height(), argb, n.source(), n.thickness(), n.rotation(), n.reuseTexture(), n.atlas(),
                 n.interaction() != null, width, height, menu.height(), zoom);
             if (!preview) {
                 Sprite cached = cached(key);
@@ -101,8 +106,11 @@ final class MenuRenderer {
             Rectangle bounds = new Rectangle(left, top,
                 (int) Math.ceil(box.getMaxX() - 1e-7) - left, (int) Math.ceil(box.getMaxY() - 1e-7) - top);
             BufferedImage shaderSource = null;
+            String registeredSource = n.type().equals("image") ? assets.registeredSource(n.source()) : null;
             if (n.type().equals("image") && n.rotation() == 0 && n.argb() >>> 24 == 255
-                && !n.source().startsWith("minecraft:") && !n.reuseTexture() && n.atlas() == null
+                && !n.source().startsWith("minecraft:") && !ImageRegistry.source(n.source())
+                && registeredSource == null
+                && !n.reuseTexture() && n.atlas() == null
                 && !assets.craftEngine.atlasReference(n.source())) {
                 BufferedImage source = assets.image(n.source());
                 int sw = Math.max(1, (int) Math.round(n.width() * n.scaleX() * zoom));
@@ -116,6 +124,39 @@ final class MenuRenderer {
             Rectangle unclipped = new Rectangle(bounds);
             bounds = bounds.intersection(new Rectangle(0, 0, width, height));
             if (bounds.isEmpty()) continue;
+            if (java.util.Set.of("rectangle", "frame", "line").contains(n.type())
+                && n.rotation() == 0 && n.argb() >>> 24 == 255 && bounds.equals(unclipped)
+                && bounds.width <= 512 && bounds.height <= 512) {
+                String symbol = n.type().equals("rectangle") ? "■" : n.type().equals("frame") ? "□"
+                    : bounds.width >= bounds.height ? "—" : "I";
+                BufferedImage source = assets.image("symbol:" + symbol);
+                add(sprites, key, new Sprite(n.id(), bounds.x, bounds.y, null, null, source, null,
+                    bounds.width, bounds.height), preview);
+                if (root != null) root.drawImage(tint(source, argb), bounds.x, bounds.y, bounds.width, bounds.height, null);
+                continue;
+            }
+            boolean registeredGeometry = n.type().equals("image") && n.rotation() == 0 && n.argb() >>> 24 == 255
+                && !n.reuseTexture() && n.atlas() == null && bounds.equals(unclipped)
+                && Math.round(n.width() * n.scaleX() * zoom) <= 512
+                && Math.round(n.height() * n.scaleY() * zoom) <= 512;
+            if (ImageRegistry.source(n.source()) || registeredSource != null && registeredGeometry) {
+                if (!n.type().equals("image") || n.rotation() != 0 || n.argb() >>> 24 != 255
+                    || n.reuseTexture() || n.atlas() != null || !bounds.equals(unclipped))
+                    throw new IOException(n.id() + " 注册材质须完整位于画布内、无旋转、opacity=255；图集选格写在注册表内");
+                int sw = Math.max(1, (int) Math.round(n.width() * n.scaleX() * zoom));
+                int sh = Math.max(1, (int) Math.round(n.height() * n.scaleY() * zoom));
+                if (sw > 512 || sh > 512)
+                    throw new IOException(n.id() + " 注册材质显示宽高须为1..512");
+                BufferedImage source = assets.image(n.source());
+                bounds = new Rectangle((int) Math.round((menu.width() / 2.0 + n.x()) * zoom - sw / 2.0),
+                    (int) Math.round((menu.height() / 2.0 - n.y()) * zoom - sh / 2.0), sw, sh);
+                if (!new Rectangle(0, 0, width, height).contains(bounds))
+                    throw new IOException(n.id() + " 注册材质超出画布");
+                add(sprites, key, new Sprite(n.id(), bounds.x, bounds.y, null,
+                    registeredSource == null ? n.source() : registeredSource, source, null, sw, sh), preview);
+                if (root != null) root.drawImage(tint(source, argb), bounds.x, bounds.y, sw, sh, null);
+                continue;
+            }
             if (shaderSource != null && bounds.equals(unclipped)) {
                 Sprite reference = new Sprite(n.id(), bounds.x, bounds.y, null, null, shaderSource, null,
                     bounds.width, bounds.height);
@@ -126,7 +167,7 @@ final class MenuRenderer {
                 BufferedImage layer = new BufferedImage(bounds.width, bounds.height, BufferedImage.TYPE_INT_ARGB);
                 Graphics2D g = layer.createGraphics();
                 g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
-                g.drawImage(tint(shaderSource, n.argb()), 0, 0, bounds.width, bounds.height, null);
+                g.drawImage(tint(shaderSource, argb), 0, 0, bounds.width, bounds.height, null);
                 g.dispose();
                 add(sprites, key, new Sprite(n.id(), bounds.x, bounds.y, layer, null, shaderSource), preview);
                 if (root != null) root.drawImage(layer, bounds.x, bounds.y, null);
@@ -135,15 +176,12 @@ final class MenuRenderer {
             if (n.source().startsWith("minecraft:") || n.reuseTexture() || n.atlas() != null
                 || assets.craftEngine.atlasReference(n.source())) {
                 var reference = assets.reference(n.source(), n.atlas());
-                boolean vanillaBitmap = n.source().startsWith("minecraft:");
-                if (!vanillaBitmap && (n.argb() & 0xFFFFFF) != 0xFFFFFF)
-                    throw new IOException(n.id() + " 外部纹理直引暂不支持染色；请使用自有PNG或color='#FFFFFF'");
                 if (n.rotation() != 0 || n.argb() >>> 24 != 255 || !bounds.equals(unclipped)
                     || Math.abs(n.width() * n.scaleX() / (n.height() * n.scaleY())
                         - reference.image().getWidth() / (double) reference.image().getHeight()) > 1e-7)
                     throw new IOException(n.id() + " 纹理直引须完整显示、等比缩放、不旋转且opacity=255");
                 // 只导出字体 provider，原纹理由 Minecraft 或 CE 提供。
-                if (root != null) root.drawImage(vanillaBitmap ? tint(reference.image(), n.argb()) : reference.image(),
+                if (root != null) root.drawImage(reference.image(),
                     bounds.x, bounds.y, bounds.width, bounds.height, null);
                 // 保留显示边界，不复制源 PNG。
                 add(sprites, key, new Sprite(n.id(), bounds.x, bounds.y,
@@ -169,7 +207,7 @@ final class MenuRenderer {
                     g.fill(new Rectangle2D.Double(x + n.width() - t, y, t, h));
                 }
                 case "image" -> {
-                    BufferedImage texture = tint(assets.image(n.source()), n.argb());
+                    BufferedImage texture = tint(assets.image(n.source()), argb);
                     g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (n.argb() >>> 24) / 255f));
                     g.drawImage(texture, (int) Math.round(x), (int) Math.round(y),
                         (int) Math.round(n.width()), (int) Math.round(h), null);

@@ -8,7 +8,9 @@ canvas-scales: [0.8, 1, 2]
 default-canvas-scale: 1
 # 可选菜单入口；升级不会自动写入现有配置。
 openers: {}
-# 动态文本额外使用的HEX色；传统16色已内置。
+# 原版16色已内置；额外HEX色供文字和已开启染色的图片共用，总计最多256色。
+# 例如 ['#123456']；新增颜色后执行 /dialogmenu reload all 并发布新资源包。
+# 已准备颜色之间切换只需 reload yaml，不因改色重新接包。
 text-colors: []
 # 仅支持 RGBA 渲染，不由配置切换。
 craftengine-auto-reload: true

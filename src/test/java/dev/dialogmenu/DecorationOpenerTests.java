@@ -4,7 +4,6 @@ import com.google.gson.*;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import javax.imageio.ImageIO;
 import net.kyori.adventure.nbt.*;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -84,12 +83,12 @@ public final class DecorationOpenerTests {
                     var output = new SpriteCanvas().encode(doc.menu(), frame, active, first.fonts(),
                         region -> ClickEvent.runCommand("/styled"));
                     var glyphs = MenuText.glyphs(output.component());
-                    check(glyphs.stream().anyMatch(g -> g.style().hasDecoration(TextDecoration.ITALIC)
-                        && g.style().hasDecoration(TextDecoration.OBFUSCATED)), "Italic and obfuscation reach the client");
+                    check(glyphs.stream().anyMatch(g -> g.style().shadowColor() != null
+                        && g.style().shadowColor().value() < 0 && g.style().hasDecoration(TextDecoration.OBFUSCATED)),
+                        "Shader italic and grouped obfuscation reach the client");
                     check(glyphs.stream().noneMatch(g -> g.style().hasDecoration(TextDecoration.UNDERLINED)
                         || g.style().hasDecoration(TextDecoration.STRIKETHROUGH)), "Native fixed-baseline rules are suppressed");
-                    var rules = glyphs.stream().filter(g -> g.style().font() != null
-                        && g.style().font().value().startsWith("rule_")).toList();
+                    var rules = glyphs.stream().filter(g -> g.code() == RgbaText.RULE).toList();
                     check(!rules.isEmpty(), "Both decoration lines are encoded as actual RGBA glyphs");
                     TextStyle style = new TextStyle(SpriteCanvas.textSize(doc.menu(), doc.menu().nodes().getFirst(),
                         frame.width(), text, zoom), 1, 1);
@@ -98,11 +97,10 @@ public final class DecorationOpenerTests {
                     int row = 0;
                     for (var rule : glyphs) {
                         if (rule.code() == '\n') { row++; continue; }
-                        if (rule.style().font() == null || !rule.style().font().value().startsWith("rule_")) continue;
+                        if (rule.code() != RgbaText.RULE) continue;
                         int payload = rule.style().shadowColor().value();
-                        check((payload & 0xE0000000) == RgbaOffsets.MAGIC, "Rules use the row-slice protocol");
-                        int local = payload >> 8 & 1023;
-                        if (local >= 512) local -= 1024;
+                        int[] geometry = RowPackTests.textGeometry(payload);
+                        int local = geometry[1];
                         positions.add(local + row * 9);
                     }
                     check(positions.equals(Set.of(top + style.height() - RgbaDecorations.thickness(style),
@@ -110,16 +108,11 @@ public final class DecorationOpenerTests {
                     check(glyphs.stream().anyMatch(g -> g.style().font() != null
                         && g.style().font().equals(RgbaHits.FONT) && g.style().clickEvent() != null
                         && g.style().hoverEvent() != null), "Styled text retains click and hover");
-                    int measured = 0;
-                    for (var g : MenuText.glyphs(RgbaDecorations.line(37, RgbaDecorations.thickness(style)))) {
-                        if (g.style().font().equals(SpriteCanvas.SPACE)) {
-                            measured += g.code() - 0xF0000 - 1024;
-                        } else {
-                            int unit = Integer.parseInt(g.style().font().value().substring(5));
-                            measured += (1 << (g.code() - RgbaDecorations.FIRST)) * unit + 1;
-                        }
-                    }
-                    check(measured == 37, "Rule output has exact width with no accumulating gaps");
+                    check(rules.stream().allMatch(g -> {
+                        int width = ((g.style().shadowColor().value() >>> 8) & 511) + 1;
+                        return width == first.fonts().glyphWidth(MenuText.glyphs(Component.text("A")).getFirst(), style)
+                            || width == first.fonts().glyphWidth(MenuText.glyphs(Component.text("汉")).getFirst(), style);
+                    }), "Decoration width follows each original glyph advance");
                 }
             var json = JsonParser.parseString(Files.readString(fontPack.resolve(
                 "assets/dialogmenu/font/text_rgba_8.json"))).getAsJsonObject();
@@ -130,11 +123,15 @@ public final class DecorationOpenerTests {
             }
             check(pool.contains((int) 'Z') && pool.contains((int) '9') && pool.size() > 3000,
                 "Static obfuscation has actual Latin and CJK replacement glyphs");
-            for (int power = 0; power <= 8; power++) {
-                var image = ImageIO.read(fontPack.resolve("assets/dialogmenu/textures/generated/rule_" + power + ".png").toFile());
-                check(image.getWidth() == 1 << power && image.getHeight() == 1, "Rule textures use reusable powers of two");
-                check(image.getRGB(0, 0) == (0xFF000000 | RgbaOffsets.TEXTURE_RGB), "Rule pixels carry the RGBA marker");
-            }
+            check(pool.contains(RgbaText.RULE), "Decorations share the prepared fixed source glyph");
+            Component wideRule = first.fonts().rgbaText(
+                Component.text(Character.toString(RgbaText.RULE)).decorate(TextDecoration.UNDERLINED),
+                0xFFFFFF, -103, new TextStyle(128, 4, 1), 9);
+            var widths = MenuText.glyphs(wideRule).stream().filter(g -> g.style().shadowColor() != null)
+                .map(g -> g.style().shadowColor().value())
+                .filter(payload -> RowPackTests.textGeometry(payload)[0] == 16)
+                .map(payload -> ((payload >>> 8) & 511) + 1).toList();
+            check(widths.equals(List.of(512, 1)), "Long underline covers all 513 pixels without truncation");
             var rules = first.settings().openers();
             check(rules.size() == 1 && rules.getFirst().keys().equals(List.of("SHIFT+F", "SPRINT+Q")),
                 "Configured aliases, item and combination keys survive full preparation");
@@ -161,8 +158,12 @@ public final class DecorationOpenerTests {
             check(snapshot.settings().openers().getFirst().commands().equals(List.of("guide")),
                 "Failed candidate does not replace persisted working entry points");
             snapshot.fonts().write(data.resolve("restored-export"));
-            check(Files.isRegularFile(data.resolve("restored-export/assets/dialogmenu/font/rule_1.json")),
-                "Decorations survive compiled snapshot restore");
+            var doc = snapshot.documents().get("styles");
+            var restoredText = new SpriteCanvas().encode(doc.menu(),
+                snapshot.renderer().drawRuntime(doc.menu(), BASE, 300, snapshot.settings().maxPixels()),
+                BASE, snapshot.fonts(), region -> ClickEvent.runCommand("/styled"));
+            check(MenuText.glyphs(restoredText.component()).stream().anyMatch(g -> g.code() == RgbaText.RULE),
+                "Restored snapshot still renders actual underline and strike components");
         }
         for (String bad : List.of("SHIFT+A", "SHIFT+SHIFT+F", "ALT+F", "CTRL+", "F+SHIFT"))
             rejected(() -> MenuOpeners.key(bad), "Unsupported key combination is rejected");

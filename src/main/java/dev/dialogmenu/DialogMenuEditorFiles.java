@@ -33,7 +33,7 @@ public final class DialogMenuEditorFiles implements DialogMenuEditorService.File
                     next.put("layouts/" + name, new Entry(layouts, name, null, null, true));
             }
         }
-        scan(next, data.resolve("images"), "images/", ".*\\.png");
+        scan(next, data.resolve("images"), "images/", "(.*\\.png|registry\\.json)");
         scan(next, data.resolve("models/prepared"), "models/prepared/", "(vanilla|ce)/state\\.json");
         if (resources != null)
             scan(next, resources, "CraftEngine/resources/", "[^/]+/resourcepack/assets/[^/]+/textures/.+\\.png");

@@ -17,13 +17,16 @@ final class ModelPack {
     private final Map<String, List<Face>> models;
     private final Map<String, String> packs;
     private final Map<String, double[]> bounds;
+    private final Set<String> registered;
     private static final List<String> COMPILER = List.of("prepare.py", "model_catalog.py",
         "item_catalog.py", "model_cache.py", "corner_texture.py", "inventory/special-research/native-geometry.json");
 
-    private ModelPack(Map<String, List<Face>> models, Map<String, String> packs, Map<String, double[]> bounds) {
+    private ModelPack(Map<String, List<Face>> models, Map<String, String> packs, Map<String, double[]> bounds,
+                      Set<String> registered) {
         this.models = Map.copyOf(models);
         this.packs = Map.copyOf(packs);
         this.bounds = Map.copyOf(bounds);
+        this.registered = Set.copyOf(registered);
     }
 
     private static Set<String> ids(Collection<LayoutStore.Document> documents) {
@@ -33,18 +36,51 @@ final class ModelPack {
         return ids;
     }
     static boolean matches(ModelPack pack, Collection<LayoutStore.Document> documents) {
-        return ids(documents).equals(pack == null ? Set.of() : pack.models.keySet());
+        Set<String> required = ids(documents);
+        if (pack != null) required.addAll(pack.registered);
+        return required.equals(pack == null ? Set.of() : pack.models.keySet());
     }
     static ModelPack prepare(Path data, Collection<LayoutStore.Document> documents) throws Exception {
         Set<String> ids = ids(documents);
+        SourceFiles inputs = new SourceFiles();
+        Path unified = data.resolve("images/registry.json");
+        JsonObject declared = new JsonObject();
+        if (Files.isRegularFile(unified)) {
+            if (!unified.toRealPath().startsWith(data.resolve("images").toRealPath()))
+                throw new IOException("images/registry.json cannot leave images/");
+            JsonObject source = JsonParser.parseString(new String(inputs.read(unified), StandardCharsets.UTF_8)).getAsJsonObject();
+            if (source.has("models")) declared = source.getAsJsonObject("models");
+        }
+        Set<String> registered = new TreeSet<>(declared.keySet());
+        ids.addAll(registered);
         if (ids.isEmpty()) return null;
         Path root = data.resolve("models"), compiler = root.resolve("compiler");
         Path settings = root.resolve("settings.json"), registry = root.resolve("registry.json");
-        if (!Files.isRegularFile(settings) || !Files.isRegularFile(registry))
-            throw new IOException("model需要 models/settings.json 与 models/registry.json");
-        SourceFiles inputs = new SourceFiles();
+        if (!Files.isRegularFile(settings))
+            throw new IOException("model需要 models/settings.json");
         JsonObject config = JsonParser.parseString(new String(inputs.read(settings), StandardCharsets.UTF_8)).getAsJsonObject();
-        inputs.read(registry);
+        JsonObject combined = Files.isRegularFile(registry)
+            ? JsonParser.parseString(new String(inputs.read(registry), StandardCharsets.UTF_8)).getAsJsonObject()
+            : new JsonObject();
+        if (!combined.has("version")) combined.addProperty("version", 1);
+        if (!combined.has("items")) combined.add("items", new JsonObject());
+        JsonObject items = combined.getAsJsonObject("items");
+        for (var entry : declared.entrySet()) {
+            if (!entry.getKey().matches("[a-z0-9_.-]+:[a-z0-9/._-]+") || entry.getKey().contains("..")
+                || !entry.getValue().isJsonObject()) throw new IOException("Invalid model registration: " + entry.getKey());
+            // Vanilla inventory IDs are resolved from the client jar; only CE IDs
+            // belong in the CE item registry, which rejects minecraft:* entries.
+            if (entry.getKey().startsWith("minecraft:")) {
+                if (!entry.getValue().getAsJsonObject().isEmpty())
+                    throw new IOException("原版模型注册使用空对象，不支持CE覆盖字段：" + entry.getKey());
+                continue;
+            }
+            if (items.has(entry.getKey()) && !items.get(entry.getKey()).equals(entry.getValue()))
+                throw new IOException("模型同时存在两个不同定义，请只保留统一注册表项：" + entry.getKey());
+            items.add(entry.getKey(), entry.getValue());
+        }
+        Path effective = root.resolve("compiled-input.json");
+        writeChanged(effective, new Gson().toJson(combined).getBytes(StandardCharsets.UTF_8));
         Path client = resolve(root, config.get("client-jar").getAsString());
         if (!Files.isRegularFile(client)) throw new IOException("model的client-jar不存在：" + client);
         for (String name : COMPILER) {
@@ -55,7 +91,7 @@ final class ModelPack {
         }
         List<String> command = new ArrayList<>(List.of(
             config.has("python") ? config.get("python").getAsString() : "python3",
-            compiler.resolve("prepare.py").toString(), "--registry", registry.toString(),
+            compiler.resolve("prepare.py").toString(), "--registry", effective.toString(),
             "--output", root.resolve("prepared").toString()));
         if (config.has("ce-pack")) command.addAll(List.of("--ce-pack",
             resolve(root, config.get("ce-pack").getAsString()).toString()));
@@ -94,7 +130,7 @@ final class ModelPack {
             packs.put(kind, Base64.getEncoder().encodeToString(
                 Files.readAllBytes(root.resolve("prepared/" + kind + "/resourcepack.zip"))));
         inputs.verify();
-        return new ModelPack(faces, packs, bounds);
+        return new ModelPack(faces, packs, bounds, registered);
     }
 
     java.awt.Rectangle area(Menu menu, Node node, int width, int height) {
@@ -115,6 +151,7 @@ final class ModelPack {
         return root.resolve(value).toAbsolutePath().normalize();
     }
     static void inputs(Path data, Set<Path> files) {
+        files.add(data.resolve("images/registry.json"));
         for (String name : List.of("settings.json", "registry.json", "prepared/registry.json",
             "prepared/vanilla/resourcepack.zip", "prepared/ce/resourcepack.zip"))
             files.add(data.resolve("models").resolve(name));

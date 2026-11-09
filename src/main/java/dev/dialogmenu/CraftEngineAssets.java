@@ -132,6 +132,27 @@ final class CraftEngineAssets {
         return cached;
     }
 
+    synchronized Reference registeredReference(String source, TextureRegion region) throws IOException {
+        Reference reference = reference(source, region);
+        for (Path path : textures.keySet()) {
+            if (!textureKey(path).equals(reference.texture())) continue;
+            Path metadata = path.resolveSibling(path.getFileName() + ".mcmeta");
+            referencedTextures.add(metadata);
+            if (Files.exists(metadata)) {
+                inside(resources, metadata);
+                try {
+                    var json = com.google.gson.JsonParser.parseString(new String(inputs.read(metadata),
+                        java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
+                    if (json.has("animation"))
+                        throw new IOException("注册材质暂不支持动画PNG，不会静默截帧：" + source);
+                } catch (RuntimeException error) {
+                    throw new IOException("注册材质的mcmeta格式错误：" + source, error);
+                }
+            }
+        }
+        return reference;
+    }
+
     private Path directPath(String source) throws IOException {
         Path cached = directPaths.get(source);
         if (cached != null) return cached;
@@ -181,10 +202,14 @@ final class CraftEngineAssets {
             throw new IOException("CE文件不能越出资源目录：" + candidate);
     }
 
-    private Reference textureReference(Path path, TextureRegion region) throws IOException {
+    private static String textureKey(Path path) {
         String relative = path.toString().replace('\\', '/').split("/resourcepack/assets/", 2)[1];
         int textures = relative.indexOf("/textures/");
-        String key = relative.substring(0, textures) + ":" + relative.substring(textures + 10);
+        return relative.substring(0, textures) + ":" + relative.substring(textures + 10);
+    }
+
+    private Reference textureReference(Path path, TextureRegion region) throws IOException {
+        String key = textureKey(path);
         BufferedImage image = readTexture(path);
         referencedTextures.add(path);
         if (region != null) {

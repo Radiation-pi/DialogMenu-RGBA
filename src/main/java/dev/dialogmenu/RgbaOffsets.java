@@ -49,6 +49,8 @@ final class RgbaOffsets {
         return index;
     }
 
+    Collection<Integer> indices() { return List.copyOf(palette.values()); }
+
     Component encode(Component text, int fallback, int top, int height, int band) {
         if (top < -512 || top > 511 || height < 1 || height > 128)
             throw new IllegalArgumentException("RGBA文字切片超出范围");
