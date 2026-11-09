@@ -1,8 +1,7 @@
 # DialogMenu
 
 基于原版 Dialog 的 Minecraft 菜单插件。使用 YAML 配置文字、图片、点击动作和动态内容，支持 Java API、共享字库、图片染色及图片/文字拉伸。普通玩家无需安装 Mod，需接受服务器资源包。
-
-本项目已统一采用 RGBA 着色器渲染，旧原生版本不再维护。
+初期阶段，性能释放材质重载方案和实现方式并不好看，请见谅
 
 ## 许可证
 
@@ -15,9 +14,8 @@
 
 ## 环境
 
-- Java 21 起，Paper 系服务端；适配目标为 Minecraft 1.21.7–26.3，尚未逐版完成实机验证。
-- Skript、PlaceholderAPI、CraftEngine 为按需使用的可选集成。
-- 其他修改文字核心着色器的资源包需自行检查兼容性。
+- Java 21 起，Paper 系服务端，版本为1.21.7-26.3，26.3为实际开发版本
+- 适配插件：Skript、PlaceholderAPI、CraftEngine
 
 ## 构建与使用
 
@@ -45,8 +43,6 @@ gradle build
 - `/dialogmenu give <入口ID> [玩家]`：管理员发放配置的入口物品。
 
 新装的 `canvas-scales`、`text-scales` 默认均为 `[0.8, 1, 2]`，默认选择为 `1`。升级不自动重写现有 `config.yml` 或玩家倍率文件；旧配置缺少 `canvas-scales` 时保持旧画布选项 `[0.75, 1]`。新增倍率需 `reload all` 后重新接收资源包；已有菜单仍受实际画布/像素预算限制，超限会拒绝选择，不自动缩放或重排。
-
-旧版 `backend` 点击区域需迁移到 `frontend` 的文字或图片元素。新增字符、图片或字号后使用 `reload all`，并重新分发资源包。
 
 资源准备由后台协调线程分阶段并行处理，`resource-build-threads` 可设为 `1..8`，默认最多4路并预留1个逻辑处理器。`resource-build-cpu-percent` 默认 `80`，可设为 `1..100`，表示每个构建线程的平均 CPU 预算，不是进程总上限，不限制 GC 或 CraftEngine。
 编译结果自动保存。默认 `reuse-compiled-cache: false`，开服恢复缓存后只重载 YAML，不重新编译资源；开启后连 YAML 也只复用缓存，CE 重载不再自动准备 Dialog 资源。缓存缺失或不兼容时提示手动 `reload all`，不会自动全量编译。
