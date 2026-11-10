@@ -14,6 +14,7 @@ final class RgbaOffsets {
     static final int MAGIC = 0x20000000;
     static final int INK = 0xBEEF01;
     static final int TEXTURE_RGB = 0x174783;
+    static final int NATIVE_SHIFT = 65536;
     private final Map<Integer, Integer> palette = new LinkedHashMap<>();
 
     RgbaOffsets() {
@@ -51,6 +52,18 @@ final class RgbaOffsets {
 
     Collection<Integer> indices() { return List.copyOf(palette.values()); }
 
+    static Component nativeScope(Component ink) {
+        return Component.empty()
+            .append(Component.text(Character.toString(0xF1020)).font(SpriteCanvas.SPACE))
+            .append(ink)
+            .append(Component.text(Character.toString(0xF1021)).font(SpriteCanvas.SPACE));
+    }
+
+    static void nativeSpaces(Map<String, Integer> spaces) {
+        spaces.put(Character.toString(0xF1020), -NATIVE_SHIFT);
+        spaces.put(Character.toString(0xF1021), NATIVE_SHIFT);
+    }
+
     Component encode(Component text, int fallback, int top, int height, int band) {
         if (top < -512 || top > 511 || height < 1 || height > 128)
             throw new IllegalArgumentException("RGBA文字切片超出范围");
@@ -72,8 +85,9 @@ final class RgbaOffsets {
             throw new IllegalArgumentException("Bitmap切片超出范围");
         // 首行原点仅为0..8；借用常规切片不会出现的32..40，避免占用额外偏移位。
         int encodedTop = band == 0 ? top + 32 : top;
-        return glyph.color(TextColor.color(INK)).shadowColor(net.kyori.adventure.text.format.ShadowColor.shadowColor(
-            0xC0000000 | (height - 1) << 19 | (encodedTop & 2047) << 8 | index(fallback)));
+        return nativeScope(glyph.color(TextColor.color(INK))
+            .shadowColor(net.kyori.adventure.text.format.ShadowColor.shadowColor(
+                0xC0000000 | (height - 1) << 19 | (encodedTop & 2047) << 8 | index(fallback))));
     }
 
     void write(Path pack) throws IOException {

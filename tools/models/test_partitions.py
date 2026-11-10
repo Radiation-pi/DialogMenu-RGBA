@@ -144,15 +144,14 @@ class SplitModelTests(unittest.TestCase):
         self.assertEqual(json.loads((self.output / "ce/registry.json").read_text())["models"]["test:two"],
                          original)
         self.assertNotIn("test:one", json.loads((self.output / "ce/state.json").read_text())["entries"])
-        # Both source textures were identical, so the one shared PNG remains, not a baked icon.
         with ZipFile(self.output / "ce/resourcepack.zip") as archive:
             pngs = [name for name in archive.namelist() if name.endswith(".png")]
             self.assertEqual(len(pngs), 1)
             with ZipFile(self.pack) as source:
                 with Image.open(BytesIO(archive.read(pngs[0]))) as wrapped, \
                         Image.open(BytesIO(source.read("assets/test/textures/block/two.png"))) as original:
-                    self.assertEqual(wrapped.size, (32, 32))
-                    self.assertEqual(wrapped.crop((2, 2, 18, 18)).tobytes(), original.tobytes())
+                    self.assertEqual(wrapped.size, original.size)
+                    self.assertEqual(wrapped.tobytes(), original.tobytes())
 
     def test_partition_addresses_and_shader_tables_match(self):
         self.build()
@@ -166,8 +165,10 @@ class SplitModelTests(unittest.TestCase):
             self.assertNotIn("dialogmenu_26_3/assets/minecraft/shaders/core/text.vsh", ce.namelist())
             self.assertIn("assets/dialogmenu_vanilla/shaders/include/models.glsl", native.namelist())
             self.assertNotIn("assets/dialogmenu_ce/shaders/include/models.glsl", native.namelist())
-            self.assertNotIn("MODEL_CE_FACES 0", ce.read(
+            self.assertIn("MODEL_CE_FACES 3", ce.read(
                 "assets/dialogmenu_ce/shaders/include/models.glsl").decode())
+            self.assertFalse(any(name.endswith(".png") for name in native.namelist()),
+                             "Native 3D pixels must not be copied into the download")
 
 
 if __name__ == "__main__":

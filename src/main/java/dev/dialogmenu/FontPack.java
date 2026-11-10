@@ -511,8 +511,11 @@ final class FontPack {
         return models.area(menu, node, width, height);
     }
     net.kyori.adventure.text.Component model(String id, int size, int offset, int band) {
+        return model(id, size, size, offset, band);
+    }
+    net.kyori.adventure.text.Component model(String id, int sizeX, int sizeY, int offset, int band) {
         if (models == null) throw new IllegalArgumentException("模型未准备，请执行 /dialogmenu reload all");
-        return models.component(id, size, offset, band);
+        return models.component(id, sizeX, sizeY, offset, band);
     }
     List<Path> modelPacks(Path data) throws IOException {
         return models == null ? List.of() : models.paths(data);
@@ -545,6 +548,8 @@ final class FontPack {
             }
         Map<String, Integer> spaces = new LinkedHashMap<>();
         for (int x = -1024; x <= 1024; x++) spaces.put(SpriteCanvas.move(x), x);
+        ModelPack.faceSpaces(spaces);
+        RgbaOffsets.nativeSpaces(spaces);
         writeJson(base.resolve("font/space.json"), Map.of("providers", List.of(Map.of("type", "space", "advances", spaces))));
         writes.add(path -> {
             List<Object> graphics = SpriteAtlases.write(sprites.values(), base);

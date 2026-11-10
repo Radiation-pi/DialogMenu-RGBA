@@ -18,6 +18,7 @@ final class ModelPack {
     private final Map<String, String> packs;
     private final Map<String, double[]> bounds;
     private final Set<String> registered;
+    private static ModelPack defaultPack;
     private static final List<String> COMPILER = List.of("prepare.py", "model_catalog.py",
         "item_catalog.py", "model_cache.py", "corner_texture.py", "inventory/special-research/native-geometry.json");
 
@@ -35,12 +36,38 @@ final class ModelPack {
             if (node.type().equals("model")) ids.add(node.source());
         return ids;
     }
+    private static synchronized ModelPack defaults() throws IOException {
+        if (defaultPack != null) return defaultPack;
+        JsonObject data = InventoryAssets.json("models.json");
+        var models = new TreeMap<String, List<Face>>();
+        var bounds = new TreeMap<String, double[]>();
+        Gson gson = new Gson();
+        for (var entry : data.getAsJsonObject("models").entrySet())
+            models.put(entry.getKey(), List.of(gson.fromJson(entry.getValue(), Face[].class)));
+        for (var entry : data.getAsJsonObject("bounds").entrySet())
+            bounds.put(entry.getKey(), gson.fromJson(entry.getValue(), double[].class));
+        byte[] empty;
+        try (var bytes = new ByteArrayOutputStream(); var zip = new ZipOutputStream(bytes)) {
+            zip.putNextEntry(new ZipEntry("assets/dialogmenu_ce/shaders/include/models.glsl"));
+            zip.write(("#define MODEL_CE_FACES 0\n"
+                + "const vec4 modelCeData[5] = vec4[](vec4(0),vec4(0),vec4(0),vec4(0),vec4(0));\n")
+                .getBytes(StandardCharsets.UTF_8));
+            zip.closeEntry();
+            zip.finish();
+            empty = bytes.toByteArray();
+        }
+        defaultPack = new ModelPack(models, Map.of(
+            "vanilla", Base64.getEncoder().encodeToString(InventoryAssets.files().get("resourcepack.zip")),
+            "ce", Base64.getEncoder().encodeToString(empty)), bounds, models.keySet());
+        return defaultPack;
+    }
     static boolean matches(ModelPack pack, Collection<LayoutStore.Document> documents) {
         Set<String> required = ids(documents);
         if (pack != null) required.addAll(pack.registered);
         return required.equals(pack == null ? Set.of() : pack.models.keySet());
     }
     static ModelPack prepare(Path data, Collection<LayoutStore.Document> documents) throws Exception {
+        ModelPack defaults = defaults();
         Set<String> ids = ids(documents);
         SourceFiles inputs = new SourceFiles();
         Path unified = data.resolve("images/registry.json");
@@ -51,9 +78,20 @@ final class ModelPack {
             JsonObject source = JsonParser.parseString(new String(inputs.read(unified), StandardCharsets.UTF_8)).getAsJsonObject();
             if (source.has("models")) declared = source.getAsJsonObject("models");
         }
+        for (var entry : declared.entrySet()) {
+            if (!entry.getKey().matches("[a-z0-9_.-]+:[a-z0-9/._-]+") || entry.getKey().contains("..")
+                || !entry.getValue().isJsonObject()) throw new IOException("Invalid model registration: " + entry.getKey());
+            if (entry.getKey().startsWith("minecraft:") && !entry.getValue().getAsJsonObject().isEmpty())
+                throw new IOException("原版模型注册使用空对象，不支持CE覆盖字段：" + entry.getKey());
+        }
         Set<String> registered = new TreeSet<>(declared.keySet());
         ids.addAll(registered);
-        if (ids.isEmpty()) return null;
+        ids.removeAll(defaults.models.keySet());
+        registered.addAll(defaults.registered);
+        if (ids.isEmpty()) {
+            inputs.verify();
+            return defaults;
+        }
         Path root = data.resolve("models"), compiler = root.resolve("compiler");
         Path settings = root.resolve("settings.json"), registry = root.resolve("registry.json");
         if (!Files.isRegularFile(settings))
@@ -66,13 +104,9 @@ final class ModelPack {
         if (!combined.has("items")) combined.add("items", new JsonObject());
         JsonObject items = combined.getAsJsonObject("items");
         for (var entry : declared.entrySet()) {
-            if (!entry.getKey().matches("[a-z0-9_.-]+:[a-z0-9/._-]+") || entry.getKey().contains("..")
-                || !entry.getValue().isJsonObject()) throw new IOException("Invalid model registration: " + entry.getKey());
             // Vanilla inventory IDs are resolved from the client jar; only CE IDs
             // belong in the CE item registry, which rejects minecraft:* entries.
             if (entry.getKey().startsWith("minecraft:")) {
-                if (!entry.getValue().getAsJsonObject().isEmpty())
-                    throw new IOException("原版模型注册使用空对象，不支持CE覆盖字段：" + entry.getKey());
                 continue;
             }
             if (items.has(entry.getKey()) && !items.get(entry.getKey()).equals(entry.getValue()))
@@ -116,8 +150,8 @@ final class ModelPack {
         JsonObject prepared = JsonParser.parseString(
             Files.readString(root.resolve("prepared/registry.json"))).getAsJsonObject();
         JsonObject registryData = prepared.getAsJsonObject("models");
-        Map<String, List<Face>> faces = new LinkedHashMap<>();
-        Map<String, double[]> bounds = new LinkedHashMap<>();
+        Map<String, List<Face>> faces = new LinkedHashMap<>(defaults.models);
+        Map<String, double[]> bounds = new LinkedHashMap<>(defaults.bounds);
         Gson gson = new Gson();
         for (String id : ids) {
             if (!registryData.has(id))
@@ -129,6 +163,7 @@ final class ModelPack {
         for (String kind : List.of("vanilla", "ce"))
             packs.put(kind, Base64.getEncoder().encodeToString(
                 Files.readAllBytes(root.resolve("prepared/" + kind + "/resourcepack.zip"))));
+        packs.put("vanilla", defaults.packs.get("vanilla"));
         inputs.verify();
         return new ModelPack(faces, packs, bounds, registered);
     }
@@ -137,13 +172,14 @@ final class ModelPack {
         double[] box = bounds.get(node.source());
         if (box == null) throw new IllegalArgumentException(node.source() + " 未准备模型命中边界");
         double zoom = width / (double) menu.width();
-        int size = (int) Math.round(node.size() * node.scaleX() * zoom);
+        int sizeX = (int) Math.round(node.size() * node.scaleX() * zoom);
+        int sizeY = (int) Math.round(node.size() * node.scaleY() * zoom);
         int x = (int) Math.round((menu.width() / 2.0 + node.x()) * zoom);
         int y = (int) Math.round((menu.height() / 2.0 - node.y()) * zoom) - 1;
-        int left = Math.max(0, (int) Math.floor(x + box[0] * size));
-        int top = Math.max(0, (int) Math.floor(y + box[1] * size));
-        int right = Math.min(width, (int) Math.ceil(x + box[2] * size));
-        int bottom = Math.min(height, (int) Math.ceil(y + box[3] * size));
+        int left = Math.max(0, (int) Math.floor(x + box[0] * sizeX));
+        int top = Math.max(0, (int) Math.floor(y + box[1] * sizeY));
+        int right = Math.min(width, (int) Math.ceil(x + box[2] * sizeX));
+        int bottom = Math.min(height, (int) Math.ceil(y + box[3] * sizeY));
         return new java.awt.Rectangle(left, top, Math.max(0, right - left), Math.max(0, bottom - top));
     }
 
@@ -188,22 +224,27 @@ final class ModelPack {
             }
     }
     Component component(String id, int size, int offset, int band) {
+        return component(id, size, size, offset, band);
+    }
+    Component component(String id, int sizeX, int sizeY, int offset, int band) {
         List<Face> faces = models.get(id);
         if (faces == null) throw new IllegalArgumentException(id + " 未准备，请执行 /dialogmenu reload all");
-        if (size < 1 || size > 127 || offset < -512 || offset > 511)
-            throw new IllegalArgumentException(id + " 实际大小须1..127，行内上下偏移须-512..511");
+        int payload = (RgbaImages.payload(sizeX, sizeY, -offset, band) & 0x1FFFFFFF) | 0x40000000;
         JsonArray parts = new JsonArray();
         for (Face face : faces) {
+            JsonObject shift = new JsonObject();
+            shift.addProperty("text", faceMove(face.face(), false));
+            shift.addProperty("font", "dialogmenu:space");
+            parts.add(shift);
             JsonObject part = new JsonObject();
             part.addProperty("type", "object");
             part.addProperty("atlas", face.atlas());
             part.addProperty("sprite", face.sprite());
             part.addProperty("color", "#beef01");
-            part.addProperty("shadow_color", (band == 9 ? 0x40000000 : 0x80000000)
-                | face.face() << 17 | size << 10 | offset + 512);
+            part.addProperty("shadow_color", payload);
             parts.add(part);
             JsonObject reset = new JsonObject();
-            reset.addProperty("text", SpriteCanvas.move(-8));
+            reset.addProperty("text", faceMove(face.face(), true) + SpriteCanvas.move(-8));
             reset.addProperty("font", "dialogmenu:space");
             parts.add(reset);
         }
@@ -216,6 +257,21 @@ final class ModelPack {
         if (!encoded.contains("\"sprite\""))
             throw new IllegalStateException("model需要支持object文本的Minecraft/Adventure（26.3）");
         return result;
+    }
+    static String faceMove(int face, boolean restore) {
+        if (face < 0 || face >= 8192) throw new IllegalArgumentException("Model face out of range");
+        // Keep every face outside normal GUI coordinates without exceeding float integer precision.
+        int value = face + 33;
+        StringBuilder text = new StringBuilder();
+        for (int bit = 0; bit < 14; bit++)
+            if ((value & (1 << bit)) != 0) text.appendCodePoint(0xF1000 + bit + (restore ? 14 : 0));
+        return text.toString();
+    }
+    static void faceSpaces(Map<String, Integer> spaces) {
+        for (int bit = 0; bit < 14; bit++) {
+            spaces.put(Character.toString(0xF1000 + bit), -(2000 << bit));
+            spaces.put(Character.toString(0xF1000 + bit + 14), 2000 << bit);
+        }
     }
     static void shaders(Path target) throws IOException {
         Path vertexPath = target.resolve("dialogmenu_26_3/assets/minecraft/shaders/core/text.vsh");

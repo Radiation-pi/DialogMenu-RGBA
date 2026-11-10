@@ -24,11 +24,13 @@ final class MenuRenderer {
         int height = Math.max(1, (int) Math.round(menu.height() * width / (double) menu.width()));
         boolean modelsFit = menu.nodes().stream().filter(node -> node.type().equals("model"))
             .allMatch(node -> {
-                long size = Math.round(node.size() * node.scaleX() * width / menu.width());
-                return size >= 1 && size <= 127;
+                long sizeX = Math.round(node.size() * node.scaleX() * width / menu.width());
+                long sizeY = Math.round(node.size() * node.scaleY() * width / menu.width());
+                return sizeX >= 1 && sizeX <= 512 && sizeY >= 1 && sizeY <= 512;
             });
         boolean imagesFit = menu.nodes().stream().filter(node -> node.type().equals("image")
-            && ImageRegistry.source(ImageRegistry.key(node.source())))
+            && (ImageRegistry.source(ImageRegistry.key(node.source()))
+                || node.source().startsWith("minecraft:inventory/") || node.source().startsWith("minecraft:item/")))
             .allMatch(node -> Math.round(node.width() * node.scaleX() * width / menu.width()) <= 512
                 && Math.round(node.height() * node.scaleY() * width / menu.width()) <= 512);
         if (width >= 64 && width <= MAX_WIDTH && height <= 1024 && (long) width * height <= maxPixels && modelsFit && imagesFit)
@@ -39,8 +41,9 @@ final class MenuRenderer {
         double zoom = frame.width() / (double) menu.width();
         for (Node node : menu.nodes()) {
             if (!node.type().equals("model")) continue;
-            long size = Math.round(node.size() * node.scaleX() * zoom);
-            if (size < 1 || size > 127) return false;
+            long sizeX = Math.round(node.size() * node.scaleX() * zoom);
+            long sizeY = Math.round(node.size() * node.scaleY() * zoom);
+            if (sizeX < 1 || sizeX > 512 || sizeY < 1 || sizeY > 512) return false;
         }
         return true;
     }

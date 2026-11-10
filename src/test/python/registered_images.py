@@ -22,6 +22,8 @@ flat out vec4 dialogmenuImagePixels;
 out vec2 dialogmenuImageCoord;
 out vec3 dialogmenuSlice;
 vec3 dialogmenu_color(int index) { return vec3(85.0,170.0,255.0)/255.0; }
+const mat4 ProjMat = mat4(1./320.,0,0,0, 0,-1./320.,0,0, 0,0,1,0, -1,1,0,1);
+const mat4 ModelViewMat = mat4(1.0);
 """ + (shader / "vertex.glsl").read_text() + """
 void main() {
     vec3 position = Position;

@@ -68,12 +68,16 @@ final class UnifiedModelTests {
             verifyGeometry(result.snapshot(), "siciliaitems:al_ore", 36, -8);
             check(result.snapshot().pack().equals(pack), "Frozen registry survives restart");
             Files.writeString(page, layout("minecraft:dirt", 36, 0));
+            var dirt = engine.prepare(ReloadEngine.Mode.YAML).get(60, TimeUnit.SECONDS);
+            check(!dirt.resourcesChanged(), "Unused default vanilla model needs no registration or new resources");
+            verifyGeometry(dirt.snapshot(), "minecraft:dirt", 36, 0);
+            Files.writeString(page, layout("minecraft:not_an_inventory_item", 36, 0));
             try {
                 engine.prepare(ReloadEngine.Mode.YAML).get(60, TimeUnit.SECONDS);
                 throw new AssertionError("Unprepared model was accepted by YAML-only reload");
             } catch (java.util.concurrent.ExecutionException expected) { checks++; }
             check(engine.restore().get(60, TimeUnit.SECONDS).snapshot().documents().get("probe")
-                .menu().nodes().getFirst().source().equals("siciliaitems:al_ore"),
+                .menu().nodes().getFirst().source().equals("minecraft:dirt"),
                 "Rejected model keeps last persisted menu");
         }
         System.out.println("PASS unified model checks=" + checks + " data=" + data);
@@ -85,8 +89,8 @@ final class UnifiedModelTests {
         check(frame.image() == null && frame.sprites().isEmpty(), "3D models must not become raster images");
         String json = GsonComponentSerializer.gson().serialize(new SpriteCanvas().encode(menu, frame,
             CONTEXT, snapshot.fonts(), region -> ClickEvent.runCommand("/model-check")).component());
-        String namespace = id.startsWith("minecraft:") ? "dialogmenu_vanilla" : "dialogmenu_ce";
-        check(json.contains(namespace + ":corners/") && json.contains("dialogmenu:row_hit")
+        String spritePrefix = id.startsWith("minecraft:") ? "minecraft:block/" : "dialogmenu_ce:cache/";
+        check(json.contains(spritePrefix) && json.contains("dialogmenu:row_hit")
             && json.contains("model-check"), "Real model faces and independent clicks must survive unified entry");
         var model = menu.nodes().getFirst();
         check(model.source().equals(id) && model.size() == size && model.y() == y,

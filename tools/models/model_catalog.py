@@ -305,6 +305,13 @@ class Catalog:
             return [{**node, "_transforms": transforms}]
         if kind == "composite":
             return [child for part in node["models"] for child in self.item_node(part, transforms)]
+        if kind == "select" and node.get("property") == "minecraft:display_context":
+            for case in node.get("cases", []):
+                values = case["when"] if isinstance(case["when"], list) else [case["when"]]
+                if "gui" in values:
+                    return self.item_node(case["model"], transforms)
+        if kind == "range_dispatch" and "fallback" not in node and node.get("entries"):
+            return self.item_node(node["entries"][0]["model"], transforms)
         if kind in ("select", "range_dispatch"):
             if "fallback" not in node:
                 raise Unsupported(f"item {kind} without fallback")
@@ -349,6 +356,29 @@ class Catalog:
             faces = self.native_faces("banner_stand", atlas, base)
             faces += self.native_faces("banner_flag", atlas, base)
             faces += self.native_faces("banner_flag", atlas, "minecraft:entity/banner/base", tint)
+        elif kind in ("head", "player_head"):
+            head = spec.get("kind", "player")
+            model = {"player": "player_head", "zombie": "player_head",
+                     "dragon": "dragon_head", "piglin": "piglin_head"}.get(head, "skull")
+            texture = {"skeleton": "skeleton/skeleton", "wither_skeleton": "skeleton/wither_skeleton",
+                       "zombie": "zombie/zombie", "creeper": "creeper/creeper",
+                       "dragon": "enderdragon/dragon", "piglin": "piglin/piglin",
+                       "player": "player/wide/steve"}[head]
+            faces = self.native_faces(model, "minecraft:blocks", "minecraft:entity/" + texture)
+        elif kind == "conduit":
+            faces = self.native_faces("conduit", "minecraft:blocks", "minecraft:entity/conduit/base")
+        elif kind == "copper_golem_statue":
+            if spec.get("pose", "standing") != "standing":
+                raise Unsupported("Default inventory statue requires standing pose")
+            sprite = spec["texture"].replace(":textures/", ":").removesuffix(".png")
+            faces = self.native_faces("copper_golem_statue", "minecraft:blocks", sprite)
+        elif kind == "decorated_pot":
+            faces = self.native_faces("pot_base", "minecraft:decorated_pot",
+                                      "minecraft:entity/decorated_pot/decorated_pot_base")
+            faces += self.native_faces("pot_sides", "minecraft:decorated_pot",
+                                       "minecraft:entity/decorated_pot/decorated_pot_side")
+        elif kind == "shield":
+            faces = self.native_faces("shield", "minecraft:blocks", "minecraft:entity/shield/shield_base_nopattern")
         else:
             raise Unsupported("special renderer: " + spec["type"])
         return item_transform(faces, node["_transforms"])

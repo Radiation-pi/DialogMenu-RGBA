@@ -23,6 +23,8 @@ flat out vec4 dialogmenuImagePixels;
 out vec2 dialogmenuImageCoord;
 out vec3 dialogmenuSlice;
 vec3 dialogmenu_color(int index) { return vec3(85.0,170.0,255.0)/255.0; }
+const mat4 ProjMat = mat4(1./320.,0,0,0, 0,-1./320.,0,0, 0,0,1,0, -1,1,0,1);
+const mat4 ModelViewMat = mat4(1.0);
 """ + (shader / "vertex.glsl").read_text() + """
 void main() {
     vec3 position = Position;
@@ -103,7 +105,7 @@ for case in json.loads((fixtures / "cases.json").read_text()):
                     local = x + .5 - (64 + shear + shift)
                     if not 0 <= local < width:
                         continue
-                    sx = min(sw - 1, math.floor((math.floor(local) + .5) * sw / width - .0001))
+                    sx = min(sw - 1, math.floor(local * sw / width - .0001))
                     alpha = wrapped.getpixel((1 + max(0, sx), 1 + sy))[3]
                     if alpha >= 26:
                         pixels[x, top + y] = (85, 170, 255, alpha)
@@ -116,8 +118,56 @@ for case in json.loads((fixtures / "cases.json").read_text()):
         checks += 1
         if width == 257 and height == 128 and top == 17 and italic and bold:
             actual.save(output / "stretched-italic-bold.png")
+
+# The physical framebuffer scales the same logical geometry, as Minecraft GUI scale does.
+# A 16px source at logical height8/GUI2 must retain all16 source rows, not repeat8 rows.
+sampling_checks = 0
+sampling_cases = [case for case in json.loads((fixtures / "cases.json").read_text())
+                  if case["width"] in (8, 31) and case["height"] in (8, 37)
+                  and case["top"] in (8, 17) and not case["italic"]]
+for cp in map(ord, "与工常科A"):
+    texture.release()
+    wrapped = Image.open(fixtures / f"glyph-{cp}.png").convert("RGBA")
+    source = Image.open(fixtures / f"source-{cp}.png").convert("RGBA")
+    atlas = Image.new("RGBA", (256, 256), (211, 31, 91, 255))
+    atlas.paste(wrapped, (32, 48))
+    texture = ctx.texture(atlas.size, 4, atlas.tobytes())
+    texture.filter = moderngl.NEAREST, moderngl.NEAREST
+    uv = ((32 + .01) / 256, (48 + .01) / 256,
+          (32 + wrapped.width - .01) / 256, (48 + wrapped.height - .01) / 256)
+    for gui_scale in (2, 3):
+        frame.release()
+        frame = ctx.simple_framebuffer((640 * gui_scale, 640 * gui_scale), components=4)
+        frame.use()
+        for case in sampling_cases:
+            width, height, top = (case[key] for key in ("width", "height", "top"))
+            frame.clear()
+            for row in case["rows"]:
+                draw(row["payload"], row["row"], True, 0)
+                draw(0xFFBEEF01, row["row"], False, 0)
+            actual = Image.frombytes("RGBA", frame.size, frame.read(components=4)).transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+            expected = Image.new("RGBA", frame.size)
+            target = expected.load()
+            for y in range(height * gui_scale):
+                sy = max(0, min(source.height - 1,
+                               math.floor((y + .5) * source.height / (height * gui_scale) - .0001)))
+                for x in range(width * gui_scale):
+                    sx = max(0, min(source.width - 1,
+                                   math.floor((x + .5) * source.width / (width * gui_scale) - .0001)))
+                    alpha = source.getpixel((sx, sy))[3]
+                    if alpha >= 26:
+                        target[64 * gui_scale + x, top * gui_scale + y] = (85, 170, 255, alpha)
+            if actual.tobytes() != expected.tobytes():
+                actual.save(output / "failed-gui-actual.png")
+                expected.save(output / "failed-gui-expected.png")
+                raise AssertionError(f"Source glyph U+{cp:04X}, GUI{gui_scale}, {case}: physical texels differ")
+            if width == height == 8 and top == 17:
+                actual.crop((64 * gui_scale, top * gui_scale,
+                             (64 + width) * gui_scale, (top + height) * gui_scale)).save(
+                                 output / f"source-stretch-{cp}-gui{gui_scale}.png")
+            sampling_checks += 1
 (output / "result.json").write_text(json.dumps({
-    "checks": checks, "renderer": ctx.info["GL_RENDERER"],
-    "scope": "Fixed Java glyph source, width1..512/height1..128, row seams, italic, bold, tint, hidden pass; EGL only"
+    "checks": checks, "sampling_checks": sampling_checks, "renderer": ctx.info["GL_RENDERER"],
+    "scope": "Fixed Java glyph source, width1..512/height1..128, row seams, italic, bold, tint, hidden pass; physical source sampling at GUI2/3 for Latin and four CJK glyphs; EGL only"
 }, indent=2) + "\n")
-print(f"PASS unified-text GPU checks={checks}")
+print(f"PASS unified-text GPU checks={checks} sampling={sampling_checks}")

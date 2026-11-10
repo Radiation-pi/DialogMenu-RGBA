@@ -260,9 +260,9 @@ final class LayoutStore {
             if (type.equals("model")) {
                 if (!source.matches("[a-z0-9_.-]+:[a-z0-9/._-]+") || source.contains(".."))
                     throw new IllegalArgumentException(key + " model需要完整namespace:id");
-                if (nx != ny || rotation != 0 || argb != 0xFFFFFFFF
+                if (rotation != 0 || argb != 0xFFFFFFFF
                     || s.contains("width") || s.contains("height"))
-                    throw new IllegalArgumentException(key + " model仅支持等比size/scale及offset，不支持width/height/旋转/染色");
+                    throw new IllegalArgumentException(key + " model使用size、横纵scale及offset，不支持width/height/旋转/染色");
                 textSize = integer(s, "size", 32, 1, 96);
                 w = h = textSize;
             }

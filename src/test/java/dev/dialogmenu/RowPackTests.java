@@ -268,8 +268,8 @@ final class RowPackTests {
                 band = top >= 32 ? 0 : 9;
                 if (band == 0) top -= 32;
                 color = palette.get(payload & 255);
-                draw(layer, ink, x, y + top, color);
-                if (glyph.bold()) draw(layer, ink, x + 1, y + top, color);
+                draw(layer, ink, x + 65536, y + top, color);
+                if (glyph.bold()) draw(layer, ink, x + 65537, y + top, color);
             }
             for (int py = Math.max(0, y + band); py < Math.min(height, y + band + 9); py++)
                 for (int px = 0; px < width; px++) blend(result, px, py, layer.getRGB(px, py));

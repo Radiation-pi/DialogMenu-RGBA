@@ -3,12 +3,21 @@ void dialogmenu_slice(float y, int band) {
     dialogmenuSlice = vec3(y, start, start + 9.0);
 }
 
+bool dialogmenu_native_scope(vec3 position) {
+    mat4 projection = ProjMat * ModelViewMat;
+    float centerX = -projection[3].x / projection[0].x;
+    return abs(position.x + 65536.0 - centerX) < 1024.0;
+}
+
 void dialogmenu_transform(inout vec3 position, inout vec2 imageUv) {
     ivec4 samplePixel = ivec4(round(texelFetch(Sampler0, ivec2(UV0 * textureSize(Sampler0, 0)), 0) * 255.0));
     ivec3 texel = samplePixel.rgb;
     ivec4 rgba = ivec4(round(Color * 255.0));
     uint payload = (uint(rgba.a) << 24u) | (uint(rgba.r) << 16u) | (uint(rgba.g) << 8u) | uint(rgba.b);
-    if (all(equal(rgba, ivec4(190, 239, 1, 255)))) {
+    bool hidden = all(equal(rgba, ivec4(190, 239, 1, 255)));
+    bool nativeScope = dialogmenu_native_scope(position);
+    // Color is payload only after a resource/position marker has identified this draw.
+    if (hidden && nativeScope) {
         dialogmenuMarked = 3;
         return;
     }
@@ -19,6 +28,10 @@ void dialogmenu_transform(inout vec3 position, inout vec2 imageUv) {
         ivec2 pixel = ivec2(UV0 * textureSize(Sampler0, 0));
         ivec4 meta = ivec4(round(texelFetch(Sampler0, pixel + ivec2(edge.x == 0.0 ? 1 : -1, 0), 0) * 255.0));
         int geometry = int((payload >> 17u) & 16383u) - 1;
+        if (meta.b == 177 && hidden) {
+            dialogmenuMarked = 3;
+            return;
+        }
         if (meta.b == 177 && geometry >= 0 && geometry < 10432) {
             int height = int(floor((sqrt(float(8 * geometry + 1225)) - 33.0) / 2.0));
             int row = geometry - (height - 1) * (height + 34) / 2;
@@ -40,9 +53,9 @@ void dialogmenu_transform(inout vec3 position, inout vec2 imageUv) {
             return;
         }
     }
-    if (!tagged && !direct) return;
+    if (!tagged && !direct && !hidden) return;
     // Native-atlas object sprites preserve complete 256px sources, unlike bitmap cells with borders.
-    if (tagged) {
+    if (tagged || hidden) {
         ivec2 atlasSize = textureSize(Sampler0, 0);
         ivec2 endpoint = ivec2(round(UV0 * vec2(atlasSize)));
         for (int corner = 0; corner < 4; corner++) {
@@ -53,6 +66,10 @@ void dialogmenu_transform(inout vec3 position, inout vec2 imageUv) {
             if (!all(equal(marker, ivec4(29, 84, 149 + corner, 252 + corner)))) continue;
             ivec4 metadata = ivec4(round(texelFetch(Sampler0, pixel + ivec2(side.x == 0.0 ? 1 : -1, 0), 0) * 255.0));
             if (metadata.b != 177) continue;
+            if (hidden) {
+                dialogmenuMarked = 3;
+                return;
+            }
             vec2 contentSize = vec2(metadata.rg + ivec2(1));
             vec2 cellSize = exp2(ceil(log2(contentSize + vec2(4.0))));
             vec2 target = vec2(float(((payload >> 19u) & 511u) + 1u), float(((payload >> 10u) & 511u) + 1u));
@@ -70,7 +87,11 @@ void dialogmenu_transform(inout vec3 position, inout vec2 imageUv) {
         }
     }
     // FontTexture insets bitmap UV endpoints by 0.01 texel, independently of draw offsets.
-    if (all(equal(texel, ivec3(23, 71, 131))) && tagged) {
+    if (all(equal(texel, ivec3(23, 71, 131))) && (tagged || hidden)) {
+        if (hidden) {
+            dialogmenuMarked = 3;
+            return;
+        }
         int top = int((payload >> 8u) & 1023u);
         if (top >= 512) top -= 1024;
         int height = int((payload >> 18u) & 127u) + 1;
@@ -81,10 +102,14 @@ void dialogmenu_transform(inout vec3 position, inout vec2 imageUv) {
         return;
     }
     if (all(equal(texel.rg, ivec2(29, 83))) && texel.b >= 149 && texel.b <= 152
-        && tagged) {
+        && (tagged || hidden)) {
         ivec2 pixel = ivec2(UV0 * textureSize(Sampler0, 0));
         ivec4 metadata = ivec4(round(texelFetch(Sampler0, pixel + ivec2(edge.x == 0.0 ? 1 : -1, 0), 0) * 255.0));
         if (metadata.b == 177) {
+            if (hidden) {
+                dialogmenuMarked = 3;
+                return;
+            }
             vec2 contentSize = vec2(metadata.rg);
             float cellSize = float(samplePixel.a + 1);
             vec2 target = vec2(float(((payload >> 19u) & 511u) + 1u), float(((payload >> 10u) & 511u) + 1u));
@@ -104,7 +129,8 @@ void dialogmenu_transform(inout vec3 position, inout vec2 imageUv) {
         }
     }
     // 原版/CE纹理保持直接引用，任意比例回退图也只改定位与行裁切。
-    if (direct) {
+    if (direct && nativeScope) {
+        position.x += 65536.0;
         int top = int((payload >> 8u) & 2047u);
         if (top >= 1024) top -= 2048;
         int band = top >= 32 ? 0 : 1;

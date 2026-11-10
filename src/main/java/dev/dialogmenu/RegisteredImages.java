@@ -10,20 +10,27 @@ import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 
 /** Whole native-atlas sprites; display geometry never changes the prepared image. */
 final class RegisteredImages {
-    private record Entry(String sprite, BufferedImage source, int tint) {}
+    private record Entry(String sprite, BufferedImage source, int tint, boolean nativeSprite) {}
     private record Alias(String hash, boolean tintable) {}
     private final Map<String, Alias> aliases = new TreeMap<>();
     private final Map<String, Entry> entries = new LinkedHashMap<>();
     private int whiteTint;
 
-    void prepare(Map<String, ImageRegistry.Entry> images, Collection<Integer> tints, int whiteTint) {
+    void prepare(Map<String, ImageRegistry.Entry> images, Collection<Integer> tints, int whiteTint) throws IOException {
         this.whiteTint = whiteTint;
+        Map<String, String> nativeSprites = InventoryAssets.nativeSprites();
         for (var image : new TreeMap<>(images).entrySet()) {
             String hash = FontPack.hash(image.getValue().image());
             aliases.put(image.getKey(), new Alias(hash, image.getValue().tintable()));
-            for (int tint : image.getValue().tintable() ? tints : List.of(whiteTint))
+            for (int tint : image.getValue().tintable() ? tints : List.of(whiteTint)) {
+                String nativeSprite = tint == whiteTint ? nativeSprites.get(image.getKey()) : null;
+                if (nativeSprite != null && !hash.equals(FontPack.hash(InventoryAssets.images().get(image.getKey()).image())))
+                    nativeSprite = null;
+                String sprite = nativeSprite;
                 entries.computeIfAbsent(hash + ":" + tint,
-                    key -> new Entry("dialogmenu:registered/" + hash + "_" + tint, image.getValue().image(), tint));
+                    key -> new Entry(sprite != null ? sprite : "dialogmenu:registered/" + hash + "_" + tint,
+                        image.getValue().image(), tint, sprite != null));
+            }
         }
     }
 
@@ -43,12 +50,13 @@ final class RegisteredImages {
         object.addProperty("atlas", "minecraft:items");
         object.addProperty("sprite", entry.sprite());
         object.addProperty("color", "#beef01");
-        object.addProperty("shadow_color", RgbaImages.payload(width, height, localY, band));
+        int payload = RgbaImages.payload(width, height, localY, band);
+        object.addProperty("shadow_color", entry.nativeSprite() ? (payload & 0x1FFFFFFF) | 0x60000000 : payload);
         var serializer = GsonComponentSerializer.gson();
         Component result = serializer.deserialize(object.toString());
         if (!serializer.serialize(result).contains("\"sprite\""))
             throw new IllegalStateException("注册材质需要支持object文本的Minecraft/Adventure（26.3）");
-        return result;
+        return entry.nativeSprite() ? RgbaOffsets.nativeScope(result) : result;
     }
 
     static BufferedImage wrap(BufferedImage source, int tint) {
@@ -83,10 +91,12 @@ final class RegisteredImages {
         }
         for (Entry entry : entries.values()) {
             BuildBudget.checkpoint();
-            String relative = entry.sprite().substring("dialogmenu:".length());
-            Path target = pack.resolve("assets/dialogmenu/textures/" + relative + ".png");
-            Files.createDirectories(target.getParent());
-            FontPack.writePng(wrap(entry.source(), entry.tint()), target);
+            if (!entry.nativeSprite()) {
+                String relative = entry.sprite().substring("dialogmenu:".length());
+                Path target = pack.resolve("assets/dialogmenu/textures/" + relative + ".png");
+                Files.createDirectories(target.getParent());
+                FontPack.writePng(wrap(entry.source(), entry.tint()), target);
+            }
             JsonObject source = new JsonObject();
             source.addProperty("type", "single");
             source.addProperty("resource", entry.sprite());

@@ -6,7 +6,6 @@ from pathlib import Path
 from item_catalog import CE_PACK, REGISTRY, ItemCatalog, item_id
 from model_cache import PreparedCatalog, digest, write_changed, write_json_changed, write_pack_changed
 from model_catalog import Unsupported, path_for
-from corner_texture import PADDING, wrap
 ROOT = Path(__file__).resolve().parent
 
 LIMIT = 4096
@@ -14,11 +13,11 @@ LIMIT = 4096
 
 def table(records, kind):
     values = records or [None]
-    vectors = [record or [0.0] * 24 for record in values]
+    vectors = [record or [0.0] * 20 for record in values]
     return (f"#define MODEL_{kind.upper()}_FACES {len(records)}\n"
-            f"const vec4 model{kind.title()}Data[{len(values) * 6}] = vec4[](\n"
+            f"const vec4 model{kind.title()}Data[{len(values) * 5}] = vec4[](\n"
             + ",\n".join("vec4(" + ",".join(f"{value:.6f}" for value in record[i:i + 4]) + ")"
-                        for record in vectors for i in range(0, 24, 4)) + "\n);\n").encode()
+                        for record in vectors for i in range(0, 20, 4)) + "\n);\n").encode()
 
 
 def allocate(entries, previous, offset):
@@ -51,19 +50,18 @@ def entry(catalog, name, kind):
     files, singles = {}, {}
     for part in parts:
         original = path_for(part["sprite"], "textures", ".png")
+        if original not in catalog.archive.pack_names:
+            singles.setdefault(part["atlas"], {})[part["sprite"]] = part["sprite"]
+            continue
         png = catalog.archive.read(original)
         meta = (catalog.archive.read(original + ".mcmeta")
                 if original + ".mcmeta" in catalog.names else None)
-        key, tag, png, meta, (width, height, fw, fh) = wrap(png, meta, kind)
-        sprite = "dialogmenu_" + kind + ":corners/" + key
-        target = path_for(sprite, "textures", ".png")
-        part["sprite"] = sprite
         if kind == "ce":
-            part["atlas"] = "minecraft:items"
-        for corner in range(4):
-            part["geometry"][corner * 4 + 2] += PADDING - (fw - width) * (corner >= 2)
-            part["geometry"][corner * 4 + 3] += PADDING - (fh - height) * (corner in (1, 2))
-        part["geometry"].extend([*tag, 0.0])
+            sprite = "dialogmenu_ce:cache/" + digest(png + (meta or b""))
+            target = path_for(sprite, "textures", ".png")
+            part["sprite"], part["atlas"] = sprite, "minecraft:items"
+        else:
+            target, sprite = original, part["sprite"]
         files[target] = png.hex()
         if meta is not None:
             files[target + ".mcmeta"] = meta.hex()
@@ -132,14 +130,6 @@ def build(names, ce_pack, registry, output):
             entries[kind][name] = snapshot
         for kind in entries:
             changes[kind]["removed"] = sorted(old[kind]["entries"].keys() - entries[kind].keys())
-        tags = {}
-        for side in entries.values():
-            for snapshot in side.values():
-                for part in snapshot["parts"]:
-                    tag = tuple(part["geometry"][20:23])
-                    previous = tags.setdefault(tag, part["sprite"])
-                    if previous != part["sprite"]:
-                        raise Unsupported("Model corner tag collision: " + previous + " / " + part["sprite"])
         metadata = {"pack": {"description": "DialogMenu inventory models", "pack_format": 97,
                              "min_format": [97, 0], "max_format": [97, 1]}}
         files = {kind: {"pack.mcmeta": json.dumps(metadata, separators=(",", ":")).encode()}

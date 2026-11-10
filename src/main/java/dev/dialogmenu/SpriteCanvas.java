@@ -61,13 +61,14 @@ final class SpriteCanvas {
                 double zoom = width / (double) menu.width();
                 int x = (int) Math.round((menu.width() / 2.0 + node.x()) * zoom);
                 int center = (int) Math.round((menu.height() / 2.0 - node.y()) * zoom);
-                int size = (int) Math.round(node.size() * node.scaleX() * zoom);
+                int sizeX = (int) Math.round(node.size() * node.scaleX() * zoom);
+                int sizeY = (int) Math.round(node.size() * node.scaleY() * zoom);
                 var area = fonts.modelArea(menu, node, width, height);
                 Region region = node.interaction() == null ? null : node.interaction().region(node);
                 ClickEvent click = region != null && region.hasActions() ? clicks.computeIfAbsent(region, bind) : null;
                 var hover = region == null ? null : hover(region, context);
                 for (var slice : RgbaRows.slices(area.y, area.height)) {
-                    parts.get(slice.row()).add(positioned(fonts.model(node.source(), size,
+                    parts.get(slice.row()).add(positioned(fonts.model(node.source(), sizeX, sizeY,
                         -slice.local(center), slice.band()), x, 0));
                     if (click != null || hover != null)
                         parts.get(slice.row()).add(positioned(RgbaHits.rectangle(slice.local(slice.top()),

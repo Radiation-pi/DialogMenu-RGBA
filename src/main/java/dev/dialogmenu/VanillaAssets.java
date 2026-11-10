@@ -45,6 +45,7 @@ final class VanillaAssets {
 
     VanillaAssets(Path images, Path craftEngineResources, List<String> definitions) throws IOException {
         this(images, new CraftEngineAssets(craftEngineResources, definitions));
+        registered.putAll(InventoryAssets.images());
         registered.putAll(ImageRegistry.load(this.images, craftEngine, inputs));
     }
 
@@ -89,6 +90,10 @@ final class VanillaAssets {
             return custom.get(source);
         }
         String registeredSource = ImageRegistry.key(source);
+        if (source.startsWith("minecraft:")) {
+            String candidate = registeredSource(source);
+            if (candidate != null) registeredSource = candidate;
+        }
         if (ImageRegistry.source(registeredSource)) {
             ImageRegistry.Entry entry = registered.get(registeredSource);
             if (entry == null) throw new IOException("未准备注册材质：" + source + "；请检查 images/registry.json 后执行 /dialogmenu reload all");
@@ -134,6 +139,8 @@ final class VanillaAssets {
     synchronized Map<String, ImageRegistry.Entry> registeredImages() { return Map.copyOf(registered); }
     synchronized String registeredSource(String source) {
         String key = ImageRegistry.key(source);
+        if (source != null && source.startsWith("minecraft:"))
+            key = ImageRegistry.PREFIX + source.replaceFirst("\\.png$", "");
         return registered.containsKey(key) ? key : null;
     }
     synchronized int imageColor(String source, int argb) {

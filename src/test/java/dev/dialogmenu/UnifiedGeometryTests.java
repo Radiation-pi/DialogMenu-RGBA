@@ -118,6 +118,15 @@ final class UnifiedGeometryTests {
         var assets = new VanillaAssets(root.resolve("images"));
         var glyph = assets.glyph('A');
         ImageIO.write(RgbaText.wrap(glyph), "png", root.resolve("glyph.png").toFile());
+        for (int cp : "A与工常科".codePoints().toArray()) {
+            var source = assets.glyph(cp);
+            ImageIO.write(RgbaText.wrap(source), "png", root.resolve("glyph-" + cp + ".png").toFile());
+            var pixels = new java.awt.image.BufferedImage(source.width(), source.height(),
+                java.awt.image.BufferedImage.TYPE_INT_ARGB);
+            for (int y = 0; y < source.height(); y++) for (int x = 0; x < source.width(); x++)
+                pixels.setRGB(x, y, Byte.toUnsignedInt(source.alpha()[y * source.width() + x]) << 24 | 0xFFFFFF);
+            ImageIO.write(pixels, "png", root.resolve("source-" + cp + ".png").toFile());
+        }
         List<Map<String, Object>> cases = new ArrayList<>();
         for (int width : List.of(1, 8, 31, 257, 512))
             for (int height : List.of(1, 8, 37, 128))

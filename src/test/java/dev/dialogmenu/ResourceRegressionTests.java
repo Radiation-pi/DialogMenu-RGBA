@@ -59,6 +59,7 @@ public final class ResourceRegressionTests {
         Files.createDirectories(root);
         root = Files.createTempDirectory(root, "run-");
         checks += DefaultGlyphTests.run(root);
+        checks += InventoryAssetsTests.run(root);
         cacheAndReload(root);
         formats(root);
         configuration(root);

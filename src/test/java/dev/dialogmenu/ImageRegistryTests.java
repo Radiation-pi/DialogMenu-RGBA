@@ -73,7 +73,7 @@ final class ImageRegistryTests {
                 JsonObject atlas = JsonParser.parseString(new String(zip.getInputStream(
                     zip.getEntry("assets/minecraft/atlases/items.json")).readAllBytes(), java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
                 var sources = atlas.getAsJsonArray("sources");
-                check(sources.size() == 18, "One original A plus 17 colors for opted-in B; disabled alias shares only the white copy");
+                check(userRegistrations(sources) == 18, "One original A plus 17 colors for opted-in B; disabled alias shares only the white copy");
                 String sprite = sources.asList().stream().map(JsonElement::getAsJsonObject)
                     .map(value -> value.get("sprite").getAsString())
                     .filter(value -> value.contains(FontPack.hash(large))).findFirst().orElseThrow();
@@ -444,10 +444,20 @@ final class ImageRegistryTests {
 
     private static int registrations(Path pack) throws Exception {
         try (ZipFile zip = new ZipFile(pack.toFile())) {
-            return JsonParser.parseString(new String(zip.getInputStream(
+            return userRegistrations(JsonParser.parseString(new String(zip.getInputStream(
                 zip.getEntry("assets/minecraft/atlases/items.json")).readAllBytes(),
-                java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject().getAsJsonArray("sources").size();
+                java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject().getAsJsonArray("sources"));
         }
+    }
+    private static int userRegistrations(JsonArray sources) throws Exception {
+        Set<String> defaults = new HashSet<>();
+        for (var image : InventoryAssets.images().values()) defaults.add(FontPack.hash(image.image()));
+        Set<String> nativeSprites = new HashSet<>(InventoryAssets.nativeSprites().values());
+        return (int) sources.asList().stream().filter(value -> {
+            String sprite = value.getAsJsonObject().get("sprite").getAsString();
+            return !nativeSprites.contains(sprite)
+                && defaults.stream().noneMatch(hash -> sprite.startsWith("dialogmenu:registered/" + hash + "_"));
+        }).count();
     }
 
     private static void assertTint(ReloadEngine.Snapshot snapshot, int expectedRgb) throws Exception {

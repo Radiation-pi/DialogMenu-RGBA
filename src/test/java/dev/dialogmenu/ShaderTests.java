@@ -108,6 +108,7 @@ final class ShaderTests {
         List<Path> pngs;
         try (var files = Files.walk(pack)) {
             pngs = files.filter(p -> p.toString().contains("/textures/registered/")
+                && p.getFileName().toString().startsWith(FontPack.hash(image) + "_")
                 && p.toString().endsWith(".png")).toList();
         }
         check(pngs.size() == 1, "Different sizes and baselines share one image PNG");
