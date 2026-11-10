@@ -36,7 +36,7 @@ void dialogmenu_model(inout vec3 position, inout vec2 imageUv) {
     int corner = (gl_VertexIndex - gl_BaseVertex) % 4;
     vec2 edge = vec2(corner >= 2 ? 1.0 : 0.0, corner == 1 || corner == 2 ? 1.0 : 0.0);
     ivec2 atlasSize = textureSize(Sampler0, 0);
-    vec4 data = ce ? modelCeData[record * 5 + corner] : modelVanillaData[record * 5 + corner];
+    vec4 data = ce ? modelCeData(record * 5 + corner) : modelVanillaData(record * 5 + corner);
     vec2 size = vec2(float(((payload >> 19u) & 511u) + 1u),
                     float(((payload >> 10u) & 511u) + 1u));
     int localY = int(payload & 1023u);
@@ -44,7 +44,7 @@ void dialogmenu_model(inout vec3 position, inout vec2 imageUv) {
     vec2 origin = position.xy - edge * 8.0 - vec2(1.0);
     position.xy = origin + data.xy * size + vec2(0.0, float(localY));
     imageUv += data.zw / vec2(atlasSize);
-    vertexColor = ce ? modelCeData[record * 5 + 4] : modelVanillaData[record * 5 + 4];
+    vertexColor = ce ? modelCeData(record * 5 + 4) : modelVanillaData(record * 5 + 4);
     dialogmenuMarked = 4;
     dialogmenu_slice(data.y * size.y + float(localY) - 1.0, int((payload >> 28u) & 1u));
 #endif

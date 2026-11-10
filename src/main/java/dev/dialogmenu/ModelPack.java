@@ -50,7 +50,7 @@ final class ModelPack {
         try (var bytes = new ByteArrayOutputStream(); var zip = new ZipOutputStream(bytes)) {
             zip.putNextEntry(new ZipEntry("assets/dialogmenu_ce/shaders/include/models.glsl"));
             zip.write(("#define MODEL_CE_FACES 0\n"
-                + "const vec4 modelCeData[5] = vec4[](vec4(0),vec4(0),vec4(0),vec4(0),vec4(0));\n")
+                + "vec4 modelCeData(int index) { return vec4(0.0); }\n")
                 .getBytes(StandardCharsets.UTF_8));
             zip.closeEntry();
             zip.finish();

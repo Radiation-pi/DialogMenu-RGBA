@@ -12,12 +12,66 @@ LIMIT = 4096
 
 
 def table(records, kind):
-    values = records or [None]
-    vectors = [record or [0.0] * 20 for record in values]
-    return (f"#define MODEL_{kind.upper()}_FACES {len(records)}\n"
-            f"const vec4 model{kind.title()}Data[{len(values) * 5}] = vec4[](\n"
-            + ",\n".join("vec4(" + ",".join(f"{value:.6f}" for value in record[i:i + 4]) + ")"
-                        for record in vectors for i in range(0, 20, 4)) + "\n);\n").encode()
+    name = f"model{kind.title()}"
+    output = [f"#define MODEL_{kind.upper()}_FACES {len(records)}\n"]
+    if not records:
+        return (output[0] + f"vec4 {name}Data(int index){{return vec4(0.0);}}\n").encode()
+    values = [f"{value:.6f}" for record in records for value in (record or [0.0] * 20)]
+    dictionary = list(dict.fromkeys(values))
+    addresses = {value: index for index, value in enumerate(dictionary)}
+    bits = max(1, (len(dictionary) - 1).bit_length())
+    words = [0] * ((len(values) * bits + 31) // 32 + 1)
+    for index, value in enumerate(values):
+        word, shift = divmod(index * bits, 32)
+        address = addresses[value]
+        words[word] |= (address << shift) & 0xFFFFFFFF
+        if shift + bits > 32:
+            words[word + 1] |= address >> (32 - shift)
+
+    # Deduplicate scalars and pack their indices, rather than moving the same
+    # oversized table from constant registers into thousands of control paths.
+    def array_function(suffix, data, vector, zero):
+        data = data + [zero] * (-len(data) % 4)
+        vectors = [vector + "(" + ",".join(data[i:i + 4]) + ")" for i in range(0, len(data), 4)]
+        chunks = [vectors[i:i + 128] for i in range(0, len(vectors), 128)]
+        function = name + suffix
+        for index, chunk in enumerate(chunks):
+            output.append(f"const {vector} {function}{index}[{len(chunk)}]="
+                          + vector + "[](" + ",".join(chunk) + ");\n")
+
+        def select(first, end):
+            if end - first == 1:
+                return f"return {function}{first}[index-{first * 128}];"
+            middle = (first + end) // 2
+            return (f"if(index<{middle * 128}){{" + select(first, middle) + "}"
+                    + select(middle, end))
+
+        output.append(f"{vector} {function}(int index){{" + select(0, len(chunks)) + "}\n")
+
+    if (len(dictionary) + 3) // 4 + (len(words) + 3) // 4 >= len(values) // 4:
+        array_function("Raw", values, "vec4", "0.0")
+        output.append(f"vec4 {name}Data(int index){{return {name}Raw(index);}}\n")
+        return "".join(output).encode()
+    array_function("Values", dictionary, "vec4", "0.0")
+    array_function("Indices", [f"0x{word:x}u" for word in words], "uvec4", "0u")
+    output.append(f"""float {name}Scalar(int index){{
+int bit=index*{bits};
+int word=bit>>5;
+uint shift=uint(bit&31);
+uint address={name}Indices(word>>2)[word&3]>>shift;
+if(shift+{bits}u>32u){{
+int next=word+1;
+address|={name}Indices(next>>2)[next&3]<<(32u-shift);
+}}
+address&={(1 << bits) - 1}u;
+return {name}Values(int(address>>2u))[int(address&3u)];
+}}
+vec4 {name}Data(int index){{
+int first=index*4;
+return vec4({name}Scalar(first),{name}Scalar(first+1),{name}Scalar(first+2),{name}Scalar(first+3));
+}}
+""")
+    return "".join(output).encode()
 
 
 def allocate(entries, previous, offset):
