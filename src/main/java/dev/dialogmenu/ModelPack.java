@@ -223,9 +223,6 @@ final class ModelPack {
                 }
             }
     }
-    Component component(String id, int size, int offset, int band) {
-        return component(id, size, size, offset, band);
-    }
     Component component(String id, int sizeX, int sizeY, int offset, int band) {
         List<Face> faces = models.get(id);
         if (faces == null) throw new IllegalArgumentException(id + " 未准备，请执行 /dialogmenu reload all");

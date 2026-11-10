@@ -64,7 +64,7 @@ final class UnifiedGeometryTests {
                     var output = new SpriteCanvas().encode(doc.menu(),
                         result.snapshot().renderer().drawRuntime(doc.menu(), CONTEXT, 640, 1048576),
                         CONTEXT, result.snapshot().fonts(), region -> ClickEvent.runCommand("/unified"));
-                    check(MenuText.glyphs(output.component()).stream().anyMatch(g -> g.style().clickEvent() != null),
+                    check(MenuText.glyphs(ResourceRegressionTests.textOnly(output.component())).stream().anyMatch(g -> g.style().clickEvent() != null),
                         "Changed geometry retains outgoing clicks");
                 }
         }

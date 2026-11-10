@@ -38,9 +38,9 @@ final class CompiledSnapshot {
             else {
                 ByteArrayOutputStream bytes = new ByteArrayOutputStream();
                 for (String name : List.of("CompiledSnapshot.class", "ReloadEngine.class", "FontPack.class",
-                    "RgbaImages.class", "RegisteredImages.class", "ImageRegistry.class",
+                    "RgbaImages.class", "RegisteredImages.class", "ImageRegistry.class", "ImageTiles.class",
                     "RgbaHits.class", "RgbaOffsets.class", "RgbaDecorations.class",
-                    "CanvasScale.class", "MenuOpeners.class", "MenuRenderer.class",
+                    "CanvasScale.class", "ScaleCalibration.class", "NativeUiTextures.class", "MenuOpeners.class", "MenuRenderer.class",
                     "SpriteCanvas.class", "LayoutStore.class", "MenuTemplate.class", "ModelPack.class",
                     "VanillaAssets.class", "CraftEngineAssets.class", "/glyphs.bin.gz",
                     "/vanilla-icons.zip", "/rgba/characters-3500.txt")) {
@@ -53,8 +53,6 @@ final class CompiledSnapshot {
             }
         } catch (java.net.URISyntaxException error) { throw new IOException(error); }
     }
-
-    Path file() { return file; }
 
     void prune(PackCache cache) throws IOException {
         Path protectedPack = null;

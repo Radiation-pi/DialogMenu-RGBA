@@ -103,16 +103,23 @@ final class FontPack {
         Map<String, Set<Integer>> dynamicCodes = new HashMap<>();
         Map<String, Set<String>> declarations = new HashMap<>();
         List<FrameJob> jobs = new ArrayList<>();
+        Map<String, ImageRegistry.Entry> imageSources = new TreeMap<>(renderer.assets.registeredImages());
+        Set<String> tiledSources = new TreeSet<>(imageSources.keySet());
+        // The default inventory library stays native until a layout needs an oversized icon.
+        tiledSources.removeAll(InventoryAssets.images().keySet());
         for (var doc : docs.stream().sorted(Comparator.comparing(d -> d.menu().id())).toList())
             for (double canvasScale : new TreeSet<>(canvasScales))
             for (int requestedWidth : MenuRenderer.preparedWidths(doc.menu(), widths, canvasScale, maxPixels))
                 jobs.add(new FrameJob(doc, CanvasScale.context(MenuTemplate.preview(doc, context), canvasScale),
                     requestedWidth, canvasScale));
+        for (var document : ScaleCalibration.documents())
+            jobs.add(new FrameJob(document, ScaleCalibration.reference(context), document.menu().width(), 1));
         int totalFrames = jobs.size();
         int[] completedFrames = {0};
         BuildTasks.ordered(tasks, jobs,
             job -> new PreparedFrame(job, renderer.drawRuntime(
-                job.doc().menu(), job.context(), job.width(), maxPixels)), prepared -> {
+                job.doc().menu(), job.context(), job.width(),
+                ScaleCalibration.is(job.doc()) ? ScaleCalibration.PIXELS : maxPixels)), prepared -> {
                 BuildBudget.checkpoint();
                 var doc = prepared.job().doc();
                 Context active = prepared.job().context();
@@ -127,8 +134,17 @@ final class FontPack {
                         int argb = node.type().equals("image")
                             ? renderer.assets.imageColor(node.source(), node.argb()) : node.argb();
                         pack.rgba.add(argb);
-                        if (ImageRegistry.source(local.texture())) continue;
-                        if (pack.shaderImage(local, node.interaction() != null)) {
+                        if (ImageRegistry.source(local.texture())) {
+                            imageSources.merge(local.texture(),
+                                new ImageRegistry.Entry(local.original(), !ImageTiles.allowed(node)),
+                                (existing, added) -> existing.tintable() ? existing : added);
+                            // Prepare for every supported canvas width, not only the sampled scale presets.
+                            if (ImageTiles.allowed(node)
+                                && Math.max(sprite.width(), sprite.height()) * 1024.0 / Math.max(frame.width(), frame.height()) > 512)
+                                tiledSources.add(local.texture());
+                            continue;
+                        }
+                        if (pack.shaderImage(local)) {
                             pack.rgbaImages.prepare(local, pack.rgba.add(argb));
                             continue;
                         }
@@ -152,7 +168,7 @@ final class FontPack {
                     if (obfuscated) characters.addAll(commonCodes);
                     String declaration = dynamic ? MenuTemplate.dynamicCharacters(doc, node, extraCharacters) : "";
                     for (int cp : characters) pack.measure(cp, renderer.assets);
-                    for (double scale : textScales) {
+                    for (double scale : ScaleCalibration.is(doc) ? List.of(1d) : textScales) {
                         int size = SpriteCanvas.textSize(doc.menu(), node, width, scale, canvasScale);
                         TextStyle style = new TextStyle(size, node.scaleX(), node.scaleY());
                         List<net.kyori.adventure.text.Component> lines;
@@ -175,6 +191,12 @@ final class FontPack {
                                     key -> new TextFont(new TextStyle(8, 1, 1), new TreeSet<>()));
                                 pack.measure(RgbaText.RULE, renderer.assets);
                                 font.characters().add(RgbaText.RULE);
+                                if (ScaleCalibration.is(doc) && node.id().equals(ScaleCalibration.VALUE_NODE)) {
+                                    for (int cp : "0123456789.".codePoints().toArray()) {
+                                        pack.measure(cp, renderer.assets);
+                                        font.characters().add(cp);
+                                    }
+                                }
                                 if (dynamic) {
                                     if (!registeredShaderCharacters) {
                                         font.characters().addAll(characters);
@@ -200,13 +222,15 @@ final class FontPack {
                 }
                 progress.accept(totalFrames == 0 ? 55 : ++completedFrames[0] * 55 / totalFrames);
             });
-        pack.registeredImages.prepare(renderer.assets.registeredImages(), pack.rgba.indices(), pack.rgba.index(0xFFFFFF));
         if (docs.stream().flatMap(doc -> doc.menu().nodes().stream()).anyMatch(node ->
             SymbolImages.source(node.source()) || Set.of("rectangle", "frame", "line").contains(node.type())))
-            for (String symbol : SymbolImages.SYMBOLS) for (int tint : pack.rgba.indices()) {
+            for (String symbol : SymbolImages.SYMBOLS) {
                 BufferedImage source = renderer.assets.image("symbol:" + symbol);
-                pack.rgbaImages.prepare(new Sprite("symbol", 0, 0, null, null, source, null, 1, 1), tint);
+                String alias = RegisteredImages.sourceKey(source);
+                imageSources.put(alias, new ImageRegistry.Entry(source, true));
             }
+        pack.registeredImages.prepare(imageSources, pack.rgba.indices(), pack.rgba.index(0xFFFFFF));
+        pack.registeredImages.prepareTiles(tiledSources);
         if (cached != null && pack.textFonts.equals(cached.textFonts)) {
             pack.text.putAll(cached.text);
             pack.reusedGlyphs = true;
@@ -292,9 +316,6 @@ final class FontPack {
         Set<Integer> result = new TreeSet<>();
         for (String value : values) result.addAll(codes(MenuText.parse(value)));
         return result;
-    }
-    void validateDynamic(LayoutStore.Document doc, Context context, int width, String extra) throws IOException {
-        validateDynamic(doc, context, width, extra, new Validation());
     }
     void validateDynamic(LayoutStore.Document doc, Context context, int width, String extra,
                          Validation validation) throws IOException {
@@ -431,16 +452,10 @@ final class FontPack {
     int textWidth(net.kyori.adventure.text.Component value, int size) {
         return MenuText.glyphs(value).stream().mapToInt(glyph -> glyphWidth(glyph, size)).sum();
     }
-    int textWidth(net.kyori.adventure.text.Component value, int size, double stretchX, double stretchY) {
-        return textWidth(value, new TextStyle(size, stretchX, stretchY));
-    }
     int textWidth(net.kyori.adventure.text.Component value, TextStyle style) {
         return MenuText.glyphs(value).stream().mapToInt(glyph -> glyphWidth(glyph, style)).sum();
     }
     int glyphWidth(MenuText.Glyph glyph, int size) { return glyphWidth(glyph, new TextStyle(size, 1, 1)); }
-    int glyphWidth(MenuText.Glyph glyph, int size, double stretchX, double stretchY) {
-        return glyphWidth(glyph, new TextStyle(size, stretchX, stretchY));
-    }
     int glyphWidth(MenuText.Glyph glyph, TextStyle style) {
         if (glyph.code() == 32) return style.space() + (glyph.bold() ? 1 : 0);
         int[] metric = metrics.get(glyph.code());
@@ -500,18 +515,14 @@ final class FontPack {
     }
     RgbaImages rgbaImages() { return rgbaImages; }
     RegisteredImages registeredImages() { return registeredImages; }
-    boolean shaderImage(Sprite sprite, boolean interactive) {
+    boolean shaderImage(Sprite sprite) {
         return RgbaImages.eligible(sprite);
     }
     int imageTint(int argb) { return rgba.index(argb); }
-    void models(ModelPack value) { models = value; }
     ModelPack modelPack() { return models; }
     java.awt.Rectangle modelArea(Menu menu, Node node, int width, int height) {
         if (models == null) throw new IllegalArgumentException("模型未准备，请执行 /dialogmenu reload all");
         return models.area(menu, node, width, height);
-    }
-    net.kyori.adventure.text.Component model(String id, int size, int offset, int band) {
-        return model(id, size, size, offset, band);
     }
     net.kyori.adventure.text.Component model(String id, int sizeX, int sizeY, int offset, int band) {
         if (models == null) throw new IllegalArgumentException("模型未准备，请执行 /dialogmenu reload all");

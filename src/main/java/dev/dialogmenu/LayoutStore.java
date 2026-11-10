@@ -162,11 +162,19 @@ final class LayoutStore {
             throw new IllegalArgumentException("声音volume须为0..16，pitch须为0..2");
         return new SoundSpec(key, volume, pitch);
     }
-    record Header(String id, String permission, int width, int height, Boolean escape, boolean scaleText,
+    record Header(String id, String permission, int width, int height, Boolean escape, boolean scaleText, int schema,
                   List<String> open, List<String> close) {
+        Node renderNode(Node node) {
+            if (schema == 1) return node;
+            return new Node(node.id(), node.type(), node.x() - (schema == 3 ? width / 2.0 : 0),
+                height / 2.0 - node.y(), node.z(),
+                node.scaleX(), node.scaleY(), node.width(), node.height(), node.argb(), node.text(), node.source(),
+                node.alignment(), node.size(), node.thickness(), node.rotation(), node.columns(), node.slotSize(),
+                node.slots(), node.maxLines(), node.interaction(), node.reuseTexture(), node.atlas());
+        }
         Document document(List<Node> source) {
             if (source.isEmpty()) throw new IllegalArgumentException("frontend至少需要一个可见元素");
-            List<Node> nodes = new ArrayList<>(source);
+            List<Node> nodes = new ArrayList<>(source.stream().map(this::renderNode).toList());
             nodes.sort(Comparator.comparingDouble(Node::z));
             return new Document(new Menu(id, permission, width, height, List.copyOf(nodes), List.of(),
                 escape, scaleText), open, close);
@@ -182,8 +190,9 @@ final class LayoutStore {
         id(expected);
         keys(yaml, Set.of("schema-version", "id", "permission", "canvas", "frontend", "events",
             "close-with-escape", "scale-text-with-canvas"));
-        if (integer(yaml, "schema-version", -1, 1, 1) != 1 || !expected.equals(yaml.getString("id")))
-            throw new IllegalArgumentException("schema-version须为1，id须与文件名一致");
+        int schema = integer(yaml, "schema-version", -1, 1, 3);
+        if (!expected.equals(yaml.getString("id")))
+            throw new IllegalArgumentException("id须与文件名一致");
         ConfigurationSection canvas = yaml.getConfigurationSection("canvas");
         if (canvas == null) throw new IllegalArgumentException("缺少canvas");
         keys(canvas, Set.of("width", "height"));
@@ -198,7 +207,7 @@ final class LayoutStore {
         }
         return new Header(expected, yaml.getString("permission", ""), width, height,
             yaml.contains("close-with-escape") ? yaml.getBoolean("close-with-escape") : null,
-            yaml.getBoolean("scale-text-with-canvas", false), open, close);
+            yaml.getBoolean("scale-text-with-canvas", false), schema, open, close);
     }
     static void flatten(ConfigurationSection section, double ox, double oy, double oz,
                         double sx, double sy, List<Node> out) {

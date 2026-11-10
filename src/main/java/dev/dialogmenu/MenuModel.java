@@ -3,7 +3,7 @@ package dev.dialogmenu;
 import java.util.List;
 import java.util.Map;
 
-/** 坐标中心为原点，Y 正方向向上。 */
+/** 内部中心原点、Y向上；入口换算版本2的顶部中央和版本3的左上角坐标。 */
 public final class MenuModel {
     private MenuModel() {}
 

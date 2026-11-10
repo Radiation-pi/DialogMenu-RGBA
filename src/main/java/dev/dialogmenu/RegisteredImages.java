@@ -14,7 +14,11 @@ final class RegisteredImages {
     private record Alias(String hash, boolean tintable) {}
     private final Map<String, Alias> aliases = new TreeMap<>();
     private final Map<String, Entry> entries = new LinkedHashMap<>();
+    private final Map<String, List<String>> tiles = new LinkedHashMap<>();
+    private final Map<String, BufferedImage> tileImages = new LinkedHashMap<>();
     private int whiteTint;
+
+    static String sourceKey(BufferedImage image) { return ImageRegistry.PREFIX + "~" + FontPack.hash(image); }
 
     void prepare(Map<String, ImageRegistry.Entry> images, Collection<Integer> tints, int whiteTint) throws IOException {
         this.whiteTint = whiteTint;
@@ -34,6 +38,25 @@ final class RegisteredImages {
         }
     }
 
+    void prepareTiles(Collection<String> sources) {
+        for (String alias : new TreeSet<>(sources)) {
+            Alias registered = aliases.get(alias);
+            if (registered == null) throw new IllegalArgumentException("Missing tiled source: " + alias);
+            for (var item : entries.entrySet()) {
+                if (!item.getKey().startsWith(registered.hash() + ":")) continue;
+                Entry entry = item.getValue();
+                if (tiles.containsKey(entry.sprite())) continue;
+                List<String> names = new ArrayList<>();
+                for (int i = 0; i < 4; i++) {
+                    String name = "dialogmenu:registered/tile_" + registered.hash() + "_" + entry.tint() + "_" + i;
+                    tileImages.put(name, ImageTiles.wrap(entry.source(), entry.tint(), i));
+                    names.add(name);
+                }
+                tiles.put(entry.sprite(), List.copyOf(names));
+            }
+        }
+    }
+
     int color(String alias, int argb) {
         if (SymbolImages.source(alias)) return argb;
         Alias entry = aliases.get(ImageRegistry.key(alias));
@@ -41,6 +64,10 @@ final class RegisteredImages {
     }
 
     Component component(String alias, int tint, int width, int height, int localY, int band) {
+        return component(alias, tint, width, height, localY, band, -1);
+    }
+
+    Component component(String alias, int tint, int width, int height, int localY, int band, int tile) {
         Alias registered = aliases.get(alias);
         Entry entry = registered == null ? null
             : entries.get(registered.hash() + ":" + (registered.tintable() ? tint : whiteTint));
@@ -48,15 +75,19 @@ final class RegisteredImages {
         JsonObject object = new JsonObject();
         object.addProperty("type", "object");
         object.addProperty("atlas", "minecraft:items");
-        object.addProperty("sprite", entry.sprite());
+        List<String> pieces = tiles.get(entry.sprite());
+        if (tile >= 0 && (pieces == null || tile > 3))
+            throw new IllegalArgumentException("未准备图片分片：" + alias + "；请执行 /dialogmenu reload all");
+        object.addProperty("sprite", tile < 0 ? entry.sprite() : pieces.get(tile));
         object.addProperty("color", "#beef01");
-        int payload = RgbaImages.payload(width, height, localY, band);
-        object.addProperty("shadow_color", entry.nativeSprite() ? (payload & 0x1FFFFFFF) | 0x60000000 : payload);
+        int payload = tile < 0 ? RgbaImages.payload(width, height, localY, band)
+            : ImageTiles.payload(width, height, localY, band);
+        object.addProperty("shadow_color", tile < 0 && entry.nativeSprite() ? (payload & 0x1FFFFFFF) | 0x60000000 : payload);
         var serializer = GsonComponentSerializer.gson();
         Component result = serializer.deserialize(object.toString());
         if (!serializer.serialize(result).contains("\"sprite\""))
             throw new IllegalStateException("注册材质需要支持object文本的Minecraft/Adventure（26.3）");
-        return entry.nativeSprite() ? RgbaOffsets.nativeScope(result) : result;
+        return tile < 0 && entry.nativeSprite() ? RgbaOffsets.nativeScope(result) : result;
     }
 
     static BufferedImage wrap(BufferedImage source, int tint) {
@@ -101,6 +132,18 @@ final class RegisteredImages {
             source.addProperty("type", "single");
             source.addProperty("resource", entry.sprite());
             source.addProperty("sprite", entry.sprite());
+            sources.add(source);
+        }
+        for (var tile : tileImages.entrySet()) {
+            BuildBudget.checkpoint();
+            Path target = pack.resolve("assets/dialogmenu/textures/"
+                + tile.getKey().substring("dialogmenu:".length()) + ".png");
+            Files.createDirectories(target.getParent());
+            FontPack.writePng(tile.getValue(), target);
+            JsonObject source = new JsonObject();
+            source.addProperty("type", "single");
+            source.addProperty("resource", tile.getKey());
+            source.addProperty("sprite", tile.getKey());
             sources.add(source);
         }
         definition.add("sources", sources);

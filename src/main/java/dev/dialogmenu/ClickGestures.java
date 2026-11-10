@@ -45,7 +45,6 @@ final class ClickGestures {
         Pending value = pending.get(player);
         return value == null ? null : value.target;
     }
-    boolean waiting(UUID player) { return pending.containsKey(player); }
     boolean hold(UUID player, UUID session, Menu menu, Context context) {
         Target target = pending(player);
         if (target == null) return false;

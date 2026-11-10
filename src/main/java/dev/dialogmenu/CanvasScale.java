@@ -7,29 +7,26 @@ import static dev.dialogmenu.MenuModel.*;
 
 /** 玩家独立画布倍率，不改变文字偏好或菜单逻辑坐标。 */
 final class CanvasScale {
+    static final double MIN = 0.8;
+    static final double MAX = 2.2;
     static final List<Double> OPTIONS = List.of(0.75, 1.0);
     static final List<Double> DEFAULTS = List.of(0.8, 1.0, 2.0);
     @FunctionalInterface interface Check { void run() throws Exception; }
 
     static double selected(YamlConfiguration preferences, UUID player) {
-        return selected(preferences, player, OPTIONS, 1);
+        return selected(preferences, player, 1);
     }
 
-    static double selected(YamlConfiguration preferences, UUID player, List<Double> options, double fallback) {
+    static double selected(YamlConfiguration preferences, UUID player, double fallback) {
         double value = preferences.getDouble(key(player), fallback);
-        return options.contains(value) ? value : fallback;
+        return valid(value) ? value : valid(fallback) ? fallback : 1;
     }
 
     static double select(YamlConfiguration preferences, UUID player, String input, Check check) throws Exception {
-        return select(preferences, player, input, OPTIONS, check);
-    }
-
-    static double select(YamlConfiguration preferences, UUID player, String input,
-                         List<Double> options, Check check) throws Exception {
         double value;
         try { value = Double.parseDouble(input.replaceFirst("[xX]$", "")); }
-        catch (NumberFormatException error) { throw new IllegalArgumentException("可选画布倍率：" + options); }
-        if (!options.contains(value)) throw new IllegalArgumentException("可选画布倍率：" + options);
+        catch (NumberFormatException error) { throw new IllegalArgumentException("画布倍率须为0.8..2.2"); }
+        if (!valid(value)) throw new IllegalArgumentException("画布倍率须为0.8..2.2");
         String key = key(player);
         Object previous = preferences.get(key);
         preferences.set(key, value);
@@ -39,6 +36,10 @@ final class CanvasScale {
             throw error;
         }
         return value;
+    }
+
+    static boolean valid(double value) {
+        return Double.isFinite(value) && value >= MIN && value <= MAX;
     }
 
     static List<Double> options(YamlConfiguration yaml, String key, List<Double> fallback) {
@@ -60,7 +61,7 @@ final class CanvasScale {
             .toPlainString()).toList();
     }
 
-    private static String key(UUID player) { return "canvas-scales." + player; }
+    static String key(UUID player) { return "canvas-scales." + player; }
 
     static Context context(Context base, double scale) {
         return new Context() {

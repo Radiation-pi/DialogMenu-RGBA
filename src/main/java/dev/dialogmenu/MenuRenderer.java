@@ -28,12 +28,11 @@ final class MenuRenderer {
                 long sizeY = Math.round(node.size() * node.scaleY() * width / menu.width());
                 return sizeX >= 1 && sizeX <= 512 && sizeY >= 1 && sizeY <= 512;
             });
-        boolean imagesFit = menu.nodes().stream().filter(node -> node.type().equals("image")
-            && (ImageRegistry.source(ImageRegistry.key(node.source()))
-                || node.source().startsWith("minecraft:inventory/") || node.source().startsWith("minecraft:item/")))
-            .allMatch(node -> Math.round(node.width() * node.scaleX() * width / menu.width()) <= 512
-                && Math.round(node.height() * node.scaleY() * width / menu.width()) <= 512);
-        if (width >= 64 && width <= MAX_WIDTH && height <= 1024 && (long) width * height <= maxPixels && modelsFit && imagesFit)
+        boolean graphicsFit = menu.nodes().stream()
+            .filter(node -> !node.type().equals("model") && !node.type().equals("text"))
+            .allMatch(node -> graphicProtocolFits(node, width / (double) menu.width()));
+        if (width >= 64 && width <= MAX_WIDTH && height <= 1024 && (long) width * height <= maxPixels
+            && modelsFit && graphicsFit)
             result.add(MAX_WIDTH);
         return result;
     }
@@ -46,6 +45,11 @@ final class MenuRenderer {
             if (sizeX < 1 || sizeX > 512 || sizeY < 1 || sizeY > 512) return false;
         }
         return true;
+    }
+    private static boolean graphicProtocolFits(Node node, double zoom) {
+        double height = node.type().equals("line") ? node.thickness() : node.height();
+        return ImageTiles.allowed(node) || Math.round(node.width() * node.scaleX() * zoom) <= 512
+            && Math.round(height * node.scaleY() * zoom) <= 512;
     }
     final VanillaAssets assets;
     private record Graphic(String id, String type, double x, double y, double sx, double sy, double width,
@@ -98,6 +102,8 @@ final class MenuRenderer {
                 if (cached != null) { sprites.add(cached); continue; }
             }
             double h = n.type().equals("line") ? n.thickness() : n.height();
+            if (!graphicProtocolFits(n, zoom))
+                throw new IOException(n.id() + " 基础图形和符号的最终显示宽高不得超过512；超大元素请改用图片");
             AffineTransform transform = new AffineTransform();
             transform.scale(zoom, zoom);
             transform.translate(menu.width() / 2.0 + n.x(), menu.height() / 2.0 - n.y());
@@ -108,6 +114,33 @@ final class MenuRenderer {
             int left = (int) Math.floor(box.getMinX() + 1e-7), top = (int) Math.floor(box.getMinY() + 1e-7);
             Rectangle bounds = new Rectangle(left, top,
                 (int) Math.ceil(box.getMaxX() - 1e-7) - left, (int) Math.ceil(box.getMaxY() - 1e-7) - top);
+            // Decide containment before integer rounding; a full-canvas source must not become a raster variant.
+            boolean complete = box.getMinX() >= -1e-7 && box.getMinY() >= -1e-7
+                && box.getMaxX() <= width + 1e-7 && box.getMaxY() <= menu.height() * zoom + 1e-7;
+            if (n.rotation() == 0 && n.argb() >>> 24 == 255 && complete) {
+                int sw = Math.min(width, Math.max(1, (int) Math.round(n.width() * n.scaleX() * zoom)));
+                int sh = Math.min(height, Math.max(1, (int) Math.round(h * n.scaleY() * zoom)));
+                int x = Math.clamp((int) Math.round((menu.width() / 2.0 + n.x()) * zoom - sw / 2.0), 0, width - sw);
+                int y = Math.clamp((int) Math.round((menu.height() / 2.0 - n.y()) * zoom - sh / 2.0), 0, height - sh);
+                String alias = n.type().equals("image") ? assets.registeredSource(n.source()) : null;
+                BufferedImage source;
+                if (n.type().equals("image")) {
+                    boolean reference = n.reuseTexture() || n.atlas() != null || assets.craftEngine.atlasReference(n.source());
+                    source = reference ? assets.reference(n.source(), n.atlas()).image() : assets.image(n.source());
+                } else {
+                    String symbol = n.type().equals("rectangle") ? "■" : n.type().equals("frame") ? "□"
+                        : sw >= sh ? "—" : "I";
+                    source = assets.image("symbol:" + symbol);
+                }
+                if (source.getWidth() > 256 || source.getHeight() > 256)
+                    throw new IOException(n.id() + " 源图片各边须为1..256");
+                if (alias == null) alias = RegisteredImages.sourceKey(source);
+                add(sprites, key, new Sprite(n.id(), x, y, null, alias, source, null, sw, sh), preview);
+                if (root != null) root.drawImage(tint(source, argb), x, y, sw, sh, null);
+                continue;
+            }
+            if (!preview)
+                throw new IOException(n.id() + " 二维元素须完整位于画布内、无旋转、opacity=255；运行时不重绘或裁切源图片");
             BufferedImage shaderSource = null;
             String registeredSource = n.type().equals("image") ? assets.registeredSource(n.source()) : null;
             if (n.type().equals("image") && n.rotation() == 0 && n.argb() >>> 24 == 255

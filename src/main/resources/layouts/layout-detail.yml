@@ -5,23 +5,15 @@ canvas:
   height: 180
 frontend:
   background:
-    type: rectangle
+    type: image
+    source: shapes/panel-light.png
     width: 300
     height: 180
-    color: '#ECEDEE'
   title:
     type: text
     content: '&8元素与点击'
     size: 8
     offset: {y: 59, z: 1}
-  diagram:
-    type: frame
-    width: 72
-    height: 58
-    thickness: 2
-    color: '#737C85'
-    rotation: {z: 12}
-    offset: {x: -83, y: -1, z: 1}
   description:
     type: text
     content: "&8文字和图片配置点击\n&8actions 定义点击动作"

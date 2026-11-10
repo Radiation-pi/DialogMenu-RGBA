@@ -31,6 +31,10 @@ final class RowPackTests {
                 | Integer.parseInt(colors.group(4)));
     }
 
+    static BufferedImage preview(Path pack, Component component, int width, int height) throws Exception {
+        return new RowPackTests(pack).render(component, width, height);
+    }
+
     static int verify(Path pack, Menu menu, MenuRenderer renderer, Context context, FontPack fonts, int width)
             throws Exception {
         var frame = renderer.draw(menu, context, width, 131072);

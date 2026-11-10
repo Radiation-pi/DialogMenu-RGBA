@@ -46,7 +46,6 @@ final class RgbaImages {
         return entry.glyph();
     }
 
-    static BufferedImage wrap(BufferedImage source) { return wrap(source, 0); }
     static BufferedImage wrap(BufferedImage source, int tint) {
         int width = Math.max(source.getWidth(), source.getHeight()) + 2, height = width;
         BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);

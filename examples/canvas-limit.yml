@@ -1,0 +1,1131 @@
+# Measurement fixture: requested width 1014, canvas scale 1.0.
+# Logical units: ticks every 2, labels every 20. No automatic viewport scaling.
+# Requires max-canvas-pixels >= 1038336. Not installed as a startup default.
+schema-version: 3
+id: canvas-limit
+canvas: {width: 1014, height: 1024}
+close-with-escape: true
+scale-text-with-canvas: true
+frontend:
+  tick-x-0: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 0.5, y: 3}}
+  tick-x-2: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 2.5, y: 1.5}}
+  tick-x-4: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 4.5, y: 1.5}}
+  tick-x-6: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 6.5, y: 1.5}}
+  tick-x-8: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 8.5, y: 1.5}}
+  tick-x-10: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 10.5, y: 1.5}}
+  tick-x-12: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 12.5, y: 1.5}}
+  tick-x-14: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 14.5, y: 1.5}}
+  tick-x-16: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 16.5, y: 1.5}}
+  tick-x-18: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 18.5, y: 1.5}}
+  tick-x-20: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 20.5, y: 3}}
+  tick-x-22: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 22.5, y: 1.5}}
+  tick-x-24: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 24.5, y: 1.5}}
+  tick-x-26: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 26.5, y: 1.5}}
+  tick-x-28: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 28.5, y: 1.5}}
+  tick-x-30: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 30.5, y: 1.5}}
+  tick-x-32: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 32.5, y: 1.5}}
+  tick-x-34: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 34.5, y: 1.5}}
+  tick-x-36: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 36.5, y: 1.5}}
+  tick-x-38: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 38.5, y: 1.5}}
+  tick-x-40: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 40.5, y: 3}}
+  tick-x-42: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 42.5, y: 1.5}}
+  tick-x-44: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 44.5, y: 1.5}}
+  tick-x-46: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 46.5, y: 1.5}}
+  tick-x-48: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 48.5, y: 1.5}}
+  tick-x-50: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 50.5, y: 1.5}}
+  tick-x-52: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 52.5, y: 1.5}}
+  tick-x-54: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 54.5, y: 1.5}}
+  tick-x-56: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 56.5, y: 1.5}}
+  tick-x-58: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 58.5, y: 1.5}}
+  tick-x-60: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 60.5, y: 3}}
+  tick-x-62: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 62.5, y: 1.5}}
+  tick-x-64: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 64.5, y: 1.5}}
+  tick-x-66: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 66.5, y: 1.5}}
+  tick-x-68: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 68.5, y: 1.5}}
+  tick-x-70: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 70.5, y: 1.5}}
+  tick-x-72: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 72.5, y: 1.5}}
+  tick-x-74: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 74.5, y: 1.5}}
+  tick-x-76: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 76.5, y: 1.5}}
+  tick-x-78: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 78.5, y: 1.5}}
+  tick-x-80: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 80.5, y: 3}}
+  tick-x-82: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 82.5, y: 1.5}}
+  tick-x-84: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 84.5, y: 1.5}}
+  tick-x-86: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 86.5, y: 1.5}}
+  tick-x-88: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 88.5, y: 1.5}}
+  tick-x-90: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 90.5, y: 1.5}}
+  tick-x-92: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 92.5, y: 1.5}}
+  tick-x-94: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 94.5, y: 1.5}}
+  tick-x-96: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 96.5, y: 1.5}}
+  tick-x-98: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 98.5, y: 1.5}}
+  tick-x-100: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 100.5, y: 3}}
+  tick-x-102: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 102.5, y: 1.5}}
+  tick-x-104: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 104.5, y: 1.5}}
+  tick-x-106: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 106.5, y: 1.5}}
+  tick-x-108: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 108.5, y: 1.5}}
+  tick-x-110: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 110.5, y: 1.5}}
+  tick-x-112: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 112.5, y: 1.5}}
+  tick-x-114: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 114.5, y: 1.5}}
+  tick-x-116: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 116.5, y: 1.5}}
+  tick-x-118: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 118.5, y: 1.5}}
+  tick-x-120: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 120.5, y: 3}}
+  tick-x-122: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 122.5, y: 1.5}}
+  tick-x-124: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 124.5, y: 1.5}}
+  tick-x-126: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 126.5, y: 1.5}}
+  tick-x-128: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 128.5, y: 1.5}}
+  tick-x-130: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 130.5, y: 1.5}}
+  tick-x-132: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 132.5, y: 1.5}}
+  tick-x-134: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 134.5, y: 1.5}}
+  tick-x-136: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 136.5, y: 1.5}}
+  tick-x-138: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 138.5, y: 1.5}}
+  tick-x-140: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 140.5, y: 3}}
+  tick-x-142: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 142.5, y: 1.5}}
+  tick-x-144: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 144.5, y: 1.5}}
+  tick-x-146: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 146.5, y: 1.5}}
+  tick-x-148: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 148.5, y: 1.5}}
+  tick-x-150: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 150.5, y: 1.5}}
+  tick-x-152: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 152.5, y: 1.5}}
+  tick-x-154: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 154.5, y: 1.5}}
+  tick-x-156: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 156.5, y: 1.5}}
+  tick-x-158: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 158.5, y: 1.5}}
+  tick-x-160: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 160.5, y: 3}}
+  tick-x-162: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 162.5, y: 1.5}}
+  tick-x-164: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 164.5, y: 1.5}}
+  tick-x-166: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 166.5, y: 1.5}}
+  tick-x-168: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 168.5, y: 1.5}}
+  tick-x-170: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 170.5, y: 1.5}}
+  tick-x-172: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 172.5, y: 1.5}}
+  tick-x-174: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 174.5, y: 1.5}}
+  tick-x-176: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 176.5, y: 1.5}}
+  tick-x-178: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 178.5, y: 1.5}}
+  tick-x-180: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 180.5, y: 3}}
+  tick-x-182: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 182.5, y: 1.5}}
+  tick-x-184: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 184.5, y: 1.5}}
+  tick-x-186: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 186.5, y: 1.5}}
+  tick-x-188: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 188.5, y: 1.5}}
+  tick-x-190: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 190.5, y: 1.5}}
+  tick-x-192: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 192.5, y: 1.5}}
+  tick-x-194: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 194.5, y: 1.5}}
+  tick-x-196: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 196.5, y: 1.5}}
+  tick-x-198: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 198.5, y: 1.5}}
+  tick-x-200: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 200.5, y: 3}}
+  tick-x-202: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 202.5, y: 1.5}}
+  tick-x-204: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 204.5, y: 1.5}}
+  tick-x-206: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 206.5, y: 1.5}}
+  tick-x-208: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 208.5, y: 1.5}}
+  tick-x-210: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 210.5, y: 1.5}}
+  tick-x-212: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 212.5, y: 1.5}}
+  tick-x-214: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 214.5, y: 1.5}}
+  tick-x-216: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 216.5, y: 1.5}}
+  tick-x-218: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 218.5, y: 1.5}}
+  tick-x-220: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 220.5, y: 3}}
+  tick-x-222: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 222.5, y: 1.5}}
+  tick-x-224: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 224.5, y: 1.5}}
+  tick-x-226: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 226.5, y: 1.5}}
+  tick-x-228: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 228.5, y: 1.5}}
+  tick-x-230: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 230.5, y: 1.5}}
+  tick-x-232: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 232.5, y: 1.5}}
+  tick-x-234: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 234.5, y: 1.5}}
+  tick-x-236: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 236.5, y: 1.5}}
+  tick-x-238: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 238.5, y: 1.5}}
+  tick-x-240: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 240.5, y: 3}}
+  tick-x-242: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 242.5, y: 1.5}}
+  tick-x-244: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 244.5, y: 1.5}}
+  tick-x-246: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 246.5, y: 1.5}}
+  tick-x-248: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 248.5, y: 1.5}}
+  tick-x-250: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 250.5, y: 1.5}}
+  tick-x-252: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 252.5, y: 1.5}}
+  tick-x-254: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 254.5, y: 1.5}}
+  tick-x-256: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 256.5, y: 1.5}}
+  tick-x-258: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 258.5, y: 1.5}}
+  tick-x-260: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 260.5, y: 3}}
+  tick-x-262: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 262.5, y: 1.5}}
+  tick-x-264: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 264.5, y: 1.5}}
+  tick-x-266: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 266.5, y: 1.5}}
+  tick-x-268: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 268.5, y: 1.5}}
+  tick-x-270: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 270.5, y: 1.5}}
+  tick-x-272: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 272.5, y: 1.5}}
+  tick-x-274: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 274.5, y: 1.5}}
+  tick-x-276: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 276.5, y: 1.5}}
+  tick-x-278: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 278.5, y: 1.5}}
+  tick-x-280: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 280.5, y: 3}}
+  tick-x-282: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 282.5, y: 1.5}}
+  tick-x-284: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 284.5, y: 1.5}}
+  tick-x-286: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 286.5, y: 1.5}}
+  tick-x-288: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 288.5, y: 1.5}}
+  tick-x-290: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 290.5, y: 1.5}}
+  tick-x-292: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 292.5, y: 1.5}}
+  tick-x-294: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 294.5, y: 1.5}}
+  tick-x-296: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 296.5, y: 1.5}}
+  tick-x-298: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 298.5, y: 1.5}}
+  tick-x-300: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 300.5, y: 3}}
+  tick-x-302: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 302.5, y: 1.5}}
+  tick-x-304: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 304.5, y: 1.5}}
+  tick-x-306: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 306.5, y: 1.5}}
+  tick-x-308: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 308.5, y: 1.5}}
+  tick-x-310: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 310.5, y: 1.5}}
+  tick-x-312: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 312.5, y: 1.5}}
+  tick-x-314: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 314.5, y: 1.5}}
+  tick-x-316: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 316.5, y: 1.5}}
+  tick-x-318: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 318.5, y: 1.5}}
+  tick-x-320: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 320.5, y: 3}}
+  tick-x-322: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 322.5, y: 1.5}}
+  tick-x-324: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 324.5, y: 1.5}}
+  tick-x-326: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 326.5, y: 1.5}}
+  tick-x-328: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 328.5, y: 1.5}}
+  tick-x-330: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 330.5, y: 1.5}}
+  tick-x-332: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 332.5, y: 1.5}}
+  tick-x-334: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 334.5, y: 1.5}}
+  tick-x-336: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 336.5, y: 1.5}}
+  tick-x-338: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 338.5, y: 1.5}}
+  tick-x-340: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 340.5, y: 3}}
+  tick-x-342: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 342.5, y: 1.5}}
+  tick-x-344: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 344.5, y: 1.5}}
+  tick-x-346: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 346.5, y: 1.5}}
+  tick-x-348: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 348.5, y: 1.5}}
+  tick-x-350: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 350.5, y: 1.5}}
+  tick-x-352: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 352.5, y: 1.5}}
+  tick-x-354: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 354.5, y: 1.5}}
+  tick-x-356: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 356.5, y: 1.5}}
+  tick-x-358: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 358.5, y: 1.5}}
+  tick-x-360: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 360.5, y: 3}}
+  tick-x-362: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 362.5, y: 1.5}}
+  tick-x-364: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 364.5, y: 1.5}}
+  tick-x-366: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 366.5, y: 1.5}}
+  tick-x-368: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 368.5, y: 1.5}}
+  tick-x-370: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 370.5, y: 1.5}}
+  tick-x-372: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 372.5, y: 1.5}}
+  tick-x-374: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 374.5, y: 1.5}}
+  tick-x-376: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 376.5, y: 1.5}}
+  tick-x-378: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 378.5, y: 1.5}}
+  tick-x-380: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 380.5, y: 3}}
+  tick-x-382: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 382.5, y: 1.5}}
+  tick-x-384: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 384.5, y: 1.5}}
+  tick-x-386: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 386.5, y: 1.5}}
+  tick-x-388: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 388.5, y: 1.5}}
+  tick-x-390: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 390.5, y: 1.5}}
+  tick-x-392: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 392.5, y: 1.5}}
+  tick-x-394: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 394.5, y: 1.5}}
+  tick-x-396: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 396.5, y: 1.5}}
+  tick-x-398: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 398.5, y: 1.5}}
+  tick-x-400: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 400.5, y: 3}}
+  tick-x-402: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 402.5, y: 1.5}}
+  tick-x-404: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 404.5, y: 1.5}}
+  tick-x-406: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 406.5, y: 1.5}}
+  tick-x-408: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 408.5, y: 1.5}}
+  tick-x-410: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 410.5, y: 1.5}}
+  tick-x-412: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 412.5, y: 1.5}}
+  tick-x-414: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 414.5, y: 1.5}}
+  tick-x-416: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 416.5, y: 1.5}}
+  tick-x-418: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 418.5, y: 1.5}}
+  tick-x-420: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 420.5, y: 3}}
+  tick-x-422: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 422.5, y: 1.5}}
+  tick-x-424: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 424.5, y: 1.5}}
+  tick-x-426: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 426.5, y: 1.5}}
+  tick-x-428: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 428.5, y: 1.5}}
+  tick-x-430: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 430.5, y: 1.5}}
+  tick-x-432: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 432.5, y: 1.5}}
+  tick-x-434: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 434.5, y: 1.5}}
+  tick-x-436: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 436.5, y: 1.5}}
+  tick-x-438: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 438.5, y: 1.5}}
+  tick-x-440: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 440.5, y: 3}}
+  tick-x-442: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 442.5, y: 1.5}}
+  tick-x-444: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 444.5, y: 1.5}}
+  tick-x-446: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 446.5, y: 1.5}}
+  tick-x-448: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 448.5, y: 1.5}}
+  tick-x-450: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 450.5, y: 1.5}}
+  tick-x-452: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 452.5, y: 1.5}}
+  tick-x-454: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 454.5, y: 1.5}}
+  tick-x-456: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 456.5, y: 1.5}}
+  tick-x-458: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 458.5, y: 1.5}}
+  tick-x-460: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 460.5, y: 3}}
+  tick-x-462: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 462.5, y: 1.5}}
+  tick-x-464: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 464.5, y: 1.5}}
+  tick-x-466: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 466.5, y: 1.5}}
+  tick-x-468: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 468.5, y: 1.5}}
+  tick-x-470: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 470.5, y: 1.5}}
+  tick-x-472: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 472.5, y: 1.5}}
+  tick-x-474: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 474.5, y: 1.5}}
+  tick-x-476: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 476.5, y: 1.5}}
+  tick-x-478: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 478.5, y: 1.5}}
+  tick-x-480: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 480.5, y: 3}}
+  tick-x-482: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 482.5, y: 1.5}}
+  tick-x-484: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 484.5, y: 1.5}}
+  tick-x-486: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 486.5, y: 1.5}}
+  tick-x-488: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 488.5, y: 1.5}}
+  tick-x-490: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 490.5, y: 1.5}}
+  tick-x-492: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 492.5, y: 1.5}}
+  tick-x-494: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 494.5, y: 1.5}}
+  tick-x-496: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 496.5, y: 1.5}}
+  tick-x-498: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 498.5, y: 1.5}}
+  tick-x-500: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 500.5, y: 3}}
+  tick-x-502: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 502.5, y: 1.5}}
+  tick-x-504: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 504.5, y: 1.5}}
+  tick-x-506: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 506.5, y: 1.5}}
+  tick-x-508: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 508.5, y: 1.5}}
+  tick-x-510: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 510.5, y: 1.5}}
+  tick-x-512: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 512.5, y: 1.5}}
+  tick-x-514: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 514.5, y: 1.5}}
+  tick-x-516: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 516.5, y: 1.5}}
+  tick-x-518: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 518.5, y: 1.5}}
+  tick-x-520: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 520.5, y: 3}}
+  tick-x-522: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 522.5, y: 1.5}}
+  tick-x-524: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 524.5, y: 1.5}}
+  tick-x-526: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 526.5, y: 1.5}}
+  tick-x-528: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 528.5, y: 1.5}}
+  tick-x-530: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 530.5, y: 1.5}}
+  tick-x-532: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 532.5, y: 1.5}}
+  tick-x-534: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 534.5, y: 1.5}}
+  tick-x-536: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 536.5, y: 1.5}}
+  tick-x-538: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 538.5, y: 1.5}}
+  tick-x-540: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 540.5, y: 3}}
+  tick-x-542: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 542.5, y: 1.5}}
+  tick-x-544: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 544.5, y: 1.5}}
+  tick-x-546: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 546.5, y: 1.5}}
+  tick-x-548: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 548.5, y: 1.5}}
+  tick-x-550: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 550.5, y: 1.5}}
+  tick-x-552: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 552.5, y: 1.5}}
+  tick-x-554: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 554.5, y: 1.5}}
+  tick-x-556: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 556.5, y: 1.5}}
+  tick-x-558: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 558.5, y: 1.5}}
+  tick-x-560: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 560.5, y: 3}}
+  tick-x-562: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 562.5, y: 1.5}}
+  tick-x-564: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 564.5, y: 1.5}}
+  tick-x-566: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 566.5, y: 1.5}}
+  tick-x-568: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 568.5, y: 1.5}}
+  tick-x-570: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 570.5, y: 1.5}}
+  tick-x-572: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 572.5, y: 1.5}}
+  tick-x-574: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 574.5, y: 1.5}}
+  tick-x-576: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 576.5, y: 1.5}}
+  tick-x-578: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 578.5, y: 1.5}}
+  tick-x-580: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 580.5, y: 3}}
+  tick-x-582: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 582.5, y: 1.5}}
+  tick-x-584: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 584.5, y: 1.5}}
+  tick-x-586: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 586.5, y: 1.5}}
+  tick-x-588: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 588.5, y: 1.5}}
+  tick-x-590: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 590.5, y: 1.5}}
+  tick-x-592: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 592.5, y: 1.5}}
+  tick-x-594: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 594.5, y: 1.5}}
+  tick-x-596: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 596.5, y: 1.5}}
+  tick-x-598: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 598.5, y: 1.5}}
+  tick-x-600: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 600.5, y: 3}}
+  tick-x-602: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 602.5, y: 1.5}}
+  tick-x-604: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 604.5, y: 1.5}}
+  tick-x-606: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 606.5, y: 1.5}}
+  tick-x-608: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 608.5, y: 1.5}}
+  tick-x-610: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 610.5, y: 1.5}}
+  tick-x-612: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 612.5, y: 1.5}}
+  tick-x-614: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 614.5, y: 1.5}}
+  tick-x-616: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 616.5, y: 1.5}}
+  tick-x-618: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 618.5, y: 1.5}}
+  tick-x-620: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 620.5, y: 3}}
+  tick-x-622: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 622.5, y: 1.5}}
+  tick-x-624: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 624.5, y: 1.5}}
+  tick-x-626: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 626.5, y: 1.5}}
+  tick-x-628: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 628.5, y: 1.5}}
+  tick-x-630: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 630.5, y: 1.5}}
+  tick-x-632: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 632.5, y: 1.5}}
+  tick-x-634: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 634.5, y: 1.5}}
+  tick-x-636: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 636.5, y: 1.5}}
+  tick-x-638: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 638.5, y: 1.5}}
+  tick-x-640: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 640.5, y: 3}}
+  tick-x-642: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 642.5, y: 1.5}}
+  tick-x-644: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 644.5, y: 1.5}}
+  tick-x-646: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 646.5, y: 1.5}}
+  tick-x-648: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 648.5, y: 1.5}}
+  tick-x-650: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 650.5, y: 1.5}}
+  tick-x-652: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 652.5, y: 1.5}}
+  tick-x-654: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 654.5, y: 1.5}}
+  tick-x-656: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 656.5, y: 1.5}}
+  tick-x-658: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 658.5, y: 1.5}}
+  tick-x-660: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 660.5, y: 3}}
+  tick-x-662: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 662.5, y: 1.5}}
+  tick-x-664: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 664.5, y: 1.5}}
+  tick-x-666: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 666.5, y: 1.5}}
+  tick-x-668: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 668.5, y: 1.5}}
+  tick-x-670: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 670.5, y: 1.5}}
+  tick-x-672: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 672.5, y: 1.5}}
+  tick-x-674: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 674.5, y: 1.5}}
+  tick-x-676: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 676.5, y: 1.5}}
+  tick-x-678: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 678.5, y: 1.5}}
+  tick-x-680: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 680.5, y: 3}}
+  tick-x-682: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 682.5, y: 1.5}}
+  tick-x-684: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 684.5, y: 1.5}}
+  tick-x-686: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 686.5, y: 1.5}}
+  tick-x-688: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 688.5, y: 1.5}}
+  tick-x-690: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 690.5, y: 1.5}}
+  tick-x-692: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 692.5, y: 1.5}}
+  tick-x-694: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 694.5, y: 1.5}}
+  tick-x-696: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 696.5, y: 1.5}}
+  tick-x-698: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 698.5, y: 1.5}}
+  tick-x-700: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 700.5, y: 3}}
+  tick-x-702: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 702.5, y: 1.5}}
+  tick-x-704: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 704.5, y: 1.5}}
+  tick-x-706: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 706.5, y: 1.5}}
+  tick-x-708: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 708.5, y: 1.5}}
+  tick-x-710: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 710.5, y: 1.5}}
+  tick-x-712: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 712.5, y: 1.5}}
+  tick-x-714: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 714.5, y: 1.5}}
+  tick-x-716: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 716.5, y: 1.5}}
+  tick-x-718: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 718.5, y: 1.5}}
+  tick-x-720: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 720.5, y: 3}}
+  tick-x-722: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 722.5, y: 1.5}}
+  tick-x-724: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 724.5, y: 1.5}}
+  tick-x-726: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 726.5, y: 1.5}}
+  tick-x-728: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 728.5, y: 1.5}}
+  tick-x-730: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 730.5, y: 1.5}}
+  tick-x-732: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 732.5, y: 1.5}}
+  tick-x-734: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 734.5, y: 1.5}}
+  tick-x-736: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 736.5, y: 1.5}}
+  tick-x-738: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 738.5, y: 1.5}}
+  tick-x-740: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 740.5, y: 3}}
+  tick-x-742: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 742.5, y: 1.5}}
+  tick-x-744: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 744.5, y: 1.5}}
+  tick-x-746: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 746.5, y: 1.5}}
+  tick-x-748: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 748.5, y: 1.5}}
+  tick-x-750: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 750.5, y: 1.5}}
+  tick-x-752: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 752.5, y: 1.5}}
+  tick-x-754: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 754.5, y: 1.5}}
+  tick-x-756: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 756.5, y: 1.5}}
+  tick-x-758: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 758.5, y: 1.5}}
+  tick-x-760: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 760.5, y: 3}}
+  tick-x-762: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 762.5, y: 1.5}}
+  tick-x-764: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 764.5, y: 1.5}}
+  tick-x-766: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 766.5, y: 1.5}}
+  tick-x-768: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 768.5, y: 1.5}}
+  tick-x-770: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 770.5, y: 1.5}}
+  tick-x-772: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 772.5, y: 1.5}}
+  tick-x-774: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 774.5, y: 1.5}}
+  tick-x-776: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 776.5, y: 1.5}}
+  tick-x-778: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 778.5, y: 1.5}}
+  tick-x-780: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 780.5, y: 3}}
+  tick-x-782: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 782.5, y: 1.5}}
+  tick-x-784: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 784.5, y: 1.5}}
+  tick-x-786: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 786.5, y: 1.5}}
+  tick-x-788: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 788.5, y: 1.5}}
+  tick-x-790: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 790.5, y: 1.5}}
+  tick-x-792: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 792.5, y: 1.5}}
+  tick-x-794: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 794.5, y: 1.5}}
+  tick-x-796: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 796.5, y: 1.5}}
+  tick-x-798: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 798.5, y: 1.5}}
+  tick-x-800: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 800.5, y: 3}}
+  tick-x-802: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 802.5, y: 1.5}}
+  tick-x-804: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 804.5, y: 1.5}}
+  tick-x-806: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 806.5, y: 1.5}}
+  tick-x-808: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 808.5, y: 1.5}}
+  tick-x-810: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 810.5, y: 1.5}}
+  tick-x-812: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 812.5, y: 1.5}}
+  tick-x-814: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 814.5, y: 1.5}}
+  tick-x-816: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 816.5, y: 1.5}}
+  tick-x-818: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 818.5, y: 1.5}}
+  tick-x-820: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 820.5, y: 3}}
+  tick-x-822: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 822.5, y: 1.5}}
+  tick-x-824: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 824.5, y: 1.5}}
+  tick-x-826: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 826.5, y: 1.5}}
+  tick-x-828: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 828.5, y: 1.5}}
+  tick-x-830: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 830.5, y: 1.5}}
+  tick-x-832: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 832.5, y: 1.5}}
+  tick-x-834: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 834.5, y: 1.5}}
+  tick-x-836: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 836.5, y: 1.5}}
+  tick-x-838: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 838.5, y: 1.5}}
+  tick-x-840: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 840.5, y: 3}}
+  tick-x-842: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 842.5, y: 1.5}}
+  tick-x-844: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 844.5, y: 1.5}}
+  tick-x-846: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 846.5, y: 1.5}}
+  tick-x-848: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 848.5, y: 1.5}}
+  tick-x-850: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 850.5, y: 1.5}}
+  tick-x-852: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 852.5, y: 1.5}}
+  tick-x-854: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 854.5, y: 1.5}}
+  tick-x-856: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 856.5, y: 1.5}}
+  tick-x-858: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 858.5, y: 1.5}}
+  tick-x-860: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 860.5, y: 3}}
+  tick-x-862: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 862.5, y: 1.5}}
+  tick-x-864: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 864.5, y: 1.5}}
+  tick-x-866: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 866.5, y: 1.5}}
+  tick-x-868: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 868.5, y: 1.5}}
+  tick-x-870: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 870.5, y: 1.5}}
+  tick-x-872: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 872.5, y: 1.5}}
+  tick-x-874: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 874.5, y: 1.5}}
+  tick-x-876: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 876.5, y: 1.5}}
+  tick-x-878: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 878.5, y: 1.5}}
+  tick-x-880: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 880.5, y: 3}}
+  tick-x-882: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 882.5, y: 1.5}}
+  tick-x-884: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 884.5, y: 1.5}}
+  tick-x-886: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 886.5, y: 1.5}}
+  tick-x-888: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 888.5, y: 1.5}}
+  tick-x-890: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 890.5, y: 1.5}}
+  tick-x-892: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 892.5, y: 1.5}}
+  tick-x-894: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 894.5, y: 1.5}}
+  tick-x-896: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 896.5, y: 1.5}}
+  tick-x-898: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 898.5, y: 1.5}}
+  tick-x-900: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 900.5, y: 3}}
+  tick-x-902: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 902.5, y: 1.5}}
+  tick-x-904: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 904.5, y: 1.5}}
+  tick-x-906: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 906.5, y: 1.5}}
+  tick-x-908: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 908.5, y: 1.5}}
+  tick-x-910: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 910.5, y: 1.5}}
+  tick-x-912: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 912.5, y: 1.5}}
+  tick-x-914: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 914.5, y: 1.5}}
+  tick-x-916: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 916.5, y: 1.5}}
+  tick-x-918: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 918.5, y: 1.5}}
+  tick-x-920: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 920.5, y: 3}}
+  tick-x-922: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 922.5, y: 1.5}}
+  tick-x-924: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 924.5, y: 1.5}}
+  tick-x-926: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 926.5, y: 1.5}}
+  tick-x-928: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 928.5, y: 1.5}}
+  tick-x-930: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 930.5, y: 1.5}}
+  tick-x-932: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 932.5, y: 1.5}}
+  tick-x-934: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 934.5, y: 1.5}}
+  tick-x-936: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 936.5, y: 1.5}}
+  tick-x-938: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 938.5, y: 1.5}}
+  tick-x-940: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 940.5, y: 3}}
+  tick-x-942: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 942.5, y: 1.5}}
+  tick-x-944: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 944.5, y: 1.5}}
+  tick-x-946: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 946.5, y: 1.5}}
+  tick-x-948: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 948.5, y: 1.5}}
+  tick-x-950: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 950.5, y: 1.5}}
+  tick-x-952: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 952.5, y: 1.5}}
+  tick-x-954: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 954.5, y: 1.5}}
+  tick-x-956: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 956.5, y: 1.5}}
+  tick-x-958: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 958.5, y: 1.5}}
+  tick-x-960: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 960.5, y: 3}}
+  tick-x-962: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 962.5, y: 1.5}}
+  tick-x-964: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 964.5, y: 1.5}}
+  tick-x-966: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 966.5, y: 1.5}}
+  tick-x-968: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 968.5, y: 1.5}}
+  tick-x-970: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 970.5, y: 1.5}}
+  tick-x-972: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 972.5, y: 1.5}}
+  tick-x-974: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 974.5, y: 1.5}}
+  tick-x-976: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 976.5, y: 1.5}}
+  tick-x-978: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 978.5, y: 1.5}}
+  tick-x-980: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 980.5, y: 3}}
+  tick-x-982: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 982.5, y: 1.5}}
+  tick-x-984: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 984.5, y: 1.5}}
+  tick-x-986: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 986.5, y: 1.5}}
+  tick-x-988: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 988.5, y: 1.5}}
+  tick-x-990: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 990.5, y: 1.5}}
+  tick-x-992: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 992.5, y: 1.5}}
+  tick-x-994: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 994.5, y: 1.5}}
+  tick-x-996: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 996.5, y: 1.5}}
+  tick-x-998: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 998.5, y: 1.5}}
+  tick-x-1000: {type: rectangle, width: 1, height: 6, color: '#FFFFFF', offset: {x: 1000.5, y: 3}}
+  tick-x-1002: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 1002.5, y: 1.5}}
+  tick-x-1004: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 1004.5, y: 1.5}}
+  tick-x-1006: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 1006.5, y: 1.5}}
+  tick-x-1008: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 1008.5, y: 1.5}}
+  tick-x-1010: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 1010.5, y: 1.5}}
+  tick-x-1012: {type: rectangle, width: 1, height: 3, color: '#FFFFFF', offset: {x: 1012.5, y: 1.5}}
+  tick-y-0: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 0.5}}
+  tick-y-2: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 2.5}}
+  tick-y-4: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 4.5}}
+  tick-y-6: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 6.5}}
+  tick-y-8: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 8.5}}
+  tick-y-10: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 10.5}}
+  tick-y-12: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 12.5}}
+  tick-y-14: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 14.5}}
+  tick-y-16: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 16.5}}
+  tick-y-18: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 18.5}}
+  tick-y-20: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 20.5}}
+  tick-y-22: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 22.5}}
+  tick-y-24: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 24.5}}
+  tick-y-26: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 26.5}}
+  tick-y-28: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 28.5}}
+  tick-y-30: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 30.5}}
+  tick-y-32: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 32.5}}
+  tick-y-34: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 34.5}}
+  tick-y-36: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 36.5}}
+  tick-y-38: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 38.5}}
+  tick-y-40: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 40.5}}
+  tick-y-42: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 42.5}}
+  tick-y-44: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 44.5}}
+  tick-y-46: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 46.5}}
+  tick-y-48: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 48.5}}
+  tick-y-50: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 50.5}}
+  tick-y-52: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 52.5}}
+  tick-y-54: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 54.5}}
+  tick-y-56: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 56.5}}
+  tick-y-58: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 58.5}}
+  tick-y-60: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 60.5}}
+  tick-y-62: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 62.5}}
+  tick-y-64: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 64.5}}
+  tick-y-66: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 66.5}}
+  tick-y-68: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 68.5}}
+  tick-y-70: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 70.5}}
+  tick-y-72: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 72.5}}
+  tick-y-74: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 74.5}}
+  tick-y-76: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 76.5}}
+  tick-y-78: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 78.5}}
+  tick-y-80: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 80.5}}
+  tick-y-82: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 82.5}}
+  tick-y-84: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 84.5}}
+  tick-y-86: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 86.5}}
+  tick-y-88: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 88.5}}
+  tick-y-90: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 90.5}}
+  tick-y-92: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 92.5}}
+  tick-y-94: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 94.5}}
+  tick-y-96: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 96.5}}
+  tick-y-98: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 98.5}}
+  tick-y-100: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 100.5}}
+  tick-y-102: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 102.5}}
+  tick-y-104: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 104.5}}
+  tick-y-106: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 106.5}}
+  tick-y-108: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 108.5}}
+  tick-y-110: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 110.5}}
+  tick-y-112: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 112.5}}
+  tick-y-114: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 114.5}}
+  tick-y-116: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 116.5}}
+  tick-y-118: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 118.5}}
+  tick-y-120: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 120.5}}
+  tick-y-122: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 122.5}}
+  tick-y-124: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 124.5}}
+  tick-y-126: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 126.5}}
+  tick-y-128: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 128.5}}
+  tick-y-130: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 130.5}}
+  tick-y-132: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 132.5}}
+  tick-y-134: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 134.5}}
+  tick-y-136: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 136.5}}
+  tick-y-138: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 138.5}}
+  tick-y-140: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 140.5}}
+  tick-y-142: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 142.5}}
+  tick-y-144: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 144.5}}
+  tick-y-146: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 146.5}}
+  tick-y-148: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 148.5}}
+  tick-y-150: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 150.5}}
+  tick-y-152: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 152.5}}
+  tick-y-154: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 154.5}}
+  tick-y-156: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 156.5}}
+  tick-y-158: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 158.5}}
+  tick-y-160: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 160.5}}
+  tick-y-162: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 162.5}}
+  tick-y-164: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 164.5}}
+  tick-y-166: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 166.5}}
+  tick-y-168: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 168.5}}
+  tick-y-170: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 170.5}}
+  tick-y-172: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 172.5}}
+  tick-y-174: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 174.5}}
+  tick-y-176: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 176.5}}
+  tick-y-178: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 178.5}}
+  tick-y-180: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 180.5}}
+  tick-y-182: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 182.5}}
+  tick-y-184: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 184.5}}
+  tick-y-186: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 186.5}}
+  tick-y-188: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 188.5}}
+  tick-y-190: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 190.5}}
+  tick-y-192: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 192.5}}
+  tick-y-194: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 194.5}}
+  tick-y-196: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 196.5}}
+  tick-y-198: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 198.5}}
+  tick-y-200: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 200.5}}
+  tick-y-202: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 202.5}}
+  tick-y-204: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 204.5}}
+  tick-y-206: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 206.5}}
+  tick-y-208: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 208.5}}
+  tick-y-210: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 210.5}}
+  tick-y-212: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 212.5}}
+  tick-y-214: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 214.5}}
+  tick-y-216: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 216.5}}
+  tick-y-218: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 218.5}}
+  tick-y-220: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 220.5}}
+  tick-y-222: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 222.5}}
+  tick-y-224: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 224.5}}
+  tick-y-226: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 226.5}}
+  tick-y-228: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 228.5}}
+  tick-y-230: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 230.5}}
+  tick-y-232: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 232.5}}
+  tick-y-234: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 234.5}}
+  tick-y-236: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 236.5}}
+  tick-y-238: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 238.5}}
+  tick-y-240: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 240.5}}
+  tick-y-242: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 242.5}}
+  tick-y-244: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 244.5}}
+  tick-y-246: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 246.5}}
+  tick-y-248: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 248.5}}
+  tick-y-250: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 250.5}}
+  tick-y-252: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 252.5}}
+  tick-y-254: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 254.5}}
+  tick-y-256: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 256.5}}
+  tick-y-258: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 258.5}}
+  tick-y-260: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 260.5}}
+  tick-y-262: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 262.5}}
+  tick-y-264: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 264.5}}
+  tick-y-266: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 266.5}}
+  tick-y-268: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 268.5}}
+  tick-y-270: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 270.5}}
+  tick-y-272: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 272.5}}
+  tick-y-274: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 274.5}}
+  tick-y-276: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 276.5}}
+  tick-y-278: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 278.5}}
+  tick-y-280: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 280.5}}
+  tick-y-282: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 282.5}}
+  tick-y-284: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 284.5}}
+  tick-y-286: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 286.5}}
+  tick-y-288: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 288.5}}
+  tick-y-290: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 290.5}}
+  tick-y-292: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 292.5}}
+  tick-y-294: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 294.5}}
+  tick-y-296: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 296.5}}
+  tick-y-298: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 298.5}}
+  tick-y-300: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 300.5}}
+  tick-y-302: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 302.5}}
+  tick-y-304: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 304.5}}
+  tick-y-306: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 306.5}}
+  tick-y-308: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 308.5}}
+  tick-y-310: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 310.5}}
+  tick-y-312: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 312.5}}
+  tick-y-314: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 314.5}}
+  tick-y-316: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 316.5}}
+  tick-y-318: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 318.5}}
+  tick-y-320: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 320.5}}
+  tick-y-322: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 322.5}}
+  tick-y-324: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 324.5}}
+  tick-y-326: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 326.5}}
+  tick-y-328: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 328.5}}
+  tick-y-330: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 330.5}}
+  tick-y-332: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 332.5}}
+  tick-y-334: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 334.5}}
+  tick-y-336: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 336.5}}
+  tick-y-338: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 338.5}}
+  tick-y-340: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 340.5}}
+  tick-y-342: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 342.5}}
+  tick-y-344: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 344.5}}
+  tick-y-346: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 346.5}}
+  tick-y-348: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 348.5}}
+  tick-y-350: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 350.5}}
+  tick-y-352: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 352.5}}
+  tick-y-354: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 354.5}}
+  tick-y-356: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 356.5}}
+  tick-y-358: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 358.5}}
+  tick-y-360: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 360.5}}
+  tick-y-362: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 362.5}}
+  tick-y-364: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 364.5}}
+  tick-y-366: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 366.5}}
+  tick-y-368: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 368.5}}
+  tick-y-370: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 370.5}}
+  tick-y-372: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 372.5}}
+  tick-y-374: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 374.5}}
+  tick-y-376: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 376.5}}
+  tick-y-378: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 378.5}}
+  tick-y-380: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 380.5}}
+  tick-y-382: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 382.5}}
+  tick-y-384: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 384.5}}
+  tick-y-386: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 386.5}}
+  tick-y-388: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 388.5}}
+  tick-y-390: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 390.5}}
+  tick-y-392: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 392.5}}
+  tick-y-394: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 394.5}}
+  tick-y-396: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 396.5}}
+  tick-y-398: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 398.5}}
+  tick-y-400: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 400.5}}
+  tick-y-402: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 402.5}}
+  tick-y-404: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 404.5}}
+  tick-y-406: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 406.5}}
+  tick-y-408: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 408.5}}
+  tick-y-410: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 410.5}}
+  tick-y-412: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 412.5}}
+  tick-y-414: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 414.5}}
+  tick-y-416: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 416.5}}
+  tick-y-418: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 418.5}}
+  tick-y-420: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 420.5}}
+  tick-y-422: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 422.5}}
+  tick-y-424: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 424.5}}
+  tick-y-426: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 426.5}}
+  tick-y-428: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 428.5}}
+  tick-y-430: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 430.5}}
+  tick-y-432: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 432.5}}
+  tick-y-434: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 434.5}}
+  tick-y-436: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 436.5}}
+  tick-y-438: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 438.5}}
+  tick-y-440: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 440.5}}
+  tick-y-442: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 442.5}}
+  tick-y-444: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 444.5}}
+  tick-y-446: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 446.5}}
+  tick-y-448: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 448.5}}
+  tick-y-450: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 450.5}}
+  tick-y-452: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 452.5}}
+  tick-y-454: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 454.5}}
+  tick-y-456: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 456.5}}
+  tick-y-458: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 458.5}}
+  tick-y-460: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 460.5}}
+  tick-y-462: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 462.5}}
+  tick-y-464: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 464.5}}
+  tick-y-466: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 466.5}}
+  tick-y-468: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 468.5}}
+  tick-y-470: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 470.5}}
+  tick-y-472: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 472.5}}
+  tick-y-474: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 474.5}}
+  tick-y-476: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 476.5}}
+  tick-y-478: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 478.5}}
+  tick-y-480: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 480.5}}
+  tick-y-482: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 482.5}}
+  tick-y-484: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 484.5}}
+  tick-y-486: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 486.5}}
+  tick-y-488: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 488.5}}
+  tick-y-490: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 490.5}}
+  tick-y-492: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 492.5}}
+  tick-y-494: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 494.5}}
+  tick-y-496: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 496.5}}
+  tick-y-498: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 498.5}}
+  tick-y-500: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 500.5}}
+  tick-y-502: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 502.5}}
+  tick-y-504: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 504.5}}
+  tick-y-506: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 506.5}}
+  tick-y-508: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 508.5}}
+  tick-y-510: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 510.5}}
+  tick-y-512: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 512.5}}
+  tick-y-514: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 514.5}}
+  tick-y-516: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 516.5}}
+  tick-y-518: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 518.5}}
+  tick-y-520: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 520.5}}
+  tick-y-522: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 522.5}}
+  tick-y-524: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 524.5}}
+  tick-y-526: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 526.5}}
+  tick-y-528: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 528.5}}
+  tick-y-530: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 530.5}}
+  tick-y-532: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 532.5}}
+  tick-y-534: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 534.5}}
+  tick-y-536: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 536.5}}
+  tick-y-538: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 538.5}}
+  tick-y-540: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 540.5}}
+  tick-y-542: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 542.5}}
+  tick-y-544: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 544.5}}
+  tick-y-546: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 546.5}}
+  tick-y-548: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 548.5}}
+  tick-y-550: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 550.5}}
+  tick-y-552: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 552.5}}
+  tick-y-554: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 554.5}}
+  tick-y-556: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 556.5}}
+  tick-y-558: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 558.5}}
+  tick-y-560: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 560.5}}
+  tick-y-562: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 562.5}}
+  tick-y-564: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 564.5}}
+  tick-y-566: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 566.5}}
+  tick-y-568: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 568.5}}
+  tick-y-570: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 570.5}}
+  tick-y-572: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 572.5}}
+  tick-y-574: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 574.5}}
+  tick-y-576: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 576.5}}
+  tick-y-578: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 578.5}}
+  tick-y-580: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 580.5}}
+  tick-y-582: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 582.5}}
+  tick-y-584: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 584.5}}
+  tick-y-586: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 586.5}}
+  tick-y-588: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 588.5}}
+  tick-y-590: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 590.5}}
+  tick-y-592: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 592.5}}
+  tick-y-594: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 594.5}}
+  tick-y-596: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 596.5}}
+  tick-y-598: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 598.5}}
+  tick-y-600: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 600.5}}
+  tick-y-602: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 602.5}}
+  tick-y-604: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 604.5}}
+  tick-y-606: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 606.5}}
+  tick-y-608: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 608.5}}
+  tick-y-610: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 610.5}}
+  tick-y-612: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 612.5}}
+  tick-y-614: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 614.5}}
+  tick-y-616: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 616.5}}
+  tick-y-618: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 618.5}}
+  tick-y-620: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 620.5}}
+  tick-y-622: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 622.5}}
+  tick-y-624: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 624.5}}
+  tick-y-626: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 626.5}}
+  tick-y-628: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 628.5}}
+  tick-y-630: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 630.5}}
+  tick-y-632: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 632.5}}
+  tick-y-634: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 634.5}}
+  tick-y-636: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 636.5}}
+  tick-y-638: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 638.5}}
+  tick-y-640: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 640.5}}
+  tick-y-642: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 642.5}}
+  tick-y-644: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 644.5}}
+  tick-y-646: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 646.5}}
+  tick-y-648: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 648.5}}
+  tick-y-650: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 650.5}}
+  tick-y-652: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 652.5}}
+  tick-y-654: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 654.5}}
+  tick-y-656: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 656.5}}
+  tick-y-658: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 658.5}}
+  tick-y-660: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 660.5}}
+  tick-y-662: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 662.5}}
+  tick-y-664: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 664.5}}
+  tick-y-666: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 666.5}}
+  tick-y-668: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 668.5}}
+  tick-y-670: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 670.5}}
+  tick-y-672: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 672.5}}
+  tick-y-674: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 674.5}}
+  tick-y-676: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 676.5}}
+  tick-y-678: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 678.5}}
+  tick-y-680: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 680.5}}
+  tick-y-682: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 682.5}}
+  tick-y-684: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 684.5}}
+  tick-y-686: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 686.5}}
+  tick-y-688: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 688.5}}
+  tick-y-690: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 690.5}}
+  tick-y-692: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 692.5}}
+  tick-y-694: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 694.5}}
+  tick-y-696: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 696.5}}
+  tick-y-698: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 698.5}}
+  tick-y-700: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 700.5}}
+  tick-y-702: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 702.5}}
+  tick-y-704: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 704.5}}
+  tick-y-706: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 706.5}}
+  tick-y-708: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 708.5}}
+  tick-y-710: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 710.5}}
+  tick-y-712: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 712.5}}
+  tick-y-714: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 714.5}}
+  tick-y-716: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 716.5}}
+  tick-y-718: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 718.5}}
+  tick-y-720: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 720.5}}
+  tick-y-722: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 722.5}}
+  tick-y-724: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 724.5}}
+  tick-y-726: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 726.5}}
+  tick-y-728: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 728.5}}
+  tick-y-730: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 730.5}}
+  tick-y-732: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 732.5}}
+  tick-y-734: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 734.5}}
+  tick-y-736: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 736.5}}
+  tick-y-738: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 738.5}}
+  tick-y-740: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 740.5}}
+  tick-y-742: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 742.5}}
+  tick-y-744: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 744.5}}
+  tick-y-746: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 746.5}}
+  tick-y-748: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 748.5}}
+  tick-y-750: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 750.5}}
+  tick-y-752: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 752.5}}
+  tick-y-754: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 754.5}}
+  tick-y-756: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 756.5}}
+  tick-y-758: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 758.5}}
+  tick-y-760: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 760.5}}
+  tick-y-762: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 762.5}}
+  tick-y-764: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 764.5}}
+  tick-y-766: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 766.5}}
+  tick-y-768: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 768.5}}
+  tick-y-770: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 770.5}}
+  tick-y-772: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 772.5}}
+  tick-y-774: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 774.5}}
+  tick-y-776: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 776.5}}
+  tick-y-778: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 778.5}}
+  tick-y-780: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 780.5}}
+  tick-y-782: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 782.5}}
+  tick-y-784: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 784.5}}
+  tick-y-786: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 786.5}}
+  tick-y-788: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 788.5}}
+  tick-y-790: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 790.5}}
+  tick-y-792: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 792.5}}
+  tick-y-794: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 794.5}}
+  tick-y-796: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 796.5}}
+  tick-y-798: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 798.5}}
+  tick-y-800: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 800.5}}
+  tick-y-802: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 802.5}}
+  tick-y-804: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 804.5}}
+  tick-y-806: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 806.5}}
+  tick-y-808: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 808.5}}
+  tick-y-810: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 810.5}}
+  tick-y-812: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 812.5}}
+  tick-y-814: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 814.5}}
+  tick-y-816: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 816.5}}
+  tick-y-818: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 818.5}}
+  tick-y-820: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 820.5}}
+  tick-y-822: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 822.5}}
+  tick-y-824: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 824.5}}
+  tick-y-826: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 826.5}}
+  tick-y-828: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 828.5}}
+  tick-y-830: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 830.5}}
+  tick-y-832: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 832.5}}
+  tick-y-834: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 834.5}}
+  tick-y-836: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 836.5}}
+  tick-y-838: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 838.5}}
+  tick-y-840: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 840.5}}
+  tick-y-842: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 842.5}}
+  tick-y-844: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 844.5}}
+  tick-y-846: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 846.5}}
+  tick-y-848: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 848.5}}
+  tick-y-850: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 850.5}}
+  tick-y-852: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 852.5}}
+  tick-y-854: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 854.5}}
+  tick-y-856: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 856.5}}
+  tick-y-858: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 858.5}}
+  tick-y-860: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 860.5}}
+  tick-y-862: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 862.5}}
+  tick-y-864: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 864.5}}
+  tick-y-866: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 866.5}}
+  tick-y-868: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 868.5}}
+  tick-y-870: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 870.5}}
+  tick-y-872: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 872.5}}
+  tick-y-874: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 874.5}}
+  tick-y-876: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 876.5}}
+  tick-y-878: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 878.5}}
+  tick-y-880: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 880.5}}
+  tick-y-882: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 882.5}}
+  tick-y-884: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 884.5}}
+  tick-y-886: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 886.5}}
+  tick-y-888: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 888.5}}
+  tick-y-890: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 890.5}}
+  tick-y-892: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 892.5}}
+  tick-y-894: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 894.5}}
+  tick-y-896: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 896.5}}
+  tick-y-898: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 898.5}}
+  tick-y-900: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 900.5}}
+  tick-y-902: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 902.5}}
+  tick-y-904: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 904.5}}
+  tick-y-906: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 906.5}}
+  tick-y-908: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 908.5}}
+  tick-y-910: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 910.5}}
+  tick-y-912: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 912.5}}
+  tick-y-914: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 914.5}}
+  tick-y-916: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 916.5}}
+  tick-y-918: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 918.5}}
+  tick-y-920: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 920.5}}
+  tick-y-922: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 922.5}}
+  tick-y-924: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 924.5}}
+  tick-y-926: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 926.5}}
+  tick-y-928: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 928.5}}
+  tick-y-930: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 930.5}}
+  tick-y-932: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 932.5}}
+  tick-y-934: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 934.5}}
+  tick-y-936: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 936.5}}
+  tick-y-938: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 938.5}}
+  tick-y-940: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 940.5}}
+  tick-y-942: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 942.5}}
+  tick-y-944: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 944.5}}
+  tick-y-946: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 946.5}}
+  tick-y-948: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 948.5}}
+  tick-y-950: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 950.5}}
+  tick-y-952: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 952.5}}
+  tick-y-954: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 954.5}}
+  tick-y-956: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 956.5}}
+  tick-y-958: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 958.5}}
+  tick-y-960: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 960.5}}
+  tick-y-962: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 962.5}}
+  tick-y-964: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 964.5}}
+  tick-y-966: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 966.5}}
+  tick-y-968: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 968.5}}
+  tick-y-970: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 970.5}}
+  tick-y-972: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 972.5}}
+  tick-y-974: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 974.5}}
+  tick-y-976: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 976.5}}
+  tick-y-978: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 978.5}}
+  tick-y-980: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 980.5}}
+  tick-y-982: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 982.5}}
+  tick-y-984: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 984.5}}
+  tick-y-986: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 986.5}}
+  tick-y-988: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 988.5}}
+  tick-y-990: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 990.5}}
+  tick-y-992: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 992.5}}
+  tick-y-994: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 994.5}}
+  tick-y-996: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 996.5}}
+  tick-y-998: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 998.5}}
+  tick-y-1000: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 1000.5}}
+  tick-y-1002: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 1002.5}}
+  tick-y-1004: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 1004.5}}
+  tick-y-1006: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 1006.5}}
+  tick-y-1008: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 1008.5}}
+  tick-y-1010: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 1010.5}}
+  tick-y-1012: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 1012.5}}
+  tick-y-1014: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 1014.5}}
+  tick-y-1016: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 1016.5}}
+  tick-y-1018: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 1018.5}}
+  tick-y-1020: {type: rectangle, width: 6, height: 1, color: '#FFFFFF', offset: {x: 3, y: 1020.5}}
+  tick-y-1022: {type: rectangle, width: 3, height: 1, color: '#FFFFFF', offset: {x: 1.5, y: 1022.5}}
+  x-0: {type: text, size: 6, content: '0', alignment: left, offset: {x: 8, y: 12}, tooltip: 'X=0; Y=0'}
+  x-20: {type: text, size: 6, content: '20', alignment: center, offset: {x: 20, y: 12}, tooltip: 'X=20; Y=0'}
+  x-40: {type: text, size: 6, content: '40', alignment: center, offset: {x: 40, y: 12}, tooltip: 'X=40; Y=0'}
+  x-60: {type: text, size: 6, content: '60', alignment: center, offset: {x: 60, y: 12}, tooltip: 'X=60; Y=0'}
+  x-80: {type: text, size: 6, content: '80', alignment: center, offset: {x: 80, y: 12}, tooltip: 'X=80; Y=0'}
+  x-100: {type: text, size: 6, content: '100', alignment: center, offset: {x: 100, y: 12}, tooltip: 'X=100; Y=0'}
+  x-120: {type: text, size: 6, content: '120', alignment: center, offset: {x: 120, y: 12}, tooltip: 'X=120; Y=0'}
+  x-140: {type: text, size: 6, content: '140', alignment: center, offset: {x: 140, y: 12}, tooltip: 'X=140; Y=0'}
+  x-160: {type: text, size: 6, content: '160', alignment: center, offset: {x: 160, y: 12}, tooltip: 'X=160; Y=0'}
+  x-180: {type: text, size: 6, content: '180', alignment: center, offset: {x: 180, y: 12}, tooltip: 'X=180; Y=0'}
+  x-200: {type: text, size: 6, content: '200', alignment: center, offset: {x: 200, y: 12}, tooltip: 'X=200; Y=0'}
+  x-220: {type: text, size: 6, content: '220', alignment: center, offset: {x: 220, y: 12}, tooltip: 'X=220; Y=0'}
+  x-240: {type: text, size: 6, content: '240', alignment: center, offset: {x: 240, y: 12}, tooltip: 'X=240; Y=0'}
+  x-260: {type: text, size: 6, content: '260', alignment: center, offset: {x: 260, y: 12}, tooltip: 'X=260; Y=0'}
+  x-280: {type: text, size: 6, content: '280', alignment: center, offset: {x: 280, y: 12}, tooltip: 'X=280; Y=0'}
+  x-300: {type: text, size: 6, content: '300', alignment: center, offset: {x: 300, y: 12}, tooltip: 'X=300; Y=0'}
+  x-320: {type: text, size: 6, content: '320', alignment: center, offset: {x: 320, y: 12}, tooltip: 'X=320; Y=0'}
+  x-340: {type: text, size: 6, content: '340', alignment: center, offset: {x: 340, y: 12}, tooltip: 'X=340; Y=0'}
+  x-360: {type: text, size: 6, content: '360', alignment: center, offset: {x: 360, y: 12}, tooltip: 'X=360; Y=0'}
+  x-380: {type: text, size: 6, content: '380', alignment: center, offset: {x: 380, y: 12}, tooltip: 'X=380; Y=0'}
+  x-400: {type: text, size: 6, content: '400', alignment: center, offset: {x: 400, y: 12}, tooltip: 'X=400; Y=0'}
+  x-420: {type: text, size: 6, content: '420', alignment: center, offset: {x: 420, y: 12}, tooltip: 'X=420; Y=0'}
+  x-440: {type: text, size: 6, content: '440', alignment: center, offset: {x: 440, y: 12}, tooltip: 'X=440; Y=0'}
+  x-460: {type: text, size: 6, content: '460', alignment: center, offset: {x: 460, y: 12}, tooltip: 'X=460; Y=0'}
+  x-480: {type: text, size: 6, content: '480', alignment: center, offset: {x: 480, y: 12}, tooltip: 'X=480; Y=0'}
+  x-500: {type: text, size: 6, content: '500', alignment: center, offset: {x: 500, y: 12}, tooltip: 'X=500; Y=0'}
+  x-520: {type: text, size: 6, content: '520', alignment: center, offset: {x: 520, y: 12}, tooltip: 'X=520; Y=0'}
+  x-540: {type: text, size: 6, content: '540', alignment: center, offset: {x: 540, y: 12}, tooltip: 'X=540; Y=0'}
+  x-560: {type: text, size: 6, content: '560', alignment: center, offset: {x: 560, y: 12}, tooltip: 'X=560; Y=0'}
+  x-580: {type: text, size: 6, content: '580', alignment: center, offset: {x: 580, y: 12}, tooltip: 'X=580; Y=0'}
+  x-600: {type: text, size: 6, content: '600', alignment: center, offset: {x: 600, y: 12}, tooltip: 'X=600; Y=0'}
+  x-620: {type: text, size: 6, content: '620', alignment: center, offset: {x: 620, y: 12}, tooltip: 'X=620; Y=0'}
+  x-640: {type: text, size: 6, content: '640', alignment: center, offset: {x: 640, y: 12}, tooltip: 'X=640; Y=0'}
+  x-660: {type: text, size: 6, content: '660', alignment: center, offset: {x: 660, y: 12}, tooltip: 'X=660; Y=0'}
+  x-680: {type: text, size: 6, content: '680', alignment: center, offset: {x: 680, y: 12}, tooltip: 'X=680; Y=0'}
+  x-700: {type: text, size: 6, content: '700', alignment: center, offset: {x: 700, y: 12}, tooltip: 'X=700; Y=0'}
+  x-720: {type: text, size: 6, content: '720', alignment: center, offset: {x: 720, y: 12}, tooltip: 'X=720; Y=0'}
+  x-740: {type: text, size: 6, content: '740', alignment: center, offset: {x: 740, y: 12}, tooltip: 'X=740; Y=0'}
+  x-760: {type: text, size: 6, content: '760', alignment: center, offset: {x: 760, y: 12}, tooltip: 'X=760; Y=0'}
+  x-780: {type: text, size: 6, content: '780', alignment: center, offset: {x: 780, y: 12}, tooltip: 'X=780; Y=0'}
+  x-800: {type: text, size: 6, content: '800', alignment: center, offset: {x: 800, y: 12}, tooltip: 'X=800; Y=0'}
+  x-820: {type: text, size: 6, content: '820', alignment: center, offset: {x: 820, y: 12}, tooltip: 'X=820; Y=0'}
+  x-840: {type: text, size: 6, content: '840', alignment: center, offset: {x: 840, y: 12}, tooltip: 'X=840; Y=0'}
+  x-860: {type: text, size: 6, content: '860', alignment: center, offset: {x: 860, y: 12}, tooltip: 'X=860; Y=0'}
+  x-880: {type: text, size: 6, content: '880', alignment: center, offset: {x: 880, y: 12}, tooltip: 'X=880; Y=0'}
+  x-900: {type: text, size: 6, content: '900', alignment: center, offset: {x: 900, y: 12}, tooltip: 'X=900; Y=0'}
+  x-920: {type: text, size: 6, content: '920', alignment: center, offset: {x: 920, y: 12}, tooltip: 'X=920; Y=0'}
+  x-940: {type: text, size: 6, content: '940', alignment: center, offset: {x: 940, y: 12}, tooltip: 'X=940; Y=0'}
+  x-960: {type: text, size: 6, content: '960', alignment: center, offset: {x: 960, y: 12}, tooltip: 'X=960; Y=0'}
+  x-980: {type: text, size: 6, content: '980', alignment: center, offset: {x: 980, y: 12}, tooltip: 'X=980; Y=0'}
+  x-1000: {type: text, size: 6, content: '1000', alignment: right, offset: {x: 1000, y: 12}, tooltip: 'X=1000; Y=0'}
+  y-20: {type: text, size: 6, content: '20', alignment: left, offset: {x: 10, y: 20}, tooltip: 'X=0; Y=20'}
+  y-40: {type: text, size: 6, content: '40', alignment: left, offset: {x: 10, y: 40}, tooltip: 'X=0; Y=40'}
+  y-60: {type: text, size: 6, content: '60', alignment: left, offset: {x: 10, y: 60}, tooltip: 'X=0; Y=60'}
+  y-80: {type: text, size: 6, content: '80', alignment: left, offset: {x: 10, y: 80}, tooltip: 'X=0; Y=80'}
+  y-100: {type: text, size: 6, content: '100', alignment: left, offset: {x: 10, y: 100}, tooltip: 'X=0; Y=100'}
+  y-120: {type: text, size: 6, content: '120', alignment: left, offset: {x: 10, y: 120}, tooltip: 'X=0; Y=120'}
+  y-140: {type: text, size: 6, content: '140', alignment: left, offset: {x: 10, y: 140}, tooltip: 'X=0; Y=140'}
+  y-160: {type: text, size: 6, content: '160', alignment: left, offset: {x: 10, y: 160}, tooltip: 'X=0; Y=160'}
+  y-180: {type: text, size: 6, content: '180', alignment: left, offset: {x: 10, y: 180}, tooltip: 'X=0; Y=180'}
+  y-200: {type: text, size: 6, content: '200', alignment: left, offset: {x: 10, y: 200}, tooltip: 'X=0; Y=200'}
+  y-220: {type: text, size: 6, content: '220', alignment: left, offset: {x: 10, y: 220}, tooltip: 'X=0; Y=220'}
+  y-240: {type: text, size: 6, content: '240', alignment: left, offset: {x: 10, y: 240}, tooltip: 'X=0; Y=240'}
+  y-260: {type: text, size: 6, content: '260', alignment: left, offset: {x: 10, y: 260}, tooltip: 'X=0; Y=260'}
+  y-280: {type: text, size: 6, content: '280', alignment: left, offset: {x: 10, y: 280}, tooltip: 'X=0; Y=280'}
+  y-300: {type: text, size: 6, content: '300', alignment: left, offset: {x: 10, y: 300}, tooltip: 'X=0; Y=300'}
+  y-320: {type: text, size: 6, content: '320', alignment: left, offset: {x: 10, y: 320}, tooltip: 'X=0; Y=320'}
+  y-340: {type: text, size: 6, content: '340', alignment: left, offset: {x: 10, y: 340}, tooltip: 'X=0; Y=340'}
+  y-360: {type: text, size: 6, content: '360', alignment: left, offset: {x: 10, y: 360}, tooltip: 'X=0; Y=360'}
+  y-380: {type: text, size: 6, content: '380', alignment: left, offset: {x: 10, y: 380}, tooltip: 'X=0; Y=380'}
+  y-400: {type: text, size: 6, content: '400', alignment: left, offset: {x: 10, y: 400}, tooltip: 'X=0; Y=400'}
+  y-420: {type: text, size: 6, content: '420', alignment: left, offset: {x: 10, y: 420}, tooltip: 'X=0; Y=420'}
+  y-440: {type: text, size: 6, content: '440', alignment: left, offset: {x: 10, y: 440}, tooltip: 'X=0; Y=440'}
+  y-460: {type: text, size: 6, content: '460', alignment: left, offset: {x: 10, y: 460}, tooltip: 'X=0; Y=460'}
+  y-480: {type: text, size: 6, content: '480', alignment: left, offset: {x: 10, y: 480}, tooltip: 'X=0; Y=480'}
+  y-500: {type: text, size: 6, content: '500', alignment: left, offset: {x: 10, y: 500}, tooltip: 'X=0; Y=500'}
+  y-520: {type: text, size: 6, content: '520', alignment: left, offset: {x: 10, y: 520}, tooltip: 'X=0; Y=520'}
+  y-540: {type: text, size: 6, content: '540', alignment: left, offset: {x: 10, y: 540}, tooltip: 'X=0; Y=540'}
+  y-560: {type: text, size: 6, content: '560', alignment: left, offset: {x: 10, y: 560}, tooltip: 'X=0; Y=560'}
+  y-580: {type: text, size: 6, content: '580', alignment: left, offset: {x: 10, y: 580}, tooltip: 'X=0; Y=580'}
+  y-600: {type: text, size: 6, content: '600', alignment: left, offset: {x: 10, y: 600}, tooltip: 'X=0; Y=600'}
+  y-620: {type: text, size: 6, content: '620', alignment: left, offset: {x: 10, y: 620}, tooltip: 'X=0; Y=620'}
+  y-640: {type: text, size: 6, content: '640', alignment: left, offset: {x: 10, y: 640}, tooltip: 'X=0; Y=640'}
+  y-660: {type: text, size: 6, content: '660', alignment: left, offset: {x: 10, y: 660}, tooltip: 'X=0; Y=660'}
+  y-680: {type: text, size: 6, content: '680', alignment: left, offset: {x: 10, y: 680}, tooltip: 'X=0; Y=680'}
+  y-700: {type: text, size: 6, content: '700', alignment: left, offset: {x: 10, y: 700}, tooltip: 'X=0; Y=700'}
+  y-720: {type: text, size: 6, content: '720', alignment: left, offset: {x: 10, y: 720}, tooltip: 'X=0; Y=720'}
+  y-740: {type: text, size: 6, content: '740', alignment: left, offset: {x: 10, y: 740}, tooltip: 'X=0; Y=740'}
+  y-760: {type: text, size: 6, content: '760', alignment: left, offset: {x: 10, y: 760}, tooltip: 'X=0; Y=760'}
+  y-780: {type: text, size: 6, content: '780', alignment: left, offset: {x: 10, y: 780}, tooltip: 'X=0; Y=780'}
+  y-800: {type: text, size: 6, content: '800', alignment: left, offset: {x: 10, y: 800}, tooltip: 'X=0; Y=800'}
+  y-820: {type: text, size: 6, content: '820', alignment: left, offset: {x: 10, y: 820}, tooltip: 'X=0; Y=820'}
+  y-840: {type: text, size: 6, content: '840', alignment: left, offset: {x: 10, y: 840}, tooltip: 'X=0; Y=840'}
+  y-860: {type: text, size: 6, content: '860', alignment: left, offset: {x: 10, y: 860}, tooltip: 'X=0; Y=860'}
+  y-880: {type: text, size: 6, content: '880', alignment: left, offset: {x: 10, y: 880}, tooltip: 'X=0; Y=880'}
+  y-900: {type: text, size: 6, content: '900', alignment: left, offset: {x: 10, y: 900}, tooltip: 'X=0; Y=900'}
+  y-920: {type: text, size: 6, content: '920', alignment: left, offset: {x: 10, y: 920}, tooltip: 'X=0; Y=920'}
+  y-940: {type: text, size: 6, content: '940', alignment: left, offset: {x: 10, y: 940}, tooltip: 'X=0; Y=940'}
+  y-960: {type: text, size: 6, content: '960', alignment: left, offset: {x: 10, y: 960}, tooltip: 'X=0; Y=960'}
+  y-980: {type: text, size: 6, content: '980', alignment: left, offset: {x: 10, y: 980}, tooltip: 'X=0; Y=980'}
+  y-1000: {type: text, size: 6, content: '1000', alignment: left, offset: {x: 10, y: 1000}, tooltip: 'X=0; Y=1000'}
+  y-1020: {type: text, size: 6, content: '1020', alignment: left, offset: {x: 10, y: 1020}, tooltip: 'X=0; Y=1020'}
+  close: {type: text, content: Close, offset: {x: 80, y: 40, z: 1}, tooltip: Close, actions: close}

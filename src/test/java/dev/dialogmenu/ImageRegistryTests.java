@@ -427,6 +427,11 @@ final class ImageRegistryTests {
                 """.formatted(fields);
             var colored = LayoutStore.loadText("legacy", source).get("legacy");
             var original = LayoutStore.loadText("legacy", source.replace("#123456", "#FFFFFF")).get("legacy");
+            if (fields.contains("rotation")) {
+                rejects(() -> renderer.drawRuntime(colored.menu(), CONTEXT, 300, 131072),
+                    "Unsupported runtime transforms cannot silently rasterize a new bitmap");
+                continue;
+            }
             var fonts = FontPack.create(List.of(original), renderer, CONTEXT, List.of(300), 131072);
             var preview = renderer.draw(colored.menu(), CONTEXT, 300, 131072);
             var baseline = renderer.draw(original.menu(), CONTEXT, 300, 131072);
@@ -455,7 +460,7 @@ final class ImageRegistryTests {
         Set<String> nativeSprites = new HashSet<>(InventoryAssets.nativeSprites().values());
         return (int) sources.asList().stream().filter(value -> {
             String sprite = value.getAsJsonObject().get("sprite").getAsString();
-            return !nativeSprites.contains(sprite)
+            return !sprite.startsWith("dialogmenu:registered/tile_") && !nativeSprites.contains(sprite)
                 && defaults.stream().noneMatch(hash -> sprite.startsWith("dialogmenu:registered/" + hash + "_"));
         }).count();
     }

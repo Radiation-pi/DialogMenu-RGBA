@@ -142,9 +142,6 @@ final class MenuTemplate {
             }
             return List.copyOf(next);
         }
-        String preview(String text, Map<String, String> state, String player) {
-            return preview(state, player).apply(text);
-        }
         UnaryOperator<String> preview(Map<String, String> state, String player) {
             Preview prepared = state.isEmpty() ? defaultPreview : preparePreview(state);
             return text -> prepared.expand(text, player);
@@ -200,18 +197,19 @@ final class MenuTemplate {
     final Definition definition;
     final String page;
     private final CompiledLayout layout;
+    private final LayoutStore.Header header;
     private final String yamlText;
     private final List<GridPlan> grids = new ArrayList<>();
     private final Map<String, FlowListSpec> flowLists = new LinkedHashMap<>();
     private record MenuLayout(List<List<Node>> branches, Menu menu) {}
     private volatile MenuLayout latestMenu;
-    private MenuTemplate(Definition definition, String page, ConfigurationSection config) {
+    private MenuTemplate(Definition definition, String page, ConfigurationSection config, int schema) {
         this.definition = definition;
         this.page = page;
         YamlConfiguration yaml = new YamlConfiguration();
         copy(config, yaml);
         yaml.set("id", page);
-        yaml.set("schema-version", 1);
+        yaml.set("schema-version", schema);
         var section = yaml.getConfigurationSection("grids");
         if (section != null) for (String id : section.getKeys(false)) {
             var grid = Objects.requireNonNull(section.getConfigurationSection(id), "grid须为对象");
@@ -249,19 +247,21 @@ final class MenuTemplate {
         }
         yaml.set("flow-lists", null);
         yamlText = yaml.saveToString();
+        header = LayoutStore.header(page, yaml);
         layout = new CompiledLayout(page, yaml);
     }
     static Map<String, LayoutStore.Document> load(String id, YamlConfiguration yaml) throws Exception {
         LayoutStore.keys(yaml, Set.of("schema-version", "id", "variables", "state", "collections",
             "entries", "messages", "forms", "pages", "characters", "samples"));
-        if (!id.equals(yaml.getString("id")) || LayoutStore.integer(yaml, "schema-version", 1, 1, 1) != 1)
+        int schema = LayoutStore.integer(yaml, "schema-version", 1, 1, 3);
+        if (!id.equals(yaml.getString("id")))
             throw new IllegalArgumentException("应用id须与文件名一致");
         Definition definition = new Definition(id, yaml);
         Map<String, LayoutStore.Document> result = new LinkedHashMap<>();
         var pages = Objects.requireNonNull(yaml.getConfigurationSection("pages"), "缺少pages");
         for (String page : pages.getKeys(false)) {
             MenuTemplate template = new MenuTemplate(definition, LayoutStore.id(page),
-                Objects.requireNonNull(pages.getConfigurationSection(page), "page须为对象"));
+                Objects.requireNonNull(pages.getConfigurationSection(page), "page须为对象"), schema);
             result.put(page, template.document(Map.of()));
         }
         return result;
@@ -352,7 +352,8 @@ final class MenuTemplate {
                 Entry entry = definition.entries.get(id);
                 String prefix = "grid-" + g + "-" + i;
                 double x = grid.getDouble("x") + i % columns * grid.getDouble("step-x");
-                double y = grid.getDouble("y") - i / columns * grid.getDouble("step-y");
+                double y = grid.getDouble("y") + (header.schema() >= 2 ? 1 : -1)
+                    * (i / columns) * grid.getDouble("step-y");
                 String label = entry != null ? entry.label() : id.isEmpty() ? grid.getString("empty-label", "")
                     : grid.getString("unknown-label", id);
                 double w = grid.getDouble("width"), h = grid.getDouble("height");
@@ -378,7 +379,7 @@ final class MenuTemplate {
                     1, 1, 1, 0, 0, 0xFF000000 | Integer.parseInt(color.substring(1), 16), label, "",
                     icon ? "left" : "center", 8, 1, 0, 9, 18, List.of(), 0, interaction, false));
             }
-            List<Node> result = List.copyOf(nodes);
+            List<Node> result = nodes.stream().map(header::renderNode).toList();
             synchronized (cache) { cache.put(List.copyOf(items), result); }
             return result;
         }

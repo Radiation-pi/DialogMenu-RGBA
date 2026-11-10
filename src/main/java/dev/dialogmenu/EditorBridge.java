@@ -38,13 +38,6 @@ final class EditorBridge implements PluginMessageListener, Listener, AutoCloseab
         messenger.registerOutgoingPluginChannel(plugin, EditorWire.CHANNEL);
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
-    void open(Player player, String menu) {
-        if (!permitted(player)) { player.sendMessage("§c没有菜单编辑权限。"); return; }
-        var message = new JsonObject(); message.addProperty("event", "open");
-        if (menu != null && !menu.isBlank()) message.addProperty("menu", menu);
-        send(player, message);
-        player.sendMessage("§7编辑器需要安装 DialogMenu Editor Mod；也可按 F8 打开。");
-    }
     private static boolean permitted(Player player) { return player.hasPermission("dialogmenu.admin"); }
     @Override public void onPluginMessageReceived(String channel, Player player, byte[] frame) {
         if (closed || !channel.equals(EditorWire.CHANNEL) || !permitted(player)) return;
@@ -129,7 +122,7 @@ final class EditorBridge implements PluginMessageListener, Listener, AutoCloseab
                     try {
                         var doc = preview.snapshot().documents().get(preview.page());
                         Context context = MenuTemplate.preview(doc, DialogMenuPlugin.PREVIEW);
-                        var frame = preview.snapshot().renderer().draw(doc.menu(), context,
+                        var frame = preview.snapshot().renderer().drawRuntime(doc.menu(), context,
                             preview.snapshot().settings().width(), preview.snapshot().settings().maxPixels());
                         var output = new SpriteCanvas().encode(doc.menu(), frame, context, preview.snapshot().fonts(), r -> null);
                         JsonElement component = JsonParser.parseString(GsonComponentSerializer.gson().serialize(output.component()));

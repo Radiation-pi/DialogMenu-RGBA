@@ -53,9 +53,10 @@ void dialogmenu_transform(inout vec3 position, inout vec2 imageUv) {
             return;
         }
     }
-    if (!tagged && !direct && !hidden) return;
+    bool tiled = (payload & 0x80000000u) != 0u;
+    if (!tagged && !direct && !hidden && !tiled) return;
     // Native-atlas object sprites preserve complete 256px sources, unlike bitmap cells with borders.
-    if (tagged || hidden) {
+    if (tagged || hidden || tiled) {
         ivec2 atlasSize = textureSize(Sampler0, 0);
         ivec2 endpoint = ivec2(round(UV0 * vec2(atlasSize)));
         for (int corner = 0; corner < 4; corner++) {
@@ -63,6 +64,37 @@ void dialogmenu_transform(inout vec3 position, inout vec2 imageUv) {
             ivec2 pixel = endpoint - ivec2(side);
             if (any(lessThan(pixel, ivec2(0))) || any(greaterThanEqual(pixel, atlasSize))) continue;
             ivec4 marker = ivec4(round(texelFetch(Sampler0, pixel, 0) * 255.0));
+            if (all(equal(marker, ivec4(29, 86, 149 + corner, 252 + corner))) && (tiled || hidden)) {
+                int stepX = side.x == 0.0 ? 1 : -1;
+                ivec4 metadata = ivec4(round(texelFetch(Sampler0, pixel + ivec2(stepX, 0), 0) * 255.0));
+                ivec4 quadrant = ivec4(round(texelFetch(Sampler0, pixel + ivec2(stepX * 2, 0), 0) * 255.0));
+                if (metadata.b != 177 || quadrant.b != 178 || any(greaterThan(quadrant.rg, ivec2(1)))) continue;
+                if (hidden) {
+                    dialogmenuMarked = 3;
+                    return;
+                }
+                vec2 contentSize = vec2(metadata.rg + ivec2(1));
+                vec2 tile = vec2(quadrant.rg);
+                vec2 first = max(vec2(0.0), floor(contentSize * tile / 2.0) - vec2(1.0));
+                vec2 last = ceil(contentSize * (tile + vec2(1.0)) / 2.0);
+                vec2 cellSize = exp2(ceil(log2(last - first + vec2(4.0))));
+                vec2 whole = vec2(float(((payload >> 20u) & 1023u) + 1u),
+                    float(((payload >> 10u) & 1023u) + 1u));
+                vec2 target = whole / 2.0;
+                vec2 fraction = fract(target) * tile;
+                int top = int(payload & 1023u);
+                if (top >= 512) top -= 1024;
+                vec2 sourceOffset = tile * contentSize / 2.0;
+                vec2 origin = vec2(pixel) - side * (cellSize - vec2(1.0)) + vec2(2.0) - first + floor(sourceOffset);
+                position.xy += vec2(-1.0, float(top)) + fraction + side * (target - vec2(8.0));
+                imageUv = (origin + fract(sourceOffset) + side * contentSize / 2.0) / vec2(atlasSize);
+                dialogmenuImagePixels = vec4(origin, contentSize / whole) / vec4(vec2(atlasSize), vec2(atlasSize));
+                dialogmenuImageCoord = side * target + fract(sourceOffset) * whole / contentSize;
+                vertexColor = vec4(dialogmenu_color(metadata.a), 1.0);
+                dialogmenuMarked = 5;
+                dialogmenu_slice(float(top) + fraction.y + side.y * target.y, int((payload >> 30u) & 1u));
+                return;
+            }
             if (!all(equal(marker, ivec4(29, 84, 149 + corner, 252 + corner)))) continue;
             ivec4 metadata = ivec4(round(texelFetch(Sampler0, pixel + ivec2(side.x == 0.0 ? 1 : -1, 0), 0) * 255.0));
             if (metadata.b != 177) continue;

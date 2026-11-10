@@ -60,6 +60,12 @@ public final class ResourceRegressionTests {
         root = Files.createTempDirectory(root, "run-");
         checks += DefaultGlyphTests.run(root);
         checks += InventoryAssetsTests.run(root);
+        checks += CoordinateTests.run(root);
+        checks += ScaleCalibrationTests.run(root);
+        checks += NativeUiTextureTests.run(root);
+        checks += ImageTilesTests.run(root);
+        checks += GraphicLimitTests.run(root);
+        checks += CanvasScaleTests.run(root);
         cacheAndReload(root);
         formats(root);
         configuration(root);
@@ -169,8 +175,9 @@ public final class ResourceRegressionTests {
         Files.createDirectories(data.resolve("layouts"));
         Files.createDirectories(data.resolve("images"));
         for (String resource : List.of("config.yml", "layouts/layout-demo.yml", "layouts/layout-detail.yml",
-            "images/demo-diamond.png"))
+            "images/demo-diamond.png", "images/shapes/panel-light.png"))
             try (var input = ResourceRegressionTests.class.getResourceAsStream("/" + resource)) {
+                Files.createDirectories(data.resolve(resource).getParent());
                 Files.copy(Objects.requireNonNull(input), data.resolve(resource));
             }
         try (var engine = new ReloadEngine(data, PREVIEW)) {

@@ -37,7 +37,8 @@ final class ReloadEngine implements AutoCloseable {
                     List<Double> textScales, double defaultTextScale, boolean autoCraftEngine,
                     Path resourceRoot, int resourceBuildCpuPercent, int resourceBuildThreads, List<String> craftEngineDefinitions,
                     List<Integer> textColors, boolean reloadProgressBossBar, boolean reuseCompiledCache,
-                    List<Double> canvasScales, double defaultCanvasScale, List<MenuOpeners.Rule> openers) {}
+                    List<Double> canvasScales, double defaultCanvasScale, List<MenuOpeners.Rule> openers,
+                    boolean hideDialogWarning, boolean hideScrollbar) {}
     record Stamp(long size, FileTime modified, String digest) {}
     record Snapshot(Map<String, LayoutStore.Document> documents, VanillaAssets assets, MenuRenderer renderer,
                     FontPack fonts, Settings settings, Path pack, Map<Path, Stamp> inputs,
@@ -203,6 +204,9 @@ final class ReloadEngine implements AutoCloseable {
         }
         progress.update(20, "读取重载设置");
         Settings settings = settings();
+        if (settings.hideDialogWarning() != latest.settings().hideDialogWarning()
+            || settings.hideScrollbar() != latest.settings().hideScrollbar())
+            throw new IllegalArgumentException("原生警告或滚动条隐藏设置已变化，请执行 /dialogmenu reload all 并接收新资源包；旧布局保留");
         if (!settings.resourceRoot().equals(latest.settings().resourceRoot())
             || !settings.craftEngineDefinitions().equals(latest.settings().craftEngineDefinitions())
             || !latest.settings().textScales().containsAll(settings.textScales())
@@ -259,7 +263,8 @@ final class ReloadEngine implements AutoCloseable {
             LayoutStore.integer(yaml, "resource-build-threads", BuildTasks.defaultThreads(), 1, 8),
             List.copyOf(LayoutStore.strings(yaml.get("craftengine-definitions"))), List.copyOf(colors),
             yaml.getBoolean("reload-progress-bossbar", true), yaml.getBoolean("reuse-compiled-cache", false),
-            canvasScales, defaultCanvas, MenuOpeners.parse(yaml));
+            canvasScales, defaultCanvas, MenuOpeners.parse(yaml),
+            yaml.getBoolean("hide-dialog-warning", false), yaml.getBoolean("hide-scrollbar", false));
     }
     private Result build(Mode mode, ProgressReporter progress) throws Exception {
         long start = System.nanoTime();
@@ -289,7 +294,7 @@ final class ReloadEngine implements AutoCloseable {
             || !ModelPack.matches(latest.fonts().modelPack(), catalog)
             ? ModelPack.prepare(data, catalog) : latest.fonts().modelPack();
         if (!full && latest != null && builtInputs.equals(yamlInputs)
-            && latest.resourceInputs().equals(resourceInputs(latest.assets(), settings))) {
+            && latest.resourceInputs().equals(resourceInputs(latest.assets()))) {
             progress.update(95, "资源未变化，复用已准备快照");
             return new Result(latest, false, false);
         }
@@ -297,7 +302,7 @@ final class ReloadEngine implements AutoCloseable {
         MenuOpeners.validate(settings.openers(), documents.keySet());
         progress.update(20, "扫描图像与CraftEngine资源");
         var assets = new VanillaAssets(data.resolve("images"), settings.resourceRoot(), settings.craftEngineDefinitions());
-        Map<Path, Stamp> initialResources = resourceInputs(assets, settings);
+        Map<Path, Stamp> initialResources = resourceInputs(assets);
         // 编译缓存仅活到本轮校验结束，最多保留64MiB像素。
         var renderer = new MenuRenderer(assets, 16_777_216);
         var widths = new TreeSet<>(List.of(300, 360, 420, settings.width()));
@@ -311,7 +316,7 @@ final class ReloadEngine implements AutoCloseable {
         validate(catalog, renderer, fonts, settings, progress, 73, 80, tasks);
         assets.verifyInputs();
         if (all && !yamlInputs.equals(yamlInputs())) throw new IOException("构建期间布局或配置发生变化，请重试");
-        var afterResources = resourceInputs(assets, settings);
+        var afterResources = resourceInputs(assets);
         for (var entry : initialResources.entrySet())
             if (!entry.getValue().equals(afterResources.get(entry.getKey())))
                 throw new IOException("构建期间图片发生变化，请重试");
@@ -322,6 +327,7 @@ final class ReloadEngine implements AutoCloseable {
         try {
             progress.update(81, "写入资源包文件");
             fonts.writeBase(exported, step -> progress.update(81 + step * 8 / 100, "写入字体与图片"), tasks);
+            NativeUiTextures.write(exported, settings.hideDialogWarning(), settings.hideScrollbar());
             fonts.modelPacks(data);
             List<Path> files;
             try (var paths = Files.walk(exported)) {
@@ -345,7 +351,7 @@ final class ReloadEngine implements AutoCloseable {
         } finally {
             EditorFiles.remove(exported);
         }
-        Map<Path, Stamp> dependencies = resourceInputs(assets, settings);
+        Map<Path, Stamp> dependencies = resourceInputs(assets);
         try {
             assets.verifyInputs();
             if (!afterResources.equals(dependencies) || all && !yamlInputs.equals(yamlInputs()))
@@ -427,7 +433,7 @@ final class ReloadEngine implements AutoCloseable {
             });
         }
     }
-    private Map<Path, Stamp> resourceInputs(VanillaAssets assets, Settings settings) throws IOException {
+    private Map<Path, Stamp> resourceInputs(VanillaAssets assets) throws IOException {
         Set<Path> files = new HashSet<>();
         scan(data.resolve("images"), files);
         files.addAll(assets.craftEngine.dependencies());
@@ -445,7 +451,11 @@ final class ReloadEngine implements AutoCloseable {
     }
     CompletableFuture<Void> export(Snapshot snapshot) {
         return CompletableFuture.runAsync(() -> {
-            try { snapshot.fonts().write(data.resolve("resourcepack")); }
+            try {
+                Path target = data.resolve("resourcepack");
+                snapshot.fonts().write(target);
+                NativeUiTextures.write(target, snapshot.settings().hideDialogWarning(), snapshot.settings().hideScrollbar());
+            }
             catch (IOException error) { throw new CompletionException(error); }
         }, worker);
     }

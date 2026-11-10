@@ -26,12 +26,6 @@ final class SpriteCanvas {
     private static Component positioned(Component ink, int x, int advance) {
         return Component.empty().append(space(x)).append(ink).append(space(-x - advance));
     }
-    static int textTop(Menu menu, Node node, int width, int line) {
-        return textTop(menu, node, width, line, node.size());
-    }
-    static int textSize(Menu menu, Node node, int width, double scale) {
-        return textSize(menu, node, width, scale, 1);
-    }
     static int textSize(Menu menu, Node node, int width, double scale, double canvasScale) {
         int size = (int) Math.round(node.size() * scale
             * (menu.scaleTextWithCanvas() ? width / (double) menu.width() : canvasScale));
@@ -39,10 +33,7 @@ final class SpriteCanvas {
         return size;
     }
     static int textTop(Menu menu, Node node, int width, int line, int size) {
-        return textTop(menu, node, width, line, size, 1);
-    }
-    static int textTop(Menu menu, Node node, int width, int line, int size, double stretchY) {
-        return textTop(menu, node, width, line, new TextStyle(size, 1, stretchY));
+        return textTop(menu, node, width, line, new TextStyle(size, 1, 1));
     }
     static int textTop(Menu menu, Node node, int width, int line, TextStyle style) {
         return (int) Math.round((menu.height() / 2.0 - node.y()) * width / menu.width()
@@ -83,7 +74,6 @@ final class SpriteCanvas {
                 int argb = node.type().equals("image")
                     ? fonts.registeredImages().color(node.source(), node.argb()) : node.argb();
                 addSprite(parts, sprite, fonts, argb,
-                    region != null,
                     region == null || !region.hasActions() ? null : clicks.computeIfAbsent(region, bind),
                     region == null ? null : hover(region, context));
             }
@@ -156,9 +146,24 @@ final class SpriteCanvas {
         }
     }
     private void addSprite(List<List<Component>> parts, Sprite sprite, FontPack fonts, int argb,
-                                  boolean interactive, ClickEvent click, HoverEvent<Component> hover) {
+                           ClickEvent click, HoverEvent<Component> hover) {
         if (ImageRegistry.source(sprite.texture())) {
             int tint = fonts.imageTint(argb);
+            if (ImageTiles.needed(sprite.width(), sprite.height())) {
+                for (var tile : ImageTiles.parts(sprite.width(), sprite.height())) {
+                    int top = sprite.y() + tile.y();
+                    for (var slice : RgbaRows.slices(top, tile.height())) {
+                        Component ink = fonts.registeredImages().component(sprite.texture(), tint,
+                            sprite.width(), sprite.height(), slice.local(top), slice.band(), tile.index());
+                        parts.get(slice.row()).add(positioned(ink, sprite.x() + tile.x(), 8));
+                    }
+                }
+                if (click != null || hover != null)
+                    for (var slice : RgbaRows.slices(sprite.y(), sprite.height()))
+                        parts.get(slice.row()).add(positioned(RgbaHits.rectangle(slice.local(slice.top()),
+                            sprite.width(), slice.height(), click, hover), sprite.x(), 0));
+                return;
+            }
             for (var slice : RgbaRows.slices(sprite.y(), sprite.height())) {
                 Component ink = fonts.registeredImages().component(sprite.texture(), tint, sprite.width(), sprite.height(),
                     slice.local(sprite.y()), slice.band());
@@ -169,7 +174,7 @@ final class SpriteCanvas {
             }
             return;
         }
-        if (fonts.shaderImage(sprite, interactive)) {
+        if (fonts.shaderImage(sprite)) {
             RgbaImages images = fonts.rgbaImages();
             int tint = fonts.imageTint(argb);
             RgbaImages.Glyph glyph = images.glyph(sprite, tint);

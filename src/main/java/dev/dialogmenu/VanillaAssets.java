@@ -114,10 +114,6 @@ final class VanillaAssets {
         throw new IOException("Unknown image source: " + source);
     }
 
-    CraftEngineAssets.Reference reference(String source) throws IOException {
-        return reference(source, null);
-    }
-
     CraftEngineAssets.Reference reference(String source, MenuModel.TextureRegion atlas) throws IOException {
         if (!source.startsWith("minecraft:")) return craftEngine.reference(source, atlas);
         if (source.startsWith("minecraft:preview/"))

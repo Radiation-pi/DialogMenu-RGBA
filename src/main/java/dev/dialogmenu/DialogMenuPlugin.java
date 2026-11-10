@@ -67,7 +67,12 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
             return task::cancel;
         });
     private final Map<UUID, View> views = new HashMap<>();
-    private record View(LayoutStore.Document document, int width, List<String> history, UUID token) {}
+    private record View(LayoutStore.Document document, int width, List<String> history, UUID token,
+                        Double calibrationScale, boolean calibrationCentered) {
+        View(LayoutStore.Document document, int width, List<String> history, UUID token) {
+            this(document, width, history, token, null, false);
+        }
+    }
     private int width, maxPixels;
     private final DialogMenuApi api = new DialogMenuApi(this);
 
@@ -252,7 +257,7 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
             }
             public double canvasScale() {
                 return CanvasScale.selected(preferences, player.getUniqueId(),
-                    loaded.settings().canvasScales(), loaded.settings().defaultCanvasScale());
+                    loaded.settings().defaultCanvasScale());
             }
         };
     }
@@ -541,7 +546,8 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
     }
     private void presentFrame(Player player, View view) throws Exception {
         UUID id = player.getUniqueId();
-        Context context = context(player);
+        boolean calibrating = view.calibrationScale != null;
+        Context context = calibrating ? ScaleCalibration.reference(context(player)) : context(player);
         var pending = gestures.pending(id);
         if (pending != null) {
             // 数据可以刷新，但此处替换对话框会吞掉尚在途中的第二次点击。
@@ -550,7 +556,8 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
             gestures.cancel(id);
             tokens.remove(id);
         }
-        var frame = renderer.drawRuntime(view.document.menu(), context, view.width, maxPixels);
+        var frame = renderer.drawRuntime(view.document.menu(), context, view.width,
+            calibrating ? ScaleCalibration.PIXELS : maxPixels);
         var page = new ActionTokens.Page();
         var output = canvas.encode(view.document.menu(), frame, context, fonts,
             region -> {
@@ -627,6 +634,16 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
                     case "toggle", "set", "notice" -> application.state(player, kind, value);
                     case "entry" -> application.entry(player, value);
                     case "callback" -> application.callback(player, value);
+                    case ScaleCalibration.ACTION -> {
+                        if (view.calibrationScale == null)
+                            throw new IllegalArgumentException("此动作仅用于尺寸校准");
+                        if (value.equals("confirm")) canvasScale(player, Double.toString(view.calibrationScale));
+                        else if (value.equals("align"))
+                            showScaleCalibration(player, view.calibrationScale, !view.calibrationCentered);
+                        else showScaleCalibration(player,
+                            ScaleCalibration.adjust(view.calibrationScale, Integer.parseInt(value)),
+                            view.calibrationCentered);
+                    }
                     case "tell" -> player.sendMessage(SpriteCanvas.legacy(value));
                     case "sound" -> play(player, value);
                     case "close" -> close(player);
@@ -746,20 +763,32 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
     }
     private void canvasScale(Player player, String value) throws Exception {
         if (loaded == null) throw new IllegalStateException("Dialog正在准备资源");
-        double scale = CanvasScale.select(preferences, player.getUniqueId(), value, loaded.settings().canvasScales(), () -> {
-            View view = views.get(player.getUniqueId());
-            if (view == null) return;
-            Context active = context(player);
-            var frame = renderer.draw(view.document.menu(), active, view.width, maxPixels);
-            new SpriteCanvas().encode(view.document.menu(), frame, active, fonts, region -> null);
-            if (!application.suspended(player)) present(player, view);
-        });
+        UUID id = player.getUniqueId();
+        Object previous = preferences.get(CanvasScale.key(id));
+        double scale = CanvasScale.select(preferences, id, value, () -> {});
+        close(player);
         reloadEngine.savePreferences(preferences.saveToString()).whenComplete((ignored, error) -> {
             if (isEnabled()) Bukkit.getScheduler().runTask(this, () -> {
-                if (error != null) failure(player, unwrap(error));
-                else player.sendMessage("画布倍率：" + scale);
+                if (error != null) {
+                    if (preferences.getDouble(CanvasScale.key(id)) == scale)
+                        preferences.set(CanvasScale.key(id), previous);
+                    failure(player, unwrap(error));
+                } else if (player.isOnline()) player.sendMessage("画布倍率：" + ScaleCalibration.label(scale)
+                    + "x；重新设置：/dialogmenu scale");
             });
         });
+    }
+    private void openScaleCalibration(Player player) throws Exception {
+        if (loaded == null) throw new IllegalStateException("Dialog正在准备资源");
+        if (!player.hasPermission("dialogmenu.use")) throw new IllegalArgumentException("没有打开此界面的权限");
+        close(player, Reason.REPLACED);
+        showScaleCalibration(player, context(player).canvasScale(), false);
+    }
+    private void showScaleCalibration(Player player, double scale, boolean centered) throws Exception {
+        var document = ScaleCalibration.document(scale, centered);
+        var next = new View(document, document.menu().width(), List.of(), UUID.randomUUID(), scale, centered);
+        present(player, next);
+        views.put(player.getUniqueId(), next);
     }
     @Override public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         try {
@@ -814,30 +843,20 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
                 }
                 case "scale" -> {
                     if (!(sender instanceof Player player)) throw new IllegalArgumentException("此命令需要玩家");
-                    if (loaded == null) throw new IllegalStateException("Dialog正在准备资源");
-                    if (args.length > 2) throw new IllegalArgumentException("/dialogmenu scale <倍率>");
-                    if (args.length == 1) player.sendMessage("画布倍率："
-                        + context(player).canvasScale() + "；可选：" + loaded.settings().canvasScales());
-                    else canvasScale(player, args[1]);
+                    if (args.length != 1) throw new IllegalArgumentException("/dialogmenu scale");
+                    openScaleCalibration(player);
                 }
                 case "open" -> {
                     if (!(sender instanceof Player player)) throw new IllegalArgumentException("此命令需要玩家");
-                    if (args.length > 3) throw new IllegalArgumentException("/dialogmenu open <id> [small|medium|large|max]");
-                    int size = args.length > 2 ? switch (args[2].toLowerCase(Locale.ROOT)) {
-                        case "small", "小" -> 300;
-                        case "medium", "中" -> 360;
-                        case "large", "大" -> 420;
-                        case "max", "最大" -> MenuRenderer.MAX_WIDTH;
-                        default -> throw new IllegalArgumentException("尺寸请选择small/medium/large/max");
-                    } : width;
+                    if (args.length > 2) throw new IllegalArgumentException("/dialogmenu open <id>");
                     open(player, args.length > 1 ? args[1] : loaded == null ? "layout-demo" : loaded.settings().defaultLayout(),
-                        size, List.of());
+                        width, List.of());
                 }
                 case "close" -> {
                     if (!(sender instanceof Player player)) throw new IllegalArgumentException("此命令需要玩家");
                     close(player);
                 }
-                default -> sender.sendMessage("/dialogmenu open <id> [small|medium|large|max] | edit [menu] | scale <倍率> | textscale <倍率> | list | reload [yaml|resource|all|full|菜单名] | resources | close");
+                default -> sender.sendMessage("/dialogmenu open <id> | edit [menu] | scale | textscale <倍率> | list | reload [yaml|resource|all|full|菜单名] | resources | close");
             }
         } catch (Exception error) { failure(sender, error); }
         return true;
@@ -851,14 +870,12 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
             : args.length == 2 && args[0].equals("edit") ? layoutIds()
             : args.length == 2 && args[0].equalsIgnoreCase("textscale") && loaded != null
                 ? CanvasScale.completions(loaded.settings().textScales())
-            : args.length == 2 && args[0].equalsIgnoreCase("scale") && loaded != null
-                ? CanvasScale.completions(loaded.settings().canvasScales())
             : args.length == 2 && args[0].equals("open") ? layoutIds()
             : args.length == 2 && args[0].equalsIgnoreCase("give") && loaded != null && sender.hasPermission("dialogmenu.admin")
                 ? loaded.settings().openers().stream().filter(rule -> rule.item() != null).map(MenuOpeners.Rule::id).toList()
             : args.length == 3 && args[0].equalsIgnoreCase("give") && sender.hasPermission("dialogmenu.admin")
                 ? Bukkit.getOnlinePlayers().stream().map(Player::getName).toList()
-            : args.length == 3 && args[0].equals("open") ? List.of("small", "medium", "large", "max") : List.of();
+            : List.of();
         String prefix = args.length == 0 ? "" : args[args.length - 1].toLowerCase(Locale.ROOT);
         return choices.stream().filter(v -> v.startsWith(prefix)).toList();
     }

@@ -7,13 +7,10 @@ import java.util.*;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextDecoration;
 
 /** 可见字形以 shadow_color 携带行切片，普通 pass 隐藏；源图集保持共享。 */
 final class RgbaOffsets {
-    static final int MAGIC = 0x20000000;
     static final int INK = 0xBEEF01;
-    static final int TEXTURE_RGB = 0x174783;
     static final int NATIVE_SHIFT = 65536;
     private final Map<Integer, Integer> palette = new LinkedHashMap<>();
 
@@ -62,22 +59,6 @@ final class RgbaOffsets {
     static void nativeSpaces(Map<String, Integer> spaces) {
         spaces.put(Character.toString(0xF1020), -NATIVE_SHIFT);
         spaces.put(Character.toString(0xF1021), NATIVE_SHIFT);
-    }
-
-    Component encode(Component text, int fallback, int top, int height, int band) {
-        if (top < -512 || top > 511 || height < 1 || height > 128)
-            throw new IllegalArgumentException("RGBA文字切片超出范围");
-        var result = Component.text();
-        for (var glyph : MenuText.glyphs(text)) {
-            int rgb = glyph.style().color() == null ? fallback & 0xFFFFFF : glyph.style().color().value();
-            Integer index = palette.get(rgb);
-            if (index == null) throw new IllegalArgumentException("文字颜色未准备，请在text-colors声明#"
-                + String.format(java.util.Locale.ROOT, "%06X", rgb) + "后执行 /dialogmenu reload all");
-            result.append(glyph.component().color(TextColor.color(INK))
-                .shadowColor(net.kyori.adventure.text.format.ShadowColor.shadowColor(
-                    MAGIC | (band == 9 ? 1 << 28 : 0) | (height - 1) << 18 | (top & 1023) << 8 | index)));
-        }
-        return result.build().compact();
     }
 
     Component bitmap(Component glyph, int fallback, int top, int height, int band) {

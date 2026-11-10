@@ -2,8 +2,15 @@ default-layout: layout-demo
 canvas-width: 300
 max-canvas-pixels: 1048576
 close-with-escape: false
+# 全局材质隐藏，不改变原生布局、点击区域或悬停提示，不会腾出顶部/侧边空间。
+# 隐藏所有原生 Dialog 的顶部警告图标。
+hide-dialog-warning: false
+# 隐藏共用原生滚动条贴图的界面滚动条；滚轮和拖动行为保留。
+hide-scrollbar: false
+# 修改上述开关后执行 /dialogmenu reload all，并让玩家接收新资源包。
 text-scales: [0.8, 1, 2]
 default-text-scale: 1
+# 资源准备的参考倍率；个人倍率由 /dialogmenu scale 校准，在0.8..2.2内保存实际值。
 canvas-scales: [0.8, 1, 2]
 default-canvas-scale: 1
 # 可选菜单入口；升级不会自动写入现有配置。

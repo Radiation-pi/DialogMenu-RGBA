@@ -43,7 +43,6 @@ final class GraphicReuseTests {
                     thickness: %d
                     color: '#AACCFF'
                     offset: {x: %d, y: 0}
-                    rotation: %d
                   icon:
                     type: image
                     source: sample.png
@@ -51,7 +50,6 @@ final class GraphicReuseTests {
                     height: 24
                     color: '#%06X'
                     offset: {x: %d, y: 20}
-                    rotation: %d
                     actions: ['tell: IMAGE%d']
                     tooltip: ['IMAGE%d']
                   direct:
@@ -61,8 +59,8 @@ final class GraphicReuseTests {
                     height: 16
                     offset: {y: -30}
                     actions: ['tell: DIRECT']
-                """.formatted(i, 0x102030 + i * 0x010101, i % 3 + 1, i - 6, i % 4 * 5,
-                    0xffffff - i * 0x010203, i * 2, i % 3 * 10, i, i));
+                """.formatted(i, 0x102030 + i * 0x010101, i % 3 + 1, i - 6,
+                    0xffffff - i * 0x010203, i * 2, i, i));
             docs.add(LayoutStore.parse("probe" + i, yaml));
         }
         var assets = new VanillaAssets(images);

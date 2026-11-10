@@ -7,10 +7,10 @@ events:
   open: 'sound: UI_BUTTON_CLICK-0.5-1'
 frontend:
   panel:
-    type: rectangle
+    type: image
+    source: shapes/panel-light.png
     width: 300
     height: 180
-    color: '#ECEDEE'
   diamond:
     type: image
     source: minecraft:item/diamond

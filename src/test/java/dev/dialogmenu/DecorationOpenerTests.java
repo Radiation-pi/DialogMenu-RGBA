@@ -65,8 +65,8 @@ public final class DecorationOpenerTests {
             check(first.settings().canvasScales().equals(List.of(.8, 1d, 2d)), "Configured canvas scales are prepared");
             check(CanvasScale.completions(first.settings().canvasScales()).equals(List.of("0.8", "1", "2")),
                 "Completion displays configured values");
-            check(tabs(first, "ScAlE").equals(List.of("0.8", "1", "2")),
-                "Actual command completion reads loaded canvas scales, case-insensitively");
+            check(tabs(first, "ScAlE").isEmpty(),
+                "Calibration command no longer offers preset scale arguments");
             var doc = first.documents().get("styles");
             var fontPack = data.resolve("export");
             first.fonts().write(fontPack);
@@ -144,8 +144,8 @@ public final class DecorationOpenerTests {
                 .replace("canvas-scales: [0.8, 1, 2]",
                     "canvas-scales: [0.6, 1.25, 2]\ndefault-canvas-scale: 1.25"));
             var custom = engine.prepare().get(60, TimeUnit.SECONDS).snapshot();
-            check(tabs(custom, "scale").equals(List.of("0.6", "1.25", "2")),
-                "Actual scale Tab follows non-default configured values");
+            check(tabs(custom, "scale").isEmpty(),
+                "Resource sample configuration does not restore numeric scale arguments");
             check(tabs(custom, "textscale").equals(List.of("0.8", "1", "2")),
                 "Actual textscale Tab independently follows text configuration");
             Files.writeString(data.resolve("config.yml"), config.replace("menu: styles", "menu: missing"));
