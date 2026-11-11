@@ -245,6 +245,9 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
     }
     private Context context(Player player) {
         return new Context() {
+            public Component playerHead() {
+                return NativePlayerHeads.of(player);
+            }
             public String expand(String text) {
                 return application.expand(player, text).replace("{player}", player.getName())
                     .replace("{uuid}", player.getUniqueId().toString());

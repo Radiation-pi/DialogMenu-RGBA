@@ -68,6 +68,7 @@ final class CanvasScale {
             public String expand(String text) { return base.expand(text); }
             public Icon item(int slot) { return base.item(slot); }
             public boolean permitted(String permission) { return base.permitted(permission); }
+            public net.kyori.adventure.text.Component playerHead() { return base.playerHead(); }
             public double textScale() { return base.textScale(); }
             public double canvasScale() { return scale; }
         };

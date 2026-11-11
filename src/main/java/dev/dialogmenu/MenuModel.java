@@ -75,6 +75,9 @@ public final class MenuModel {
         String expand(String text);
         Icon item(int slot);
         boolean permitted(String permission);
+        default net.kyori.adventure.text.Component playerHead() {
+            return NativePlayerHeads.preview();
+        }
         default double textScale() { return 1; }
         default double canvasScale() { return 1; }
     }

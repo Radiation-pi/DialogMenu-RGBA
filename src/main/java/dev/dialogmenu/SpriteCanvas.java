@@ -23,6 +23,14 @@ final class SpriteCanvas {
         return Character.toString(0xF0000 + pixels + 1024);
     }
     static Component space(int pixels) { return Component.text(move(pixels)).font(SPACE); }
+    static int playerHeadRow(int top, int height, int rows) {
+        // 玩家对象字形的可见顶部比正文行高 1 像素；不能让它绘制到画布外。
+        int row = Math.max(0, Math.min(rows - 1, Math.round((top + 1) / 9f)));
+        int drawnTop = row * 9 - 1;
+        if (drawnTop < 0 || drawnTop + 8 > height)
+            throw new IllegalArgumentException("玩家头像实际位置超出画布，请调整垂直坐标");
+        return row;
+    }
     private static Component positioned(Component ink, int x, int advance) {
         return Component.empty().append(space(x)).append(ink).append(space(-x - advance));
     }
@@ -48,7 +56,26 @@ final class SpriteCanvas {
         for (Sprite sprite : frame.sprites()) sprites.put(sprite.id(), sprite);
         // 文字和图形共用绘制顺序，LayoutStore 已按 Z 排序。
         for (Node node : menu.nodes()) {
-            if (node.type().equals("model")) {
+            if (node.type().equals("player-head")) {
+                // 头像由原生对象组件绘制，不能作为字体纹理切片。
+                double zoom = width / (double) menu.width();
+                int x = (int) Math.round((menu.width() / 2.0 + node.x()) * zoom - 4);
+                int y = (int) Math.round((menu.height() / 2.0 - node.y()) * zoom - 4);
+                if (x < 0 || x + 8 > width || y < 0 || y + 8 > height)
+                    throw new IllegalArgumentException(node.id() + " 玩家头像超出画布");
+                int row = playerHeadRow(y, height, rows);
+                // PlayerGlyphProvider 的非粗体 advance 为 8；抵消错误会使后续节点错位。
+                parts.get(row).add(positioned(context.playerHead(), x, 8));
+                Region region = node.interaction() == null ? null : node.interaction().region(node);
+                ClickEvent click = region != null && region.hasActions() ? clicks.computeIfAbsent(region, bind) : null;
+                var hover = region == null ? null : hover(region, context);
+                if (click != null || hover != null) {
+                    // 原生头像会吸附到文本行，命中区域须使用实际绘制位置。
+                    for (var slice : RgbaRows.slices(row * 9 - 1, 8))
+                        parts.get(slice.row()).add(positioned(RgbaHits.rectangle(slice.local(slice.top()),
+                            8, slice.height(), click, hover), x, 0));
+                }
+            } else if (node.type().equals("model")) {
                 double zoom = width / (double) menu.width();
                 int x = (int) Math.round((menu.width() / 2.0 + node.x()) * zoom);
                 int center = (int) Math.round((menu.height() / 2.0 - node.y()) * zoom);
@@ -91,15 +118,24 @@ final class SpriteCanvas {
                                 FontPack fonts, Map<Region, ClickEvent> clicks,
                                 Function<Region, ClickEvent> bind, int width, int height) {
         int size = textSize(menu, node, width, context.textScale(), context.canvasScale());
-        TextStyle style = new TextStyle(size, node.scaleX(), node.scaleY());
         double zoom = width / (double) menu.width();
         String expanded = context.expand(node.text());
+        Component parsed = MenuText.parse(expanded);
+        if (node.maxLines() == -1) {
+            if (expanded.indexOf('\n') >= 0) throw new IllegalArgumentException(node.id() + " fit-width仅支持单行文字");
+            int limit = Math.max(1, (int) Math.floor(node.width() * node.scaleX() * zoom));
+            int minimum = Math.max(1, (int) Math.ceil(0.5 / node.scaleY()));
+            while (size > minimum && fonts.textWidth(parsed, new TextStyle(size, node.scaleX(), node.scaleY())) > limit) size--;
+            if (fonts.textWidth(parsed, new TextStyle(size, node.scaleX(), node.scaleY())) > limit)
+                throw new IllegalArgumentException(node.id() + " 文字无法放入fit-width");
+        }
+        TextStyle style = new TextStyle(size, node.scaleX(), node.scaleY());
         boolean fixed = expanded.equals(node.text()) && !MenuTemplate.dynamicText(node);
         TextKey key = new TextKey(fonts, expanded, node.width() * node.scaleX() * zoom, node.maxLines(),
             size, node.scaleX(), node.scaleY());
         TextLayout layout = fixed ? staticText.get(key) : null;
         if (layout == null) {
-            List<Component> lines = TextFlow.lines(node, MenuText.parse(expanded), zoom,
+            List<Component> lines = TextFlow.lines(node, parsed, zoom,
                 glyph -> fonts.glyphWidth(glyph, style));
             layout = new TextLayout(lines,
                 lines.stream().map(text -> fonts.textWidth(text, style)).toList());
