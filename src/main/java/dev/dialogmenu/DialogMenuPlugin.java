@@ -119,12 +119,17 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
     }
     DialogMenuBinding bindFromApi(Plugin owner, Player player, String id, Map<String, String> values,
                                   Consumer<String> action, Consumer<Reason> closed) {
+        return bindFromApi(owner, player, id, values, null, List.of(), action, closed);
+    }
+    DialogMenuBinding bindFromApi(Plugin owner, Player player, String id, Map<String, String> values,
+                                  String collection, List<DialogMenuEntry> entries,
+                                  Consumer<String> action, Consumer<Reason> closed) {
         try {
             var doc = store.get(id);
             if (loaded == null || doc == null || doc.template() == null)
                 throw new IllegalArgumentException("Binding requires a loaded YAML family page: " + id);
             if (!player.hasPermission("dialogmenu.use") || !allowed(player, doc.menu().permission())) return null;
-            return application.bind(owner, player, doc, width, values, action, closed);
+            return application.bind(owner, player, doc, width, values, collection, entries, action, closed);
         } catch (Exception error) { failure(player, error); return null; }
     }
     boolean bindingActive(DialogMenuBinding binding) { return application.active(binding); }
@@ -540,6 +545,14 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         }
     }
     public void closeApplication(Player player) { close(player); }
+    public void replaceApplication(Player player) {
+        UUID id = player.getUniqueId();
+        View previous = views.remove(id);
+        gestures.cancel(id);
+        tokens.remove(id);
+        application.remove(player, Reason.REPLACED);
+        if (previous != null) closed(player, previous, Reason.REPLACED);
+    }
     public void later(Runnable action) { Bukkit.getScheduler().runTaskLater(this, action, 1); }
     private void present(Player player, View view) throws Exception {
         try (var ignored = application.frame(player)) { presentFrame(player, view); }

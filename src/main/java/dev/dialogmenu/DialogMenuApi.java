@@ -42,6 +42,17 @@ public final class DialogMenuApi {
         return plugin.bindFromApi(owner, player, page, Map.copyOf(values),
             java.util.Objects.requireNonNull(action), java.util.Objects.requireNonNull(closed));
     }
+    /** 首屏包含已验证的外部集合，旧六参数接口继续保留。 */
+    public DialogMenuBinding bind(Plugin owner, Player player, String page, Map<String, String> values,
+                                  String collection, java.util.List<DialogMenuEntry> entries,
+                                  Consumer<String> action, Consumer<DialogMenuClosedEvent.Reason> closed) {
+        requireReady();
+        if (owner == null || !owner.isEnabled()) throw new IllegalArgumentException("Binding owner is not enabled");
+        if (player == null || !player.isOnline()) return null;
+        return plugin.bindFromApi(owner, player, page, Map.copyOf(values),
+            java.util.Objects.requireNonNull(collection), java.util.List.copyOf(entries),
+            java.util.Objects.requireNonNull(action), java.util.Objects.requireNonNull(closed));
+    }
     boolean bindingActive(DialogMenuBinding binding) {
         requireReady();
         return plugin.bindingActive(binding);
