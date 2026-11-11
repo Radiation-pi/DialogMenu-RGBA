@@ -49,7 +49,7 @@ final class InventoryAssetsTests {
             check(shift == -(face + 33) * 2000 && shift + reset == 0,
                 "Every geometry bank must preserve native cursor advance");
         }
-        check(catalog.size() > 1600 && catalog.entrySet().stream().noneMatch(
+        check(catalog.size() > (InventoryAssets.usesItemsAtlas() ? 1500 : 1600) && catalog.entrySet().stream().noneMatch(
             entry -> entry.getValue().getAsJsonObject().get("kind").getAsString().equals("unsupported")),
             "Every inventory entry is accounted for, with no silently unsupported IDs");
         for (String id : List.of("stone", "chest", "player_head", "copper_golem_statue", "decorated_pot", "conduit"))
@@ -75,8 +75,8 @@ final class InventoryAssetsTests {
                 "Default library is prepared even without references or client/compiler settings");
             long defaultBytes = 0;
             for (Path pack : packs) defaultBytes += Files.size(pack);
-            check(defaultBytes <= 128 * 1024,
-                "Default inventory-only A menu must fit in 128 KiB, not per-face/per-icon texture copies");
+            check(defaultBytes <= 192 * 1024,
+                "Bundled snapshot plus independent model packs must fit in 192 KiB, without per-face texture copies");
             for (Path pack : packs) {
                 bytes.put(pack, Files.readAllBytes(pack));
                 stamps.put(pack, Files.getLastModifiedTime(pack));

@@ -219,9 +219,38 @@ final class ModelPack {
                     Path path = target.resolve(entry.getName()).normalize();
                     if (!path.startsWith(target.normalize())) throw new IOException("Invalid model pack entry");
                     Files.createDirectories(path.getParent());
-                    Files.write(path, input.readAllBytes());
+                    byte[] bytes = input.readAllBytes();
+                    // 原版和 CE 可能同时提供 items 图集，不能用后者覆盖前者。
+                    if (entry.getName().contains("/atlases/") && entry.getName().endsWith(".json")
+                            && Files.isRegularFile(path)) {
+                        JsonObject existing = JsonParser.parseString(Files.readString(path)).getAsJsonObject();
+                        JsonObject incoming = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
+                        for (JsonElement source : incoming.getAsJsonArray("sources"))
+                            if (!existing.getAsJsonArray("sources").contains(source)) existing.getAsJsonArray("sources").add(source);
+                        bytes = existing.toString().getBytes(StandardCharsets.UTF_8);
+                    }
+                    Files.write(path, bytes);
                 }
             }
+        if (InventoryAssets.usesItemsAtlas()) {
+            Path path = target.resolve("assets/minecraft/atlases/items.json");
+            JsonObject atlas = Files.isRegularFile(path)
+                ? JsonParser.parseString(Files.readString(path)).getAsJsonObject() : new JsonObject();
+            JsonArray sources = atlas.has("sources") ? atlas.getAsJsonArray("sources") : new JsonArray();
+            // 编译器的 face.sprite 指向原版纹理或 CE 快照纹理；26.2 统一从 items 采样。
+            Set<String> sprites = new TreeSet<>();
+            for (var faces : models.values()) for (Face face : faces) sprites.add(face.sprite());
+            for (String sprite : sprites) {
+                JsonObject source = new JsonObject();
+                source.addProperty("type", "minecraft:single");
+                source.addProperty("resource", sprite);
+                source.addProperty("sprite", sprite);
+                if (!sources.contains(source)) sources.add(source);
+            }
+            atlas.add("sources", sources);
+            Files.createDirectories(path.getParent());
+            Files.writeString(path, atlas.toString() + "\n");
+        }
     }
     Component component(String id, int sizeX, int sizeY, int offset, int band) {
         List<Face> faces = models.get(id);
@@ -252,7 +281,7 @@ final class ModelPack {
         Component result = GsonComponentSerializer.gson().deserialize(json.toString());
         String encoded = GsonComponentSerializer.gson().serialize(result);
         if (!encoded.contains("\"sprite\""))
-            throw new IllegalStateException("model需要支持object文本的Minecraft/Adventure（26.3）");
+            throw new IllegalStateException("model需要支持sprite组件的Minecraft/Adventure（26.2及以上）");
         return result;
     }
     static String faceMove(int face, boolean restore) {
@@ -286,7 +315,23 @@ final class ModelPack {
             if (input == null) throw new IOException("Missing model shader");
             Path path = target.resolve("assets/dialogmenu/shaders/include/model_vertex.glsl");
             Files.createDirectories(path.getParent());
-            Files.writeString(path, new String(input.readAllBytes(), StandardCharsets.UTF_8));
+            String shader = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+            Files.writeString(path, shader);
+            // 26.2 使用 GLSL 330，按名称链接 varying，四顶点使用 gl_VertexID。
+            Files.writeString(path.resolveSibling("model_vertex_26_2.glsl"), shader
+                .replace("layout(location = 7) flat out", "flat out")
+                .replace("(gl_VertexIndex - gl_BaseVertex)", "gl_VertexID"));
         }
+        Path vertex26Path = target.resolve("dialogmenu_26_2/assets/minecraft/shaders/core/text.vsh");
+        String vertex26 = Files.readString(vertex26Path)
+            .replace("void main() {", "#ifdef IS_GUI\n#moj_import <dialogmenu_vanilla:models.glsl>\n"
+                + "#moj_import <dialogmenu_ce:models.glsl>\n#moj_import <dialogmenu:model_vertex_26_2.glsl>\n#endif\n\nvoid main() {")
+            .replace("    gl_Position =", "#ifdef IS_GUI\n    dialogmenu_model(position, imageUv);\n#endif\n    gl_Position =");
+        Files.writeString(vertex26Path, vertex26);
+        Path fragment26Path = target.resolve("dialogmenu_26_2/assets/minecraft/shaders/core/text.fsh");
+        String fragment26 = Files.readString(fragment26Path)
+            .replace("void main() {", "#ifdef IS_GUI\nflat in float dialogmenuModelVisible;\n#endif\n\nvoid main() {")
+            .replace("    vec2 uv = texCoord0;", "#ifdef IS_GUI\n    if (dialogmenuModelVisible < 0.5) discard;\n#endif\n    vec2 uv = texCoord0;");
+        Files.writeString(fragment26Path, fragment26);
     }
 }

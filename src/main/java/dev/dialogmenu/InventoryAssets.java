@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.zip.*;
 import javax.imageio.ImageIO;
+import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 
 /** Precompiled default inventory appearances; never scans unrelated vanilla textures. */
 final class InventoryAssets {
@@ -13,10 +14,23 @@ final class InventoryAssets {
     private static Map<String, ImageRegistry.Entry> images;
     private static Map<String, String> nativeSprites;
 
+    // 26.2 的紧凑 sprite 组件没有 atlas 字段；按实际 API 能力选择内置库。
+    static boolean usesItemsAtlas() {
+        try {
+            var serializer = GsonComponentSerializer.gson();
+            String encoded = serializer.serialize(serializer.deserialize(
+                "{\"type\":\"object\",\"atlas\":\"minecraft:blocks\",\"sprite\":\"minecraft:block/stone\"}"));
+            return encoded.contains("\"sprite\"") && !encoded.contains("\"atlas\"");
+        } catch (RuntimeException unsupported) {
+            return false;
+        }
+    }
+
     static synchronized Map<String, byte[]> files() throws IOException {
         if (files == null) {
             var next = new TreeMap<String, byte[]>();
-            try (var source = InventoryAssets.class.getResourceAsStream("/vanilla-inventory.zip")) {
+            try (var source = InventoryAssets.class.getResourceAsStream(usesItemsAtlas()
+                    ? "/vanilla-inventory-26_2.zip" : "/vanilla-inventory.zip")) {
                 if (source == null) throw new IOException("Missing vanilla inventory library");
                 try (var zip = new ZipInputStream(source)) {
                     for (ZipEntry entry; (entry = zip.getNextEntry()) != null;)

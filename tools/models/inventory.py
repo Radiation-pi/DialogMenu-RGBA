@@ -62,7 +62,7 @@ def icon(catalog, nodes):
     return stream.getvalue()
 
 
-def build(output, cache):
+def build(output, cache, pack_format=97):
     output, cache = Path(output), Path(cache)
     cache.mkdir(parents=True, exist_ok=True)
     registry = cache / "empty-registry.json"
@@ -113,7 +113,7 @@ def build(output, cache):
         slots, faces = allocate(models, [], 0)
         files["assets/dialogmenu_vanilla/shaders/include/models.glsl"] = table(slots, "vanilla")
         files["pack.mcmeta"] = json.dumps({"pack": {"description": "DialogMenu vanilla inventory",
-                                                   "pack_format": 97}}).encode()
+                                                   "pack_format": pack_format}}).encode()
         model_file = cache / "resourcepack.zip"
         write_pack_changed(model_file, files)
         bounds = {
@@ -154,5 +154,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--cache", type=Path, required=True)
+    parser.add_argument("--pack-format", type=int, default=97)
     args = parser.parse_args()
-    print(json.dumps(build(args.output, args.cache), indent=2))
+    print(json.dumps(build(args.output, args.cache, args.pack_format), indent=2))

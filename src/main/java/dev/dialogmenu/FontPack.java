@@ -539,7 +539,8 @@ final class FontPack {
         write(target, progress, tasks, false);
     }
     void writeBase(Path target, IntConsumer progress, BuildTasks tasks) throws IOException {
-        write(target, progress, tasks, true);
+        // 字体快照必须包含 shader 引用的模型表，避免独立合包方漏掉附属包。
+        write(target, progress, tasks, false);
     }
     private void write(Path target, IntConsumer progress, BuildTasks tasks, boolean separateModels) throws IOException {
         Path base = target.resolve("assets/dialogmenu");

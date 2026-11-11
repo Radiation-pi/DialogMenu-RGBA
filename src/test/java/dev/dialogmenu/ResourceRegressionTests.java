@@ -60,6 +60,7 @@ public final class ResourceRegressionTests {
         root = Files.createTempDirectory(root, "run-");
         checks += DefaultGlyphTests.run(root);
         checks += InventoryAssetsTests.run(root);
+        checks += ModelCompatibilityTests.run(root);
         checks += CoordinateTests.run(root);
         checks += ScaleCalibrationTests.run(root);
         checks += NativeUiTextureTests.run(root);

@@ -191,7 +191,7 @@ public final class HitFontTests {
     private static void narrow(net.kyori.adventure.text.Component body, FontPack fonts,
                                Map<String, byte[]> resources) throws Exception {
         for (var glyph : MenuText.glyphs(body)) {
-            if (glyph.style().clickEvent() == null || !glyph.style().clickEvent().value().equals("/frontend.narrow")
+            if (glyph.style().clickEvent() == null || !glyph.style().clickEvent().equals(ClickEvent.runCommand("/frontend.narrow"))
                 || glyph.style().font() == null || !glyph.style().font().equals(RgbaHits.FONT)) continue;
             var providers = JsonParser.parseString(new String(resources.get(
                 "assets/dialogmenu/font/" + glyph.style().font().value() + ".json"), StandardCharsets.UTF_8))
@@ -215,7 +215,7 @@ public final class HitFontTests {
             throw new AssertionError("Narrow hit font provider missing");
         }
         throw new AssertionError("Narrow text lost its native click proxy: " + MenuText.glyphs(body).stream()
-            .filter(g -> g.style().clickEvent() != null && g.style().clickEvent().value().equals("/frontend.narrow"))
+            .filter(g -> g.style().clickEvent() != null && g.style().clickEvent().equals(ClickEvent.runCommand("/frontend.narrow")))
             .toList());
     }
 

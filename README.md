@@ -50,6 +50,25 @@ gradle build
 
 CE 图片可写 `source: craftengine:资源包目录/textures后的路径.png`，`.png` 可省略。旧 image/item/icon ID 需在 `craftengine-definitions` 列出定义文件，不自动扫描全部 CE 配置。
 
+## 26.2 模型显示
+
+26.2 使用匹配的内置物品库、GLSL 330 模型分支及 `items` 图集；支持独立 atlas 的 API 继续使用原库。字体 ZIP 同时携带模型表与相关资源，合包时仍需保留 overlays。
+
+```yaml
+frontend:
+  log:
+    type: model
+    source: minecraft:oak_log
+    size: 20
+```
+
+重新生成 26.2 内置库时，使用对应客户端资源及独立缓存：
+
+```sh
+DIALOGMENU_CLIENT_JAR=/path/to/minecraft-26.2.jar python3 tools/models/inventory.py \
+  --output src/main/resources/vanilla-inventory-26_2.zip --cache /tmp/dialogmenu-inventory-26_2 --pack-format 88
+```
+
 ## 动态文本与重载
 
 传统 16 色已预置；动态文字使用额外 HEX 色时，在 `text-colors: ["#123456"]` 中声明后执行 `reload all` 并重新分发资源包。支持粗体 `&l`、斜体 `&o`、下划线 `&n`、删除线 `&m`、混淆 `&k` 和重置 `&r`，也支持 `§`。例如 `&c&o&n红色斜体下划线&r`；legacy 颜色码会重置此前装饰，应先写颜色再写装饰。混淆由客户端等宽替换字形，不需要服务器定时刷新。下划线/删除线跟随实际字号与缩放，不增加点击区域；首次使用新实现需 `reload all` 并更新资源包。

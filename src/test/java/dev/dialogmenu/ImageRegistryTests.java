@@ -458,6 +458,9 @@ final class ImageRegistryTests {
         Set<String> defaults = new HashSet<>();
         for (var image : InventoryAssets.images().values()) defaults.add(FontPack.hash(image.image()));
         Set<String> nativeSprites = new HashSet<>(InventoryAssets.nativeSprites().values());
+        for (var model : InventoryAssets.json("models.json").getAsJsonObject("models").entrySet())
+            for (var face : model.getValue().getAsJsonArray())
+                nativeSprites.add(face.getAsJsonObject().get("sprite").getAsString());
         return (int) sources.asList().stream().filter(value -> {
             String sprite = value.getAsJsonObject().get("sprite").getAsString();
             return !sprite.startsWith("dialogmenu:registered/tile_") && !nativeSprites.contains(sprite)
