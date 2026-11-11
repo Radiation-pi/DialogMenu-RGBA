@@ -460,7 +460,9 @@ final class ImageRegistryTests {
         Set<String> nativeSprites = new HashSet<>(InventoryAssets.nativeSprites().values());
         for (var model : InventoryAssets.json("models.json").getAsJsonObject("models").entrySet())
             for (var face : model.getValue().getAsJsonArray())
-                nativeSprites.add(face.getAsJsonObject().get("sprite").getAsString());
+                nativeSprites.add(InventoryAssets.usesItemsAtlas()
+                    ? ModelPack.itemSprite(face.getAsJsonObject().get("sprite").getAsString())
+                    : face.getAsJsonObject().get("sprite").getAsString());
         return (int) sources.asList().stream().filter(value -> {
             String sprite = value.getAsJsonObject().get("sprite").getAsString();
             return !sprite.startsWith("dialogmenu:registered/tile_") && !nativeSprites.contains(sprite)

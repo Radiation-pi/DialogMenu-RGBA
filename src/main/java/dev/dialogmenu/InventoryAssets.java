@@ -14,8 +14,13 @@ final class InventoryAssets {
     private static Map<String, ImageRegistry.Entry> images;
     private static Map<String, String> nativeSprites;
 
+    private static final boolean ITEMS_ATLAS = detectItemsAtlas();
+
+    static boolean usesItemsAtlas() { return ITEMS_ATLAS; }
+
+    // 协议能力只探测一次，避免每次打开菜单都重新序列化组件。
     // 26.2 的紧凑 sprite 组件没有 atlas 字段；按实际 API 能力选择内置库。
-    static boolean usesItemsAtlas() {
+    private static boolean detectItemsAtlas() {
         try {
             var serializer = GsonComponentSerializer.gson();
             String encoded = serializer.serialize(serializer.deserialize(

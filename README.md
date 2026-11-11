@@ -52,7 +52,7 @@ CE 图片可写 `source: craftengine:资源包目录/textures后的路径.png`�
 
 ## 26.2 模型显示
 
-26.2 使用匹配的内置物品库、GLSL 330 模型分支及 `items` 图集；支持独立 atlas 的 API 继续使用原库。字体 ZIP 同时携带模型表与相关资源，合包时仍需保留 overlays。
+26.2 使用匹配的内置物品库、GLSL 330 模型分支及 `items` 图集中的独立 sprite 别名；支持独立 atlas 的 API 继续使用原库。字体 ZIP 同时携带模型表与相关资源；26.2 不额外注入模型包的世界图集定义，合包时仍需保留 overlays。
 
 ```yaml
 frontend:

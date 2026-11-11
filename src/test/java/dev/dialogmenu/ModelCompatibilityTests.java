@@ -54,10 +54,15 @@ final class ModelCompatibilityTests {
                         var object = source.getAsJsonObject();
                         if (object.has("sprite")) sprites.add(object.get("sprite").getAsString());
                     }
+                    if (sprites.contains("minecraft:block/stone") || sprites.contains("minecraft:block/oak_log"))
+                        throw new AssertionError("3D registration reuses world sprite IDs");
+                    if (zip.getEntry("assets/minecraft/atlases/blocks.json") != null)
+                        throw new AssertionError("26.2 font ZIP modifies world atlas definitions");
+                    checks += 2;
                     for (var model : InventoryAssets.json("models.json").getAsJsonObject("models").entrySet())
                         for (var face : model.getValue().getAsJsonArray()) {
                             String sprite = face.getAsJsonObject().get("sprite").getAsString();
-                            if (!sprites.contains(sprite)) throw new AssertionError("Missing 26.2 sprite: " + sprite);
+                            if (!sprites.contains(ModelPack.itemSprite(sprite))) throw new AssertionError("Missing 26.2 sprite: " + sprite);
                             checks++;
                         }
                 }

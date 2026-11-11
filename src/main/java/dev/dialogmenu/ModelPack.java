@@ -211,11 +211,17 @@ final class ModelPack {
         }
         return List.copyOf(result);
     }
+    static String itemSprite(String sprite) {
+        return "dialogmenu:model/" + sprite.replace(':', '/');
+    }
     void write(Path target) throws IOException {
         for (String value : packs.values())
             try (var input = new ZipInputStream(new ByteArrayInputStream(Base64.getDecoder().decode(value)))) {
                 for (ZipEntry entry; (entry = input.getNextEntry()) != null;) {
                     if (entry.getName().equals("pack.mcmeta") || entry.isDirectory()) continue;
+                    // 26.2 模型只用 items 图集，保留世界 atlas 的原始来源与过滤规则。
+                    if (InventoryAssets.usesItemsAtlas() && entry.getName().contains("/atlases/")
+                            && !entry.getName().equals("assets/minecraft/atlases/items.json")) continue;
                     Path path = target.resolve(entry.getName()).normalize();
                     if (!path.startsWith(target.normalize())) throw new IOException("Invalid model pack entry");
                     Files.createDirectories(path.getParent());
@@ -244,7 +250,7 @@ final class ModelPack {
                 JsonObject source = new JsonObject();
                 source.addProperty("type", "minecraft:single");
                 source.addProperty("resource", sprite);
-                source.addProperty("sprite", sprite);
+                source.addProperty("sprite", itemSprite(sprite));
                 if (!sources.contains(source)) sources.add(source);
             }
             atlas.add("sources", sources);
@@ -265,7 +271,7 @@ final class ModelPack {
             JsonObject part = new JsonObject();
             part.addProperty("type", "object");
             part.addProperty("atlas", face.atlas());
-            part.addProperty("sprite", face.sprite());
+            part.addProperty("sprite", InventoryAssets.usesItemsAtlas() ? itemSprite(face.sprite()) : face.sprite());
             part.addProperty("color", "#beef01");
             part.addProperty("shadow_color", payload);
             parts.add(part);

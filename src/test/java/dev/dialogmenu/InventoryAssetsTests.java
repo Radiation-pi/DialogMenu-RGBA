@@ -71,7 +71,7 @@ final class InventoryAssetsTests {
             var snapshot = engine.prepare().get().snapshot();
             packs = new ArrayList<>(snapshot.fonts().modelPacks(data));
             packs.add(snapshot.pack());
-            check(packs.size() == 3 && !Files.exists(data.resolve("models/settings.json")),
+            check(packs.size() == (InventoryAssets.usesItemsAtlas() ? 1 : 3) && !Files.exists(data.resolve("models/settings.json")),
                 "Default library is prepared even without references or client/compiler settings");
             long defaultBytes = 0;
             for (Path pack : packs) defaultBytes += Files.size(pack);

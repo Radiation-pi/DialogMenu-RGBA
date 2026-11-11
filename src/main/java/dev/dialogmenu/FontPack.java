@@ -529,7 +529,8 @@ final class FontPack {
         return models.component(id, sizeX, sizeY, offset, band);
     }
     List<Path> modelPacks(Path data) throws IOException {
-        return models == null ? List.of() : models.paths(data);
+        // 26.2 字体 ZIP 已包含模型，避免再次注入原始模型包中的世界 atlas。
+        return models == null || InventoryAssets.usesItemsAtlas() ? List.of() : models.paths(data);
     }
     void write(Path target) throws IOException { write(target, ignored -> {}); }
     void write(Path target, IntConsumer progress) throws IOException {
