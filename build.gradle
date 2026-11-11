@@ -35,6 +35,7 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 processResources {
+    inputs.property('version', project.version)
     from('tools/models') {
         into 'models/compiler'
         exclude '**/__pycache__/**', '**/test_*.py'
