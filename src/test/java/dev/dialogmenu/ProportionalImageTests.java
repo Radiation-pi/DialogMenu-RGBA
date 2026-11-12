@@ -9,8 +9,8 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import static dev.dialogmenu.MenuModel.*;
 
-/** Actual pack pixels and outgoing geometry, including source reuse after size-only edits. */
-final class ImageTilesTests {
+/** Actual pack pixels and proportional image geometry without display tiling. */
+final class ProportionalImageTests {
     private static final Context CONTEXT = new Context() {
         public String expand(String text) { return text; }
         public Icon item(int slot) { return null; }
@@ -23,7 +23,7 @@ final class ImageTilesTests {
     }
     static int run(Path root) throws Exception {
         checks = 0;
-        Path data = Files.createDirectories(root.resolve("image-tiles"));
+        Path data = Files.createDirectories(root.resolve("proportional-images"));
         Path images = Files.createDirectories(data.resolve("images"));
         List<LayoutStore.Document> docs = new ArrayList<>();
         for (int[] size : List.of(new int[]{1, 1}, new int[]{15, 17}, new int[]{256, 256}, new int[]{239, 160})) {
@@ -35,7 +35,13 @@ final class ImageTilesTests {
             ImageIO.write(image, "png", images.resolve(name + ".png").toFile());
             docs.add(doc(name, 1014, 1024));
         }
+        var wide = new BufferedImage(256, 16, BufferedImage.TYPE_INT_ARGB);
+        ImageIO.write(wide, "png", images.resolve("wide.png").toFile());
         var renderer = new MenuRenderer(new VanillaAssets(images));
+        boolean narrowRejected = false;
+        try { renderer.drawRuntime(doc("wide", 1, 1024).menu(), CONTEXT, 1014, 1_038_336); }
+        catch (IllegalArgumentException error) { narrowRejected = error.getMessage().contains("显示框过窄"); }
+        check(narrowRejected, "An unrepresentable subpixel height must not overflow the image's contain box");
         for (String extra : List.of("rotation: {z: 12}", "opacity: 128", "offset: {x: 400}")) {
             String yaml = """
                 schema-version: 1
@@ -75,17 +81,43 @@ final class ImageTilesTests {
                     actions.add(region.id());
                     return ClickEvent.runCommand("/tile");
                 });
-                check(actions.equals(List.of("frontend.image")), "One logical action for a tiled image");
+                check(actions.equals(List.of("frontend.image")), "One logical action for an image");
                 JsonElement encoded = JsonParser.parseString(GsonComponentSerializer.gson().serialize(output.component()));
                 List<Object> quads = new ArrayList<>();
                 int[] cursor = {0, 0, 0};
                 collect(encoded, "", cursor, quads);
-                check(cursor[2] == RgbaRows.slices(sprite.y(), sprite.height()).size() * ((size[0] + 1) / 2),
-                    "Hit coverage is not duplicated at tile boundaries");
+                check(cursor[2] == RgbaRows.slices(sprite.y(), sprite.height()).size()
+                        * ((sprite.width() + 1) / 2),
+                    "Hit coverage follows the proportional display bounds");
                 Set<String> sources = new HashSet<>();
                 for (Object quad : quads) sources.add((String) ((Map<?, ?>) quad).get("sprite"));
-                check(sources.size() == (ImageTiles.needed(size[0], size[1]) ? 4 : 1), "Whole/tile threshold");
-                fixtures.add(Map.of("source", name + ".png", "width", size[0], "height", size[1],
+                check(sources.size() == 1 && sources.stream().noneMatch(source -> source.contains("tile_")),
+                    "One source texture is used at every display size");
+                check(sprite.width() <= size[0] && sprite.height() <= size[1], "Image stays inside its contain box");
+                check(Math.abs(sprite.width() * (double) sprite.original().getHeight()
+                    - sprite.height() * (double) sprite.original().getWidth()) <= sprite.original().getHeight() / 2.0,
+                    "Source aspect ratio is retained to the nearest display pixel");
+                fixtures.add(Map.of("source", name + ".png", "boxWidth", size[0], "boxHeight", size[1],
+                    "width", sprite.width(), "height", sprite.height(),
+                    "x", sprite.x(), "y", sprite.y(), "quads", quads));
+            }
+            for (int percent = 80; percent <= 220; percent++) {
+                var doc = doc(name, 452, 177, 452, 177);
+                int width = (int) Math.round(452 * percent / 100.0);
+                var frame = renderer.drawRuntime(doc.menu(), CONTEXT, width, 1_038_336);
+                Sprite sprite = frame.sprites().getFirst();
+                check(sprite.width() <= frame.width() && sprite.height() <= frame.height(),
+                    "Personal scale " + percent + " stays inside canvas");
+                check(sprite.image() == null && sprite.original() != null, "Personal scale never rasterizes source");
+                if (!Set.of(80, 100, 141, 180, 220).contains(percent)) continue;
+                var output = new SpriteCanvas().encode(doc.menu(), frame, CONTEXT, fonts,
+                    region -> ClickEvent.runCommand("/proportional"));
+                List<Object> quads = new ArrayList<>();
+                int[] cursor = {0, 0, 0};
+                collect(JsonParser.parseString(GsonComponentSerializer.gson().serialize(output.component())), "", cursor, quads);
+                fixtures.add(Map.of("source", name + ".png", "boxWidth", width, "boxHeight", frame.height(),
+                    "canvasWidth", frame.width(), "canvasHeight", frame.height(),
+                    "width", sprite.width(), "height", sprite.height(),
                     "x", sprite.x(), "y", sprite.y(), "quads", quads));
             }
         }
@@ -94,15 +126,18 @@ final class ImageTilesTests {
         check(before.keySet().equals(after.keySet()), "Size changes do not add resources");
         for (String file : before.keySet()) check(Arrays.equals(before.get(file), after.get(file)), "Resource unchanged: " + file);
         Files.writeString(data.resolve("fixtures.json"), new Gson().toJson(fixtures));
-        System.out.println("PASS precompiled image tiles=" + checks + " fixtures=" + data);
+        System.out.println("PASS proportional image geometry=" + checks + " fixtures=" + data);
         return checks;
     }
 
     private static LayoutStore.Document doc(String name, int width, int height) throws Exception {
+        return doc(name, width, height, 1014, 1024);
+    }
+    private static LayoutStore.Document doc(String name, int width, int height, int canvasWidth, int canvasHeight) throws Exception {
         String yaml = """
             schema-version: 1
             id: %s
-            canvas: {width: 1014, height: 1024}
+            canvas: {width: %d, height: %d}
             frontend:
               image:
                 type: image
@@ -111,7 +146,7 @@ final class ImageTilesTests {
                 height: %d
                 actions: 'tell: TILE'
                 tooltip: TILE
-            """.formatted(name, name, width, height);
+            """.formatted(name, canvasWidth, canvasHeight, name, width, height);
         return LayoutStore.loadText(name, yaml).get(name);
     }
 
@@ -139,6 +174,7 @@ final class ImageTilesTests {
             else if (font.equals("dialogmenu:space")) cursor[0] += cp - 0xF0000 - 1024;
             else if (font.equals("dialogmenu:row_hit")) {
                 check(object.has("click_event"), "Actual hit glyph retains action");
+                check(object.has("hover_event"), "Actual hit glyph retains hover");
                 cursor[0] += (cp - 0xF0000) / 18 % 2 + 1;
                 cursor[2]++;
             }

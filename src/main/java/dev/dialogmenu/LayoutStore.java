@@ -168,7 +168,7 @@ final class LayoutStore {
             if (schema == 1) return node;
             return new Node(node.id(), node.type(), node.x() - (schema == 3 ? width / 2.0 : 0),
                 height / 2.0 - node.y(), node.z(),
-                node.scaleX(), node.scaleY(), node.width(), node.height(), node.argb(), node.text(), node.source(),
+                node.scale(), node.width(), node.height(), node.argb(), node.text(), node.source(),
                 node.alignment(), node.size(), node.thickness(), node.rotation(), node.columns(), node.slotSize(),
                 node.slots(), node.maxLines(), node.interaction(), node.reuseTexture(), node.atlas());
         }
@@ -183,7 +183,7 @@ final class LayoutStore {
     static Document parse(String expected, YamlConfiguration yaml) {
         Header header = header(expected, yaml);
         List<Node> nodes = new ArrayList<>();
-        flatten(yaml.getConfigurationSection("frontend"), 0, 0, 0, 1, 1, nodes);
+        flatten(yaml.getConfigurationSection("frontend"), 0, 0, 0, 1, nodes);
         return header.document(nodes);
     }
     static Header header(String expected, YamlConfiguration yaml) {
@@ -210,7 +210,7 @@ final class LayoutStore {
             yaml.getBoolean("scale-text-with-canvas", false), schema, open, close);
     }
     static void flatten(ConfigurationSection section, double ox, double oy, double oz,
-                        double sx, double sy, List<Node> out) {
+                        double parentScale, List<Node> out) {
         if (section == null) return;
         for (String key : section.getKeys(false)) {
             id(key);
@@ -230,18 +230,17 @@ final class LayoutStore {
                 throw new IllegalArgumentException(key + " 直接点击仅用于text/image/model");
             if (s.contains("clickable") && !(s.get("clickable") instanceof Boolean))
                 throw new IllegalArgumentException(key + " clickable须为true/false");
-            double x = ox + number(s, "offset.x", 0) * sx;
-            double y = oy + number(s, "offset.y", 0) * sy;
+            double x = ox + number(s, "offset.x", 0) * parentScale;
+            double y = oy + number(s, "offset.y", 0) * parentScale;
             double z = oz + number(s, "offset.z", 0);
-            double nx = sx * number(s, "scale.x", 1), ny = sy * number(s, "scale.y", 1);
-            if (nx <= 0 || ny <= 0) throw new IllegalArgumentException(key + " 平面缩放须为正数");
-            if (number(s, "rotation.x", 0) != 0 || number(s, "rotation.y", 0) != 0
-                || number(s, "scale.z", 1) != 1)
+            double scale = parentScale * elementScale(s);
+            if (!Double.isFinite(scale) || scale <= 0) throw new IllegalArgumentException(key + " 缩放须为有限正数");
+            if (number(s, "rotation.x", 0) != 0 || number(s, "rotation.y", 0) != 0)
                 throw new IllegalArgumentException(key + " 不支持三维变换");
             double rotation = number(s, "rotation.z", 0);
             if (type.equals("group")) {
                 if (rotation != 0) throw new IllegalArgumentException(key + " 分组暂不支持旋转");
-                flatten(s.getConfigurationSection("children"), x, y, z, nx, ny, out);
+                flatten(s.getConfigurationSection("children"), x, y, z, scale, out);
                 continue;
             }
             if (!Set.of("rectangle", "frame", "line", "text", "image", "model").contains(type))
@@ -271,7 +270,7 @@ final class LayoutStore {
                     throw new IllegalArgumentException(key + " model需要完整namespace:id");
                 if (rotation != 0 || argb != 0xFFFFFFFF
                     || s.contains("width") || s.contains("height"))
-                    throw new IllegalArgumentException(key + " model使用size、横纵scale及offset，不支持width/height/旋转/染色");
+                    throw new IllegalArgumentException(key + " model使用size、等比scale及offset，不支持width/height/旋转/染色");
                 textSize = integer(s, "size", 32, 1, 96);
                 w = h = textSize;
             }
@@ -286,10 +285,22 @@ final class LayoutStore {
             }
             if (s.getBoolean("reuse-texture", false) && !type.equals("image"))
                 throw new IllegalArgumentException(key + " reuse-texture仅用于image");
-            out.add(new Node(s.getCurrentPath(), type, x, y, z, nx, ny, w, h, argb,
+            out.add(new Node(s.getCurrentPath(), type, x, y, z, scale, w, h, argb,
                 s.getString("content", ""), source, alignment, textSize,
                 thickness, rotation, 9, 18, List.of(), lines, interaction, s.getBoolean("reuse-texture", false), atlas));
         }
+    }
+    private static double elementScale(ConfigurationSection section) {
+        Object value = section.get("scale");
+        if (value == null) return 1;
+        if (value instanceof Number number) {
+            double scale = number.doubleValue();
+            if (!Double.isFinite(scale) || scale <= 0)
+                throw new IllegalArgumentException(section.getCurrentPath() + ".scale 须为有限正数");
+            return scale;
+        }
+        throw new IllegalArgumentException(section.getCurrentPath()
+            + ".scale 须为单个正数；已移除scale.x/scale.y");
     }
     static TextureRegion atlas(ConfigurationSection section, String source) {
         if (!section.contains("atlas")) return null;

@@ -79,11 +79,10 @@ final class ShaderTests {
         check(visible.size() > 2, "Cross-row images are emitted into their physical row bands");
         check(visible.stream().allMatch(g -> !g.has("click_event") && !g.has("hover_event")),
             "Visible shader glyphs must not publish a source-size hit box");
-        var sample = visible.stream().filter(g -> ((g.get("shadow_color").getAsInt() >> 19) & 511) + 1 == 143)
+        var sample = visible.stream().filter(g -> ((g.get("shadow_color").getAsInt() >> 11) & 1023) + 1 == 37)
             .findFirst().orElseThrow();
-        check(((sample.get("shadow_color").getAsInt() >> 19) & 511) + 1 == 143
-            && ((sample.get("shadow_color").getAsInt() >> 10) & 511) + 1 == 37,
-            "Actual YAML dimensions reach the outgoing payload");
+        check(((sample.get("shadow_color").getAsInt() >> 11) & 1023) + 1 == 37,
+            "A square source stays square inside the requested 143x37 display box");
         int imageAt = -1;
         int textAt = -1;
         for (int i = 0; i < parts.size(); i++)
@@ -98,7 +97,7 @@ final class ShaderTests {
         check(imageAt >= 0 && imageAt < textAt, "Within each shared row, text remains above the lower image");
         check(glyphs.stream().anyMatch(g -> g.style().font() != null
             && g.style().font().equals(RgbaHits.FONT) && g.style().clickEvent() != null),
-            "Resized image has native hit geometry, not only visible stretching");
+            "Proportionally displayed image has matching native hit geometry");
         check(glyphs.stream().anyMatch(g -> g.style().hoverEvent() != null && g.style().clickEvent() == null),
             "Disabled image keeps hover without executing its stored action");
         Path pack = data.resolve("pack");
@@ -124,7 +123,8 @@ final class ShaderTests {
         for (String file : List.of("rendertype_text.vsh", "rendertype_text.fsh"))
             check(Files.exists(pack.resolve("assets/minecraft/shaders/core/" + file)), "Shader resources are bundled");
 
-        for (int[] dimensions : List.of(new int[]{1, 9}, new int[]{512, 1}, new int[]{143, 7}, new int[]{512, 9})) {
+        for (int[] dimensions : List.of(new int[]{1, 9}, new int[]{512, 1}, new int[]{143, 7},
+            new int[]{512, 9}, new int[]{1024, 1024}, new int[]{1, 1024})) {
             int w = dimensions[0], h = dimensions[1];
             boolean[][] covered = new boolean[h][w];
             for (var tile : RgbaHits.tiles(w, h)) {
@@ -135,15 +135,17 @@ final class ShaderTests {
                         covered[y][x] = true;
                     }
             }
-            for (boolean[] row : covered) for (boolean pixel : row) check(pixel, "Hit tiles cover the full stretched image");
-            for (int local : List.of(-8, -1, 0, 1, 8)) {
-                int payload = RgbaImages.payload(w, h, local, 9);
-                int decodedY = payload & 1023;
-                if (decodedY >= 512) decodedY -= 1024;
-                check(((payload >> 19) & 511) + 1 == w && ((payload >> 10) & 511) + 1 == h && decodedY == local,
-                    "Width, height and signed offset do not corrupt each other");
+            for (boolean[] row : covered) for (boolean pixel : row) check(pixel, "Hit tiles cover the full proportional image");
+            for (int local : List.of(-1008, -8, -1, 0, 1, 8, 1023)) {
+                int payload = RgbaImages.imagePayload(h, local, 9);
+                int decodedY = payload & 2047;
+                if (decodedY >= 1024) decodedY -= 2048;
+                check(((payload >> 11) & 1023) + 1 == h && decodedY == local,
+                    "Proportional target height and signed offset do not corrupt each other");
             }
         }
+        check(RgbaImages.imagePayload(1024, 0, 0) == (0xA0000000 | (1023 << 11)),
+            "The proportional image protocol uses the full supported canvas height without tiling");
         // 单图新增绝对偏移时使用原生换行，不增加 PNG 或字体定义。
         Map<String, byte[]> first = null;
         for (int y : List.of(50, 23, -4)) {
@@ -236,7 +238,7 @@ final class ShaderTests {
             canvas: {width: 300, height: 270}
             frontend:
               label: {type: text, content: 'A中', size: 8, width: 120,
-                offset: {x: -40, y: 50}, scale: {x: 1.5, y: 2},
+                offset: {x: -40, y: 50}, scale: 1.5,
                 actions: ['tell: STRETCHED']}
             """);
         var fonts = FontPack.create(List.of(doc), renderer, CONTEXT, List.of(300), 131072);

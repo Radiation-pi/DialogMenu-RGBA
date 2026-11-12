@@ -368,7 +368,7 @@ final class MenuTemplate {
                     int size = LayoutStore.integer(grid, "model-size",
                         Math.max(1, (int) Math.round(grid.getDouble("icon-size"))), 1, 96);
                     nodes.add(new Node(prefix + "-icon", "model", x + grid.getDouble("icon-x"),
-                        y + grid.getDouble("icon-y"), 0, 1, 1, size, size, 0xFFFFFFFF, "", entry.model(),
+                        y + grid.getDouble("icon-y"), 0, 1, size, size, 0xFFFFFFFF, "", entry.model(),
                         "center", size, 1, 0, 9, 18, List.of(), 0, interaction, false));
                 } else if (icon) nodes.add(image(prefix + "-icon", entry.image(), x + grid.getDouble("icon-x"),
                     y + grid.getDouble("icon-y"), grid.getDouble("icon-size"), grid.getDouble("icon-size"),
@@ -376,7 +376,7 @@ final class MenuTemplate {
                 String color = grid.getString("color", "#343537");
                 if (!color.matches("#[0-9a-fA-F]{6}")) throw new IllegalArgumentException("grid color非法");
                 nodes.add(new Node(prefix + "-label", "text", icon ? x + grid.getDouble("text-x") : x, y,
-                    1, 1, 1, 0, 0, 0xFF000000 | Integer.parseInt(color.substring(1), 16), label, "",
+                    1, 1, 0, 0, 0xFF000000 | Integer.parseInt(color.substring(1), 16), label, "",
                     icon ? "left" : "center", 8, 1, 0, 9, 18, List.of(), 0, interaction, false));
             }
             List<Node> result = nodes.stream().map(header::renderNode).toList();
@@ -390,7 +390,7 @@ final class MenuTemplate {
     }
     private static Node image(String id, String source, double x, double y, double w, double h,
                               Interaction interaction, TextureRegion atlas) {
-        return new Node(id, "image", x, y, 0, 1, 1, w, h, 0xFFFFFFFF, "", source,
+        return new Node(id, "image", x, y, 0, 1, w, h, 0xFFFFFFFF, "", source,
             "center", 8, 1, 0, 9, 18, List.of(), 0, interaction, false, atlas);
     }
     List<LayoutStore.Document> variants() throws Exception {

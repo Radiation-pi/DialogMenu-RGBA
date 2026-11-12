@@ -56,7 +56,7 @@ uniform int testBaseVertex;
 """
 model_shader = (source / "model_vertex.glsl").read_text().replace("layout(location = 7) flat out", "flat out").replace("gl_VertexIndex", "gl_VertexID")
 if fault:
-    model_shader = model_shader.replace("int localY =", "size.y = size.x;\n        int localY =")
+    model_shader = model_shader.replace("int localY =", "size.y *= 0.75;\n        int localY =")
 candidate_body = """
 void main() {
     vec3 position = Position;
@@ -138,7 +138,7 @@ try:
     for name in names:
         _, _, original = prepared.prepared(name)
         snapshot = snapshots[name]
-        for size in ((64, 64), (91, 37), (29, 87)):
+        for size in ((64, 64), (91, 91), (29, 29)):
             for sample in (0, 0.5, 1):
                 results = []
                 for native, base, band in ((True, 0, 0), (False, 3, 0), (False, 7, 1)):
@@ -165,7 +165,7 @@ try:
                         else:
                             for row in range(30):
                                 baseline = row * 9 - band * 9
-                                payload = 0x40000000 | band << 28 | (size[0]-1) << 19 | (size[1]-1) << 10 | ((128-baseline) & 1023)
+                                payload = 0x40000000 | band << 28 | (size[0]-1) << 11 | ((128-baseline) & 2047)
                                 rgba = tuple((payload >> shift & 255) / 255 for shift in (16, 8, 0, 24))
                                 values = [0.0] * (base * 9)
                                 for x, y, u, v in ((129, 0, 17, 29), (129, 8, 17, 29+height),

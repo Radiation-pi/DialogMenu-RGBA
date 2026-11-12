@@ -62,7 +62,7 @@ public final class ParallelBuildTests {
                     type: text
                     content: 'XY汉'
                     offset: {x: 0, y: 50}
-                    scale: {x: 1.5, y: 2}
+                    scale: 1.5
                   dynamic:
                     type: text
                     content: '{player}'

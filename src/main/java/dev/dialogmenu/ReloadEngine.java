@@ -70,10 +70,14 @@ final class ReloadEngine implements AutoCloseable {
         this(data, preview, false);
     }
     ReloadEngine(Path data, Context preview, boolean reuseCompiledCache) {
-        this.data = data.toAbsolutePath().normalize();
+        this.data = realPath(data);
         this.preview = preview;
         this.cache = new PackCache(this.data.resolve("pack-cache"));
         this.reuseCompiledCache = reuseCompiledCache;
+    }
+    private static Path realPath(Path data) {
+        try { return data.toRealPath(); }
+        catch (IOException error) { throw new UncheckedIOException("无法解析Dialog数据目录：" + data, error); }
     }
     void retainPack(Object consumer, Snapshot snapshot) { cache.retain(consumer, snapshot.pack()); }
 
@@ -293,6 +297,12 @@ final class ReloadEngine implements AutoCloseable {
         ModelPack models = full || latest == null || !sameModelInputs(latest.resourceInputs())
             || !ModelPack.matches(latest.fonts().modelPack(), catalog)
             ? ModelPack.prepare(data, catalog) : latest.fonts().modelPack();
+        if (all) {
+            progress.update(17, "后台缓存编辑器纹理与方块素材");
+            new DialogMenuEditorFiles(data, settings.resourceRoot()).preload(full,
+                (done, total) -> progress.update(17 + done * 2 / Math.max(1, total),
+                    "缓存编辑器素材 " + done + "/" + total));
+        }
         if (!full && latest != null && builtInputs.equals(yamlInputs)
             && latest.resourceInputs().equals(resourceInputs(latest.assets()))) {
             progress.update(95, "资源未变化，复用已准备快照");

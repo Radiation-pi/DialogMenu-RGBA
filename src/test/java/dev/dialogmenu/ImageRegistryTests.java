@@ -100,8 +100,8 @@ final class ImageRegistryTests {
                 check(!objects.isEmpty(), "Actual outgoing object sprite is present");
                 for (JsonObject object : objects) {
                     int payload = object.get("shadow_color").getAsInt();
-                    check(((payload >>> 19) & 511) + 1 == width && ((payload >>> 10) & 511) + 1 == 257,
-                        "Outgoing payload matches independently requested dimensions");
+                    check(((payload >>> 11) & 1023) + 1 == Math.min(width, 257),
+                        "Outgoing payload carries proportional target height, not independent XY dimensions");
                     check(object.get("sprite").getAsString().endsWith("_" + snapshot.fonts().imageTint(0xFF55AAFF)),
                         "The requested prepared tint is selected");
                 }
@@ -342,6 +342,9 @@ final class ImageRegistryTests {
                 check(frame.image() == null && frame.sprites().getFirst().image() == null
                     && frame.sprites().getFirst().original().getWidth() == 256,
                     "Local runtime retains the complete source, not a scaled bitmap");
+                check(frame.sprites().getFirst().width() == Math.min(width, 257)
+                    && frame.sprites().getFirst().height() == Math.min(width, 257),
+                    "Square source is proportionally fitted into the requested image box");
                 assertTint(result.snapshot(), 0xFFFFFF);
             }
             Files.writeString(data.resolve("images/registry.json"), """

@@ -85,11 +85,11 @@ final class InventoryAssetsTests {
                 "model:minecraft:dirt", "model:minecraft:player_head", "model:minecraft:decorated_pot")) {
                 boolean model = id.startsWith("model:");
                 String node = model
-                    ? "{type: image, source: '%s', size: 32, scale: {x: 2, y: 0.75}, offset: {x: 7, y: -13}, actions: close, tooltip: icon}"
-                    : "{type: image, source: '%s', width: 16, height: 16, scale: {x: 2.694, y: 1}, offset: {x: 7, y: -13}, actions: close, tooltip: icon}";
+                    ? "{type: image, source: '%s', size: 32, scale: 2, offset: {x: 7, y: -13}, actions: close, tooltip: icon}"
+                    : "{type: image, source: '%s', width: 16, height: 16, scale: 2, offset: {x: 7, y: -13}, actions: close, tooltip: icon}";
                 Files.writeString(file, layout(node.formatted(id)));
                 var changed = engine.prepare(ReloadEngine.Mode.YAML).get();
-                check(!changed.resourcesChanged(), "Unused default ID, XY stretching and offsets reuse the prepared pack");
+                check(!changed.resourcesChanged(), "Unused default ID, proportional image scaling and offsets reuse the prepared pack");
                 snapshot = changed.snapshot();
                 var menu = snapshot.documents().get("probe").menu();
                 var frame = snapshot.renderer().drawRuntime(menu, CONTEXT, 300, 131072);
@@ -101,15 +101,16 @@ final class InventoryAssetsTests {
                 check(!parts.isEmpty(), "Inventory source reaches actual object components");
                 for (var part : parts) {
                     int payload = part.get("shadow_color").getAsInt();
-                    check(((payload >>> 19) & 511) + 1 == (model ? 64 : 43)
-                        && ((payload >>> 10) & 511) + 1 == (model ? 24 : 16),
-                        "Independent rounded X/Y dimensions reach shader payload");
+                    check(model
+                        ? ((payload >>> 11) & 1023) + 1 == 64
+                        : ((payload >>> 11) & 1023) + 1 == 32,
+                        "Models use the same proportional target size on both axes; images encode target height");
                 }
                 if (model) {
                     check(frame.sprites().isEmpty(), "3D remains real faces, never a baked model PNG");
                     var area = snapshot.fonts().modelArea(menu, menu.nodes().getFirst(), 300, 180);
                     check(area.width > 0 && area.height > 0 && area.contains(157, 102),
-                        "Stretched model has positioned native hit bounds");
+                        "Proportionally scaled model has positioned native hit bounds");
                 } else if (id.equals("minecraft:item/diamond")) {
                     var glyphs = MenuText.glyphs(ResourceRegressionTests.textOnly(
                         GsonComponentSerializer.gson().deserialize(json)));
@@ -125,6 +126,24 @@ final class InventoryAssetsTests {
                         && stamps.get(pack).equals(Files.getLastModifiedTime(pack)),
                         "Default source switch and geometry do not rewrite ZIP bytes, path or mtime");
             }
+            var large = LayoutStore.loadText("probe",
+                layout("{type: model, source: 'minecraft:stone', size: 32, scale: 18.75, actions: close, tooltip: large}")
+                    .replace("{width: 300, height: 180}", "{width: 1014, height: 1024}"))
+                .get("probe").menu();
+            var largeFrame = snapshot.renderer().drawRuntime(large, CONTEXT, 1014, 1_048_576);
+            check(MenuRenderer.modelProtocolFits(large, largeFrame), "600px model is not constrained by the removed 512 encoding");
+            String largeJson = GsonComponentSerializer.gson().serialize(new SpriteCanvas().encode(
+                large, largeFrame, CONTEXT, snapshot.fonts(), region -> ClickEvent.runCommand("/large")).component());
+            List<JsonObject> largeParts = new ArrayList<>();
+            objects(JsonParser.parseString(largeJson), largeParts);
+            check(!largeParts.isEmpty() && largeParts.stream().allMatch(part ->
+                ((part.get("shadow_color").getAsInt() >>> 11) & 1023) + 1 == 600),
+                "Every large model face uses the same scalar size");
+            check(largeJson.contains("/large") && largeJson.contains("row_hit") && largeJson.contains("show_text"),
+                "Large model keeps actual click and hover components");
+            for (Path pack : packs)
+                check(Arrays.equals(bytes.get(pack), Files.readAllBytes(pack)),
+                    "Scaling a model beyond 512 does not add resources");
             Files.createDirectories(data.resolve("images"));
             Files.writeString(data.resolve("images/registry.json"),
                 "{\"models\":{\"minecraft:stone\":{\"mode\":\"auto\"}}}");
@@ -135,7 +154,7 @@ final class InventoryAssetsTests {
         }
         try (var engine = new ReloadEngine(data, CONTEXT)) {
             engine.restore().get();
-            Files.writeString(file, layout("{type: image, source: 'model:minecraft:oak_stairs', size: 32, scale: {x: 1, y: 2}}"));
+            Files.writeString(file, layout("{type: image, source: 'model:minecraft:oak_stairs', size: 32, scale: 2}"));
             check(!engine.prepare(ReloadEngine.Mode.YAML).get().resourcesChanged(),
                 "Persisted default library permits unused models without reading a pending invalid registry");
         }

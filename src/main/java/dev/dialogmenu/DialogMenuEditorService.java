@@ -13,7 +13,9 @@ import java.util.concurrent.CompletableFuture;
  * companion DialogMenuEditor plugin owns that optional surface.</p>
  */
 public interface DialogMenuEditorService {
-    record FileEntry(String path, boolean writable) {}
+    record FileEntry(String path, boolean writable, long size, long modified) {
+        public FileEntry(String path, boolean writable) { this(path, writable, -1, -1); }
+    }
     final class Conflict extends IOException {
         public Conflict(String message) { super(message); }
     }

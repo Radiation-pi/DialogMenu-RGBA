@@ -87,25 +87,27 @@ for source_size in (16, 256, "wide"):
     texture.filter = moderngl.NEAREST, moderngl.NEAREST
     uv = (128 / 1024, 192 / 1024, (128 + wrapped.width) / 1024, (192 + wrapped.height) / 1024)
     for width, height in ((255, 37), (256, 256), (257, 300), (300, 257), (512, 512)):
+        target_height = max(1, int(min(height, width * original.height / original.width) + .5))
+        target_width = max(1, int(target_height * original.width / original.height + .5))
         for top in (0, 8, 9, 17, 35):
             frame.clear()
             y = top
-            while y < top + height:
+            while y < top + target_height:
                 band = y // 9
                 row = max(0, band - 1)
-                payload = 0x20000000 | (0 if band == 0 else 1 << 28) | (width - 1) << 19
-                payload |= (height - 1) << 10 | ((top - row * 9) & 1023)
+                payload = 0xA0000000 | (0 if band == 0 else 1 << 28)
+                payload |= (target_height - 1) << 11 | ((top - row * 9) & 2047)
                 draw(texture, payload, row, True, uv)
                 draw(texture, 0xFFBEEF01, row, False, uv)
-                y = min(top + height, (band + 1) * 9)
+                y = min(top + target_height, (band + 1) * 9)
             actual = Image.frombytes("RGBA", (640, 640), frame.read(components=4)).transpose(Image.Transpose.FLIP_TOP_BOTTOM)
             expected = Image.new("RGBA", (640, 640))
             target = expected.load()
             source = original.load()
-            for y in range(height):
-                for x in range(width):
-                    sx = int((x + .5) * original.width / width - .0001)
-                    sy = int((y + .5) * original.height / height - .0001)
+            for y in range(target_height):
+                for x in range(round(target_width)):
+                    sx = int((x + .5) * original.width / target_width - .0001)
+                    sy = int((y + .5) * original.height / target_height - .0001)
                     r, g, b, a = source[sx, sy]
                     target[20 + x, top + y] = (round(r / 3), round(g * 2 / 3), b, a)
             if actual.tobytes() != expected.tobytes():
@@ -113,7 +115,7 @@ for source_size in (16, 256, "wide"):
                 expected.save(output / "failed-expected.png")
                 for index, (a, b) in enumerate(zip(actual.getdata(), expected.getdata())):
                     if a != b:
-                        raise AssertionError(f"source={source_size}, display={width}x{height}, top={top}, "
+                        raise AssertionError(f"source={source_size}, box={width}x{height}, display={target_width}x{target_height}, top={top}, "
                                              f"pixel={index % 640},{index // 640}: {a} != {b}")
             checks += 1
     texture.release()

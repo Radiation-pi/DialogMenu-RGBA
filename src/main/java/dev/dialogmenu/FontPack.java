@@ -104,16 +104,13 @@ final class FontPack {
         Map<String, Set<String>> declarations = new HashMap<>();
         List<FrameJob> jobs = new ArrayList<>();
         Map<String, ImageRegistry.Entry> imageSources = new TreeMap<>(renderer.assets.registeredImages());
-        Set<String> tiledSources = new TreeSet<>(imageSources.keySet());
-        // The default inventory library stays native until a layout needs an oversized icon.
-        tiledSources.removeAll(InventoryAssets.images().keySet());
         for (var doc : docs.stream().sorted(Comparator.comparing(d -> d.menu().id())).toList())
             for (double canvasScale : new TreeSet<>(canvasScales))
             for (int requestedWidth : MenuRenderer.preparedWidths(doc.menu(), widths, canvasScale, maxPixels))
                 jobs.add(new FrameJob(doc, CanvasScale.context(MenuTemplate.preview(doc, context), canvasScale),
                     requestedWidth, canvasScale));
-        for (var document : ScaleCalibration.documents())
-            jobs.add(new FrameJob(document, ScaleCalibration.reference(context), document.menu().width(), 1));
+        var calibration = ScaleCalibration.document();
+        jobs.add(new FrameJob(calibration, ScaleCalibration.reference(context), calibration.menu().width(), 1));
         int totalFrames = jobs.size();
         int[] completedFrames = {0};
         BuildTasks.ordered(tasks, jobs,
@@ -136,12 +133,9 @@ final class FontPack {
                         pack.rgba.add(argb);
                         if (ImageRegistry.source(local.texture())) {
                             imageSources.merge(local.texture(),
-                                new ImageRegistry.Entry(local.original(), !ImageTiles.allowed(node)),
+                                new ImageRegistry.Entry(local.original(),
+                                    !node.type().equals("image") || SymbolImages.source(node.source())),
                                 (existing, added) -> existing.tintable() ? existing : added);
-                            // Prepare for every supported canvas width, not only the sampled scale presets.
-                            if (ImageTiles.allowed(node)
-                                && Math.max(sprite.width(), sprite.height()) * 1024.0 / Math.max(frame.width(), frame.height()) > 512)
-                                tiledSources.add(local.texture());
                             continue;
                         }
                         if (pack.shaderImage(local)) {
@@ -170,7 +164,7 @@ final class FontPack {
                     for (int cp : characters) pack.measure(cp, renderer.assets);
                     for (double scale : ScaleCalibration.is(doc) ? List.of(1d) : textScales) {
                         int size = SpriteCanvas.textSize(doc.menu(), node, width, scale, canvasScale);
-                        TextStyle style = new TextStyle(size, node.scaleX(), node.scaleY());
+                        TextStyle style = new TextStyle(size, node.scale());
                         List<net.kyori.adventure.text.Component> lines;
                         try {
                             lines = dynamic ? List.of() : TextFlow.lines(node, MenuText.parse(active.expand(node.text())),
@@ -188,7 +182,7 @@ final class FontPack {
                             if (top >= 0 && top + style.height() <= frame.height()) {
                                 String name = RgbaText.FONT;
                                 TextFont font = pack.textFonts.computeIfAbsent(name,
-                                    key -> new TextFont(new TextStyle(8, 1, 1), new TreeSet<>()));
+                                    key -> new TextFont(new TextStyle(8, 1), new TreeSet<>()));
                                 pack.measure(RgbaText.RULE, renderer.assets);
                                 font.characters().add(RgbaText.RULE);
                                 if (ScaleCalibration.is(doc) && node.id().equals(ScaleCalibration.VALUE_NODE)) {
@@ -230,7 +224,6 @@ final class FontPack {
                 imageSources.put(alias, new ImageRegistry.Entry(source, true));
             }
         pack.registeredImages.prepare(imageSources, pack.rgba.indices(), pack.rgba.index(0xFFFFFF));
-        pack.registeredImages.prepareTiles(tiledSources);
         if (cached != null && pack.textFonts.equals(cached.textFonts)) {
             pack.text.putAll(cached.text);
             pack.reusedGlyphs = true;
@@ -321,7 +314,7 @@ final class FontPack {
                          Validation validation) throws IOException {
         for (Node node : doc.menu().nodes()) if (node.type().equals("text") && MenuTemplate.dynamicText(node)) {
             int size = SpriteCanvas.textSize(doc.menu(), node, width, context.textScale(), context.canvasScale());
-            var key = textFont(new TextStyle(size, node.scaleX(), node.scaleY()));
+            var key = textFont(new TextStyle(size, node.scale()));
             TextFont font = textFonts.get(key.value());
             if (font == null || !validation.covers(key.value(), font,
                 MenuTemplate.dynamicCharacters(doc, node, extra)))
@@ -455,20 +448,21 @@ final class FontPack {
     int textWidth(net.kyori.adventure.text.Component value, TextStyle style) {
         return MenuText.glyphs(value).stream().mapToInt(glyph -> glyphWidth(glyph, style)).sum();
     }
-    int glyphWidth(MenuText.Glyph glyph, int size) { return glyphWidth(glyph, new TextStyle(size, 1, 1)); }
+    int glyphWidth(MenuText.Glyph glyph, int size) { return glyphWidth(glyph, new TextStyle(size, 1)); }
     int glyphWidth(MenuText.Glyph glyph, TextStyle style) {
         if (glyph.code() == 32) return style.space() + (glyph.bold() ? 1 : 0);
         int[] metric = metrics.get(glyph.code());
         if (metric == null)
             throw new IllegalArgumentException("文字已变化，请重新生成字体资源：U+" + Integer.toHexString(glyph.code()));
-        int advance = (int) Math.round(metric[0] * style.size() * style.x() / metric[1]) + 1;
+        int advance = (int) Math.round(metric[0] * style.size() * style.scale() / metric[1])
+            + (glyph.code() == RgbaText.RULE ? 0 : 1);
         return advance + (glyph.bold() ? 1 : 0);
     }
     net.kyori.adventure.key.Key textFont(int size) {
-        return textFont(size, 1, 1);
+        return textFont(size, 1);
     }
-    net.kyori.adventure.key.Key textFont(int size, double stretchX, double stretchY) {
-        return textFont(new TextStyle(size, stretchX, stretchY));
+    net.kyori.adventure.key.Key textFont(int size, double scale) {
+        return textFont(new TextStyle(size, scale));
     }
     net.kyori.adventure.key.Key textFont(TextStyle style) {
         String name = RgbaText.FONT;
@@ -477,11 +471,7 @@ final class FontPack {
         return net.kyori.adventure.key.Key.key("dialogmenu", name);
     }
     net.kyori.adventure.key.Key textFont(int size, net.kyori.adventure.text.Component value) {
-        return textFont(size, 1, 1, value);
-    }
-    net.kyori.adventure.key.Key textFont(int size, double stretchX, double stretchY,
-                                         net.kyori.adventure.text.Component value) {
-        return textFont(new TextStyle(size, stretchX, stretchY), value);
+        return textFont(new TextStyle(size, 1), value);
     }
     net.kyori.adventure.key.Key textFont(TextStyle style, net.kyori.adventure.text.Component value) {
         var key = textFont(style);
@@ -496,7 +486,7 @@ final class FontPack {
     int glyphPixels(int cp, TextStyle style) {
         int[] metric = metrics.get(cp);
         if (metric == null) throw new IllegalArgumentException("未准备字形 U+" + Integer.toHexString(cp));
-        return Math.max(1, (int) Math.round(metric[2] * style.size() * style.x() / metric[1]));
+        return Math.max(1, (int) Math.round(metric[2] * style.size() * style.scale() / metric[1]));
     }
     net.kyori.adventure.key.Key obfuscatedFont(int cp) {
         int[] metric = metrics.get(cp);
@@ -524,9 +514,9 @@ final class FontPack {
         if (models == null) throw new IllegalArgumentException("模型未准备，请执行 /dialogmenu reload all");
         return models.area(menu, node, width, height);
     }
-    net.kyori.adventure.text.Component model(String id, int sizeX, int sizeY, int offset, int band) {
+    net.kyori.adventure.text.Component model(String id, int size, int offset, int band) {
         if (models == null) throw new IllegalArgumentException("模型未准备，请执行 /dialogmenu reload all");
-        return models.component(id, sizeX, sizeY, offset, band);
+        return models.component(id, size, offset, band);
     }
     List<Path> modelPacks(Path data) throws IOException {
         return models == null ? List.of() : models.paths(data);

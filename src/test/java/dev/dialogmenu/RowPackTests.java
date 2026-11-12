@@ -248,13 +248,26 @@ final class RowPackTests {
                     if (glyph.bold()) blend(layer, x + px + 1, y + top + py, alpha << 24 | color);
                 }
             } else if (font.equals("dialogmenu:images_rgba") || font.equals("dialogmenu:test_object")) {
-                int widthPixels = ((payload >> 19) & 511) + 1, heightPixels = ((payload >> 10) & 511) + 1;
-                int localY = payload & 1023;
-                if (localY >= 512) localY -= 1024;
+                boolean proportional = (payload & 0xE0000000) == 0xA0000000
+                    || (payload & 0xE0000000) == 0xE0000000;
+                int heightPixels = proportional ? ((payload >> 11) & 1023) + 1 : ((payload >> 10) & 511) + 1;
+                int localY = payload & (proportional ? 2047 : 1023);
+                int yLimit = proportional ? 1024 : 512;
+                if (localY >= yLimit) localY -= yLimit * 2;
                 boolean object = font.equals("dialogmenu:test_object");
                 int metadata = ink.image().getRGB(object ? 1 : ink.x() + 1, object ? 0 : ink.y());
                 int sourceWidth = (metadata >> 16 & 255) + (object ? 1 : 0);
                 int sourceHeight = (metadata >> 8 & 255) + (object ? 1 : 0);
+                int widthPixels = proportional ? Math.round(heightPixels * sourceWidth / (float) sourceHeight)
+                    : ((payload >> 19) & 511) + 1;
+                if ((ink.image().getRGB(ink.x(), ink.y()) >> 8 & 65535) == 0x1D56) {
+                    int geometry = payload >>> 10 & 1048575;
+                    heightPixels = (int) Math.floor((Math.sqrt(8 * geometry + 1225) - 33) / 2);
+                    int row = geometry - (heightPixels - 1) * (heightPixels + 34) / 2;
+                    band = row >= heightPixels + 8 ? 0 : 9;
+                    localY = band == 0 ? row - heightPixels - 8 : row - heightPixels + 10;
+                    widthPixels = (payload & 1023) + 1;
+                }
                 int tint = palette.get(metadata >>> 24);
                 for (int py = 0; py < heightPixels; py++) for (int px = 0; px < widthPixels; px++) {
                     int sx = (int) Math.floor((px + .5) * sourceWidth / widthPixels - .0001);
@@ -358,7 +371,15 @@ final class RowPackTests {
                                 | ((pixel >> 8 & 255) * (rgb >> 8 & 255) / 255) << 8
                                 | (pixel & 255) * (rgb & 255) / 255);
                         }
-                        graphics.drawImage(colored, sprite.x(), sprite.y(), sprite.width(), sprite.height(), null);
+                        if (node.type().equals("frame")) {
+                            int edge = Math.max(1, (int) Math.round(node.thickness() * node.scale() * width / menu.width()));
+                            graphics.setColor(new java.awt.Color(rgb, true));
+                            if (2 * edge >= Math.min(sprite.width(), sprite.height()))
+                                graphics.fillRect(sprite.x(), sprite.y(), sprite.width(), sprite.height());
+                            else for (int py=0; py<sprite.height(); py++) for (int px=0; px<sprite.width(); px++)
+                                if (px<edge || py<edge || px>=sprite.width()-edge || py>=sprite.height()-edge)
+                                    graphics.fillRect(sprite.x()+px, sprite.y()+py, 1, 1);
+                        } else graphics.drawImage(colored, sprite.x(), sprite.y(), sprite.width(), sprite.height(), null);
                         graphics.dispose();
                     }
                 }

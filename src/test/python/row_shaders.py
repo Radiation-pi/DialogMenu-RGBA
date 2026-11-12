@@ -150,10 +150,10 @@ for index, (x, y) in enumerate(((0, 0), (0, size - 1), (size - 1, size - 1), (si
 image = ctx.texture((size, size), 4, bytes(raw))
 image.filter = moderngl.NEAREST, moderngl.NEAREST
 for top in (0, 5, 8, 9, 10, 17, 35, 92):
-    w, h = 143, 37
+    w, h = 37, 37
     frame.clear()
     for row, band in slices(top, h):
-        payload = 0x20000000 | band << 28 | (w - 1) << 19 | (h - 1) << 10 | ((top - row * 9) & 1023)
+        payload = 0xA0000000 | band << 28 | (h - 1) << 11 | ((top - row * 9) & 2047)
         draw(image, payload, row, (21, 8, 22, 9), (.0001, .0001, .9999, .9999))
     def expected(x, y):
         if not (20 <= x < 20 + w and top <= y < top + h):
@@ -192,22 +192,32 @@ program = ctx.program(vertex_shader=model_vertex, fragment_shader=fragment)
 for center in (1, 8, 9, 10, 18, 35, 65, 100):
     frame.clear()
     for row, band in slices(center - 1, 16):
-        payload = 0x40000000 | band << 28 | 15 << 19 | 15 << 10 | ((center - row * 9) & 1023)
+        payload = 0x40000000 | band << 28 | 15 << 11 | ((center - row * 9) & 2047)
         # AtlasGlyphProvider: top=row-1, shadow offset=1.
         draw(model_texture, payload, row, (21 - 66000, 0, 29 - 66000, 8), (0, 0, 1, 1))
         draw(model_texture, 0xFFBEEF01, row, (20 - 66000, -1, 28 - 66000, 7), (0, 0, 1, 1))
     check(lambda x, y: (255, 255, 255, 255) if 20 <= x < 36 and center - 1 <= y < center + 15
           else (0, 0, 0, 0), f"model center={center}")
 
-for width, height in ((43, 16), (16, 51), (1, 1), (213, 153)):
+for height in (43, 51, 1, 213):
     for top in (0, 8, 9, 47):
         frame.clear()
         for row, band in slices(top, height):
-            payload = 0x60000000 | band << 28 | (width - 1) << 19 | (height - 1) << 10 | ((top - row * 9) & 1023)
+            payload = 0xE0000000 | band << 28 | (height - 1) << 11 | ((top - row * 9) & 2047)
             draw(model_texture, payload, row, (21 - 65536, 0, 29 - 65536, 8), (0, 0, 1, 1))
             draw(model_texture, 0xFFBEEF01, row, (20 - 65536, -1, 28 - 65536, 7), (0, 0, 1, 1))
-        check(lambda x, y: (255, 255, 255, 255) if 20 <= x < 20 + width and top <= y < top + height
-              else (0, 0, 0, 0), f"native inventory {width}x{height} top={top}")
+        check(lambda x, y: (255, 255, 255, 255) if 20 <= x < 20 + height and top <= y < top + height
+              else (0, 0, 0, 0), f"native inventory {height}x{height} top={top}")
+
+for height in (1, 43, 213, 513, 1024):
+    for top in (0, 8, 9, 47):
+        frame.clear()
+        for row, band in slices(top, height):
+            payload = 0xE0000000 | band << 28 | (height - 1) << 11 | ((top - row * 9) & 2047)
+            draw(model_texture, payload, row, (21 - 65536, 0, 29 - 65536, 8), (0, 0, 1, 1))
+            draw(model_texture, 0xFFBEEF01, row, (20 - 65536, -1, 28 - 65536, 7), (0, 0, 1, 1))
+        check(lambda x, y: (255, 255, 255, 255) if 20 <= x < 20 + height and top <= y < top + height
+              else (0, 0, 0, 0), f"proportional native inventory height={height} top={top}")
 
 (output / "gpu-result.json").write_text(json.dumps({
     "checks": checks, "renderer": ctx.info["GL_RENDERER"],

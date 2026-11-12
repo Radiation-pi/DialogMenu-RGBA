@@ -24,15 +24,11 @@ final class MenuRenderer {
         int height = Math.max(1, (int) Math.round(menu.height() * width / (double) menu.width()));
         boolean modelsFit = menu.nodes().stream().filter(node -> node.type().equals("model"))
             .allMatch(node -> {
-                long sizeX = Math.round(node.size() * node.scaleX() * width / menu.width());
-                long sizeY = Math.round(node.size() * node.scaleY() * width / menu.width());
-                return sizeX >= 1 && sizeX <= 512 && sizeY >= 1 && sizeY <= 512;
+                long size = Math.round(node.size() * node.scale() * width / menu.width());
+                return size >= 1 && size <= 1024;
             });
-        boolean graphicsFit = menu.nodes().stream()
-            .filter(node -> !node.type().equals("model") && !node.type().equals("text"))
-            .allMatch(node -> graphicProtocolFits(node, width / (double) menu.width()));
         if (width >= 64 && width <= MAX_WIDTH && height <= 1024 && (long) width * height <= maxPixels
-            && modelsFit && graphicsFit)
+            && modelsFit)
             result.add(MAX_WIDTH);
         return result;
     }
@@ -40,19 +36,13 @@ final class MenuRenderer {
         double zoom = frame.width() / (double) menu.width();
         for (Node node : menu.nodes()) {
             if (!node.type().equals("model")) continue;
-            long sizeX = Math.round(node.size() * node.scaleX() * zoom);
-            long sizeY = Math.round(node.size() * node.scaleY() * zoom);
-            if (sizeX < 1 || sizeX > 512 || sizeY < 1 || sizeY > 512) return false;
+            long size = Math.round(node.size() * node.scale() * zoom);
+            if (size < 1 || size > 1024) return false;
         }
         return true;
     }
-    private static boolean graphicProtocolFits(Node node, double zoom) {
-        double height = node.type().equals("line") ? node.thickness() : node.height();
-        return ImageTiles.allowed(node) || Math.round(node.width() * node.scaleX() * zoom) <= 512
-            && Math.round(height * node.scaleY() * zoom) <= 512;
-    }
     final VanillaAssets assets;
-    private record Graphic(String id, String type, double x, double y, double sx, double sy, double width,
+    private record Graphic(String id, String type, double x, double y, double scale, double width,
                            double height, int argb, String source, double thickness, double rotation,
                            boolean reuse, TextureRegion atlas, boolean interactive, int canvasWidth, int canvasHeight,
                            int logicalHeight, double zoom) {}
@@ -86,7 +76,8 @@ final class MenuRenderer {
         double zoom = width / (double) menu.width();
         List<Sprite> sprites = new ArrayList<>();
         List<Node> textNodes = new ArrayList<>();
-        for (Node n : menu.nodes()) {
+        for (Node original : menu.nodes()) {
+            Node n = original;
             if (n.type().equals("model")) continue;
             if (n.type().equals("text")) {
                 if (n.rotation() != 0) throw new IllegalArgumentException(n.id() + " 原生文字不支持旋转");
@@ -94,168 +85,100 @@ final class MenuRenderer {
                 continue;
             }
             int argb = n.type().equals("image") ? assets.imageColor(n.source(), n.argb()) : n.argb();
-            Graphic key = new Graphic(n.id(), n.type(), n.x(), n.y(), n.scaleX(), n.scaleY(), n.width(),
+            Graphic key = new Graphic(n.id(), n.type(), n.x(), n.y(), n.scale(), n.width(),
                 n.height(), argb, n.source(), n.thickness(), n.rotation(), n.reuseTexture(), n.atlas(),
                 n.interaction() != null, width, height, menu.height(), zoom);
             if (!preview) {
                 Sprite cached = cached(key);
                 if (cached != null) { sprites.add(cached); continue; }
             }
-            double h = n.type().equals("line") ? n.thickness() : n.height();
-            if (!graphicProtocolFits(n, zoom))
-                throw new IOException(n.id() + " 基础图形和符号的最终显示宽高不得超过512；超大元素请改用图片");
+            BufferedImage imageSource = null;
+            if (n.type().equals("image")) {
+                boolean reference = n.reuseTexture() || n.atlas() != null
+                    || assets.craftEngine.atlasReference(n.source());
+                imageSource = reference ? assets.reference(n.source(), n.atlas()).image() : assets.image(n.source());
+            } else {
+                imageSource = PrimitiveShapes.source();
+            }
+            if (n.type().equals("image")) n = fittedImage(n, imageSource, zoom);
+            double h = n.height();
             AffineTransform transform = new AffineTransform();
             transform.scale(zoom, zoom);
             transform.translate(menu.width() / 2.0 + n.x(), menu.height() / 2.0 - n.y());
             transform.rotate(-Math.toRadians(n.rotation()));
-            transform.scale(n.scaleX(), n.scaleY());
+            transform.scale(n.scale(), n.scale());
             Rectangle2D box = transform.createTransformedShape(
                 new Rectangle2D.Double(-n.width() / 2, -h / 2, n.width(), h)).getBounds2D();
             int left = (int) Math.floor(box.getMinX() + 1e-7), top = (int) Math.floor(box.getMinY() + 1e-7);
             Rectangle bounds = new Rectangle(left, top,
                 (int) Math.ceil(box.getMaxX() - 1e-7) - left, (int) Math.ceil(box.getMaxY() - 1e-7) - top);
             // Decide containment before integer rounding; a full-canvas source must not become a raster variant.
-            boolean complete = box.getMinX() >= -1e-7 && box.getMinY() >= -1e-7
-                && box.getMaxX() <= width + 1e-7 && box.getMaxY() <= menu.height() * zoom + 1e-7;
+            double tolerance = 0.5;
+            boolean complete = box.getMinX() >= -tolerance && box.getMinY() >= -tolerance
+                && box.getMaxX() <= width + tolerance
+                && box.getMaxY() <= menu.height() * zoom + tolerance;
             if (n.rotation() == 0 && n.argb() >>> 24 == 255 && complete) {
-                int sw = Math.min(width, Math.max(1, (int) Math.round(n.width() * n.scaleX() * zoom)));
-                int sh = Math.min(height, Math.max(1, (int) Math.round(h * n.scaleY() * zoom)));
+                int sw = Math.min(width, Math.max(1, (int) Math.round(n.width() * n.scale() * zoom)));
+                int sh = Math.min(height, Math.max(1, (int) Math.round(h * n.scale() * zoom)));
                 int x = Math.clamp((int) Math.round((menu.width() / 2.0 + n.x()) * zoom - sw / 2.0), 0, width - sw);
                 int y = Math.clamp((int) Math.round((menu.height() / 2.0 - n.y()) * zoom - sh / 2.0), 0, height - sh);
-                String alias = n.type().equals("image") ? assets.registeredSource(n.source()) : null;
-                BufferedImage source;
-                if (n.type().equals("image")) {
-                    boolean reference = n.reuseTexture() || n.atlas() != null || assets.craftEngine.atlasReference(n.source());
-                    source = reference ? assets.reference(n.source(), n.atlas()).image() : assets.image(n.source());
-                } else {
-                    String symbol = n.type().equals("rectangle") ? "■" : n.type().equals("frame") ? "□"
-                        : sw >= sh ? "—" : "I";
-                    source = assets.image("symbol:" + symbol);
-                }
+                String alias = n.type().equals("image") ? assets.registeredSource(n.source()) : PrimitiveShapes.SOURCE;
+                BufferedImage source = imageSource;
                 if (source.getWidth() > 256 || source.getHeight() > 256)
                     throw new IOException(n.id() + " 源图片各边须为1..256");
                 if (alias == null) alias = RegisteredImages.sourceKey(source);
                 add(sprites, key, new Sprite(n.id(), x, y, null, alias, source, null, sw, sh), preview);
-                if (root != null) root.drawImage(tint(source, argb), x, y, sw, sh, null);
+                if (root != null) {
+                    if (PrimitiveShapes.type(n.type())) {
+                        root.setColor(new Color(argb, true));
+                        for (Rectangle rect : PrimitiveShapes.rectangles(n, sw, sh, zoom))
+                            root.fillRect(x + rect.x, y + rect.y, rect.width, rect.height);
+                    } else root.drawImage(tint(source, argb), x, y, sw, sh, null);
+                }
                 continue;
             }
             if (!preview)
                 throw new IOException(n.id() + " 二维元素须完整位于画布内、无旋转、opacity=255；运行时不重绘或裁切源图片");
-            BufferedImage shaderSource = null;
-            String registeredSource = n.type().equals("image") ? assets.registeredSource(n.source()) : null;
-            if (n.type().equals("image") && n.rotation() == 0 && n.argb() >>> 24 == 255
-                && !n.source().startsWith("minecraft:") && !ImageRegistry.source(n.source())
-                && registeredSource == null
-                && !n.reuseTexture() && n.atlas() == null
-                && !assets.craftEngine.atlasReference(n.source())) {
-                BufferedImage source = assets.image(n.source());
-                int sw = Math.max(1, (int) Math.round(n.width() * n.scaleX() * zoom));
-                int sh = Math.max(1, (int) Math.round(n.height() * n.scaleY() * zoom));
-                if (source.getWidth() <= 254 && source.getHeight() <= 254 && sw <= 512 && sh <= 512) {
-                    bounds = new Rectangle((int) Math.round((menu.width() / 2.0 + n.x()) * zoom - sw / 2.0),
-                        (int) Math.round((menu.height() / 2.0 - n.y()) * zoom - sh / 2.0), sw, sh);
-                    shaderSource = source;
-                }
-            }
-            Rectangle unclipped = new Rectangle(bounds);
             bounds = bounds.intersection(new Rectangle(0, 0, width, height));
             if (bounds.isEmpty()) continue;
-            if (java.util.Set.of("rectangle", "frame", "line").contains(n.type())
-                && n.rotation() == 0 && n.argb() >>> 24 == 255 && bounds.equals(unclipped)
-                && bounds.width <= 512 && bounds.height <= 512) {
-                String symbol = n.type().equals("rectangle") ? "■" : n.type().equals("frame") ? "□"
-                    : bounds.width >= bounds.height ? "—" : "I";
-                BufferedImage source = assets.image("symbol:" + symbol);
-                add(sprites, key, new Sprite(n.id(), bounds.x, bounds.y, null, null, source, null,
-                    bounds.width, bounds.height), preview);
-                if (root != null) root.drawImage(tint(source, argb), bounds.x, bounds.y, bounds.width, bounds.height, null);
-                continue;
-            }
-            boolean registeredGeometry = n.type().equals("image") && n.rotation() == 0 && n.argb() >>> 24 == 255
-                && !n.reuseTexture() && n.atlas() == null && bounds.equals(unclipped)
-                && Math.round(n.width() * n.scaleX() * zoom) <= 512
-                && Math.round(n.height() * n.scaleY() * zoom) <= 512;
-            if (ImageRegistry.source(n.source()) || registeredSource != null && registeredGeometry) {
-                if (!n.type().equals("image") || n.rotation() != 0 || n.argb() >>> 24 != 255
-                    || n.reuseTexture() || n.atlas() != null || !bounds.equals(unclipped))
-                    throw new IOException(n.id() + " 注册材质须完整位于画布内、无旋转、opacity=255；图集选格写在注册表内");
-                int sw = Math.max(1, (int) Math.round(n.width() * n.scaleX() * zoom));
-                int sh = Math.max(1, (int) Math.round(n.height() * n.scaleY() * zoom));
-                if (sw > 512 || sh > 512)
-                    throw new IOException(n.id() + " 注册材质显示宽高须为1..512");
-                BufferedImage source = assets.image(n.source());
-                bounds = new Rectangle((int) Math.round((menu.width() / 2.0 + n.x()) * zoom - sw / 2.0),
-                    (int) Math.round((menu.height() / 2.0 - n.y()) * zoom - sh / 2.0), sw, sh);
-                if (!new Rectangle(0, 0, width, height).contains(bounds))
-                    throw new IOException(n.id() + " 注册材质超出画布");
-                add(sprites, key, new Sprite(n.id(), bounds.x, bounds.y, null,
-                    registeredSource == null ? n.source() : registeredSource, source, null, sw, sh), preview);
-                if (root != null) root.drawImage(tint(source, argb), bounds.x, bounds.y, sw, sh, null);
-                continue;
-            }
-            if (shaderSource != null && bounds.equals(unclipped)) {
-                Sprite reference = new Sprite(n.id(), bounds.x, bounds.y, null, null, shaderSource, null,
-                    bounds.width, bounds.height);
-                if (!preview) {
-                    add(sprites, key, reference, false);
-                    continue;
-                }
-                BufferedImage layer = new BufferedImage(bounds.width, bounds.height, BufferedImage.TYPE_INT_ARGB);
-                Graphics2D g = layer.createGraphics();
-                g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
-                g.drawImage(tint(shaderSource, argb), 0, 0, bounds.width, bounds.height, null);
-                g.dispose();
-                add(sprites, key, new Sprite(n.id(), bounds.x, bounds.y, layer, null, shaderSource), preview);
-                if (root != null) root.drawImage(layer, bounds.x, bounds.y, null);
-                continue;
-            }
             if (n.source().startsWith("minecraft:") || n.reuseTexture() || n.atlas() != null
-                || assets.craftEngine.atlasReference(n.source())) {
-                var reference = assets.reference(n.source(), n.atlas());
-                if (n.rotation() != 0 || n.argb() >>> 24 != 255 || !bounds.equals(unclipped)
-                    || Math.abs(n.width() * n.scaleX() / (n.height() * n.scaleY())
-                        - reference.image().getWidth() / (double) reference.image().getHeight()) > 1e-7)
-                    throw new IOException(n.id() + " 纹理直引须完整显示、等比缩放、不旋转且opacity=255");
-                // 只导出字体 provider，原纹理由 Minecraft 或 CE 提供。
-                if (root != null) root.drawImage(reference.image(),
-                    bounds.x, bounds.y, bounds.width, bounds.height, null);
-                // 保留显示边界，不复制源 PNG。
-                add(sprites, key, new Sprite(n.id(), bounds.x, bounds.y,
-                    preview ? new BufferedImage(bounds.width, bounds.height, BufferedImage.TYPE_INT_ARGB) : null,
-                    reference.texture(), reference.image(), reference.region(), bounds.width, bounds.height), preview);
-                continue;
-            }
+                || ImageRegistry.source(n.source()) || assets.craftEngine.atlasReference(n.source()))
+                throw new IOException(n.id() + " 纹理直引须完整显示、等比缩放、不旋转且opacity=255");
             BufferedImage layer = new BufferedImage(bounds.width, bounds.height, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g = layer.createGraphics();
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
             g.translate(-bounds.x, -bounds.y);
             g.transform(transform);
-            g.setColor(new Color(n.argb(), true));
             double x = -n.width() / 2, y = -h / 2;
-            switch (n.type()) {
-                case "rectangle", "line" -> g.fill(new Rectangle2D.Double(x, y, n.width(), h));
-                case "frame" -> {
-                    double t = n.thickness();
-                    g.fill(new Rectangle2D.Double(x, y, n.width(), t));
-                    g.fill(new Rectangle2D.Double(x, y + h - t, n.width(), t));
-                    g.fill(new Rectangle2D.Double(x, y, t, h));
-                    g.fill(new Rectangle2D.Double(x + n.width() - t, y, t, h));
-                }
-                case "image" -> {
-                    BufferedImage texture = tint(assets.image(n.source()), argb);
-                    g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (n.argb() >>> 24) / 255f));
-                    g.drawImage(texture, (int) Math.round(x), (int) Math.round(y),
-                        (int) Math.round(n.width()), (int) Math.round(h), null);
-                }
-                default -> throw new IllegalArgumentException("元素尚不支持：" + n.type());
-            }
+            BufferedImage texture = tint(imageSource, argb);
+            g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (n.argb() >>> 24) / 255f));
+            g.drawImage(texture, (int) Math.round(x), (int) Math.round(y),
+                (int) Math.round(n.width()), (int) Math.round(h), null);
             g.dispose();
             add(sprites, key, new Sprite(n.id(), bounds.x, bounds.y, layer), preview);
             if (root != null) root.drawImage(layer, bounds.x, bounds.y, null);
         }
         if (root != null) root.dispose();
         return new Rendered(image, List.copyOf(sprites), List.copyOf(textNodes), width, height);
+    }
+    private static Node fittedImage(Node node, BufferedImage source, double zoom) {
+        int boxWidth = Math.max(1, (int) Math.round(node.width() * node.scale() * zoom));
+        double heightLimit = node.type().equals("line") ? node.thickness() : node.height();
+        int boxHeight = Math.max(1, (int) Math.round(heightLimit * node.scale() * zoom));
+        double ratio = source.getWidth() / (double) source.getHeight();
+        int height = Math.max(1, (int) Math.round(Math.min(boxHeight, boxWidth / ratio)));
+        int width = Math.max(1, (int) Math.round(height * ratio));
+        while (height > 1 && (width > boxWidth || height > boxHeight)) {
+            height--;
+            width = Math.max(1, (int) Math.round(height * ratio));
+        }
+        if (width > boxWidth)
+            throw new IllegalArgumentException(node.id() + " 图片显示框过窄，无法容纳高度1像素的等比图片");
+        return new Node(node.id(), node.type(), node.x(), node.y(), node.z(), node.scale(),
+            width / (node.scale() * zoom), height / (node.scale() * zoom), node.argb(), node.text(), node.source(),
+            node.alignment(), node.size(), node.thickness(), node.rotation(), node.columns(), node.slotSize(),
+            node.slots(), node.maxLines(), node.interaction(), node.reuseTexture(), node.atlas());
     }
     private synchronized Sprite cached(Graphic key) { return runtimeSprites.get(key); }
     private synchronized void add(List<Sprite> sprites, Graphic key, Sprite sprite, boolean preview) {

@@ -91,7 +91,7 @@ public final class DecorationOpenerTests {
                     var rules = glyphs.stream().filter(g -> g.code() == RgbaText.RULE).toList();
                     check(!rules.isEmpty(), "Both decoration lines are encoded as actual RGBA glyphs");
                     TextStyle style = new TextStyle(SpriteCanvas.textSize(doc.menu(), doc.menu().nodes().getFirst(),
-                        frame.width(), text, zoom), 1, 1);
+                        frame.width(), text, zoom), 1);
                     int top = SpriteCanvas.textTop(doc.menu(), doc.menu().nodes().getFirst(), frame.width(), 0, style);
                     Set<Integer> positions = new HashSet<>();
                     int row = 0;
@@ -103,16 +103,27 @@ public final class DecorationOpenerTests {
                         int local = geometry[1];
                         positions.add(local + row * 9);
                     }
-                    check(positions.equals(Set.of(top + style.height() - RgbaDecorations.thickness(style),
-                        top + (style.height() - RgbaDecorations.thickness(style)) / 2)), "Underline/strike follow actual scaled height");
+                    int thickness = RgbaDecorations.thickness(style);
+                    int underline = top + style.height() - thickness;
+                    int strike = top + (style.height() - thickness) / 2;
+                    check(positions.stream().allMatch(y -> y >= underline && y < underline + thickness
+                        || y >= strike && y < strike + thickness), "Underline/strike follow actual scaled height");
                     check(glyphs.stream().anyMatch(g -> g.style().font() != null
                         && g.style().font().equals(RgbaHits.FONT) && g.style().clickEvent() != null
                         && g.style().hoverEvent() != null), "Styled text retains click and hover");
                     check(rules.stream().allMatch(g -> {
                         int width = ((g.style().shadowColor().value() >>> 8) & 511) + 1;
-                        return width == first.fonts().glyphWidth(MenuText.glyphs(Component.text("A")).getFirst(), style)
-                            || width == first.fonts().glyphWidth(MenuText.glyphs(Component.text("汉")).getFirst(), style);
-                    }), "Decoration width follows each original glyph advance");
+                        return width == RowPackTests.textGeometry(g.style().shadowColor().value())[0];
+                    }), "Every decoration fragment is a proportionally scaled square");
+                    var pixels = RowPackTests.preview(fontPack, output.component(), frame.width(), frame.height());
+                    int advance = first.fonts().textWidth(MenuText.parse("&c&o&n&m&kA汉&rb"), style);
+                    int decoratedWidth = first.fonts().textWidth(Component.text("A汉"), style);
+                    int left = (int) Math.round(frame.width() / 2.0 - advance / 2.0);
+                    for (int y : List.of(underline, strike))
+                        for (int dy = 0; dy < thickness; dy++)
+                            for (int x = left; x < left + decoratedWidth; x++)
+                                check(pixels.getRGB(x, y + dy) == 0xFFFF5555,
+                                    "Proportional fragments cover the full decoration without seams");
                 }
             var json = JsonParser.parseString(Files.readString(fontPack.resolve(
                 "assets/dialogmenu/font/text_rgba_8.json"))).getAsJsonObject();
@@ -126,12 +137,13 @@ public final class DecorationOpenerTests {
             check(pool.contains(RgbaText.RULE), "Decorations share the prepared fixed source glyph");
             Component wideRule = first.fonts().rgbaText(
                 Component.text(Character.toString(RgbaText.RULE)).decorate(TextDecoration.UNDERLINED),
-                0xFFFFFF, -103, new TextStyle(128, 4, 1), 9);
+                0xFFFFFF, -103, new TextStyle(32, 4), 9);
             var widths = MenuText.glyphs(wideRule).stream().filter(g -> g.style().shadowColor() != null)
                 .map(g -> g.style().shadowColor().value())
                 .filter(payload -> RowPackTests.textGeometry(payload)[0] == 16)
                 .map(payload -> ((payload >>> 8) & 511) + 1).toList();
-            check(widths.equals(List.of(512, 1)), "Long underline covers all 513 pixels without truncation");
+            check(widths.size() == 8 && widths.stream().allMatch(width -> width == 16),
+                "128px underline is composed from eight equal 16px squares");
             var rules = first.settings().openers();
             check(rules.size() == 1 && rules.getFirst().keys().equals(List.of("SHIFT+F", "SPRINT+Q")),
                 "Configured aliases, item and combination keys survive full preparation");

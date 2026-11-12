@@ -172,14 +172,13 @@ final class ModelPack {
         double[] box = bounds.get(node.source());
         if (box == null) throw new IllegalArgumentException(node.source() + " 未准备模型命中边界");
         double zoom = width / (double) menu.width();
-        int sizeX = (int) Math.round(node.size() * node.scaleX() * zoom);
-        int sizeY = (int) Math.round(node.size() * node.scaleY() * zoom);
+        int size = (int) Math.round(node.size() * node.scale() * zoom);
         int x = (int) Math.round((menu.width() / 2.0 + node.x()) * zoom);
         int y = (int) Math.round((menu.height() / 2.0 - node.y()) * zoom) - 1;
-        int left = Math.max(0, (int) Math.floor(x + box[0] * sizeX));
-        int top = Math.max(0, (int) Math.floor(y + box[1] * sizeY));
-        int right = Math.min(width, (int) Math.ceil(x + box[2] * sizeX));
-        int bottom = Math.min(height, (int) Math.ceil(y + box[3] * sizeY));
+        int left = Math.max(0, (int) Math.floor(x + box[0] * size));
+        int top = Math.max(0, (int) Math.floor(y + box[1] * size));
+        int right = Math.min(width, (int) Math.ceil(x + box[2] * size));
+        int bottom = Math.min(height, (int) Math.ceil(y + box[3] * size));
         return new java.awt.Rectangle(left, top, Math.max(0, right - left), Math.max(0, bottom - top));
     }
 
@@ -223,10 +222,10 @@ final class ModelPack {
                 }
             }
     }
-    Component component(String id, int sizeX, int sizeY, int offset, int band) {
+    Component component(String id, int size, int offset, int band) {
         List<Face> faces = models.get(id);
         if (faces == null) throw new IllegalArgumentException(id + " 未准备，请执行 /dialogmenu reload all");
-        int payload = (RgbaImages.payload(sizeX, sizeY, -offset, band) & 0x1FFFFFFF) | 0x40000000;
+        int payload = (RgbaImages.imagePayload(size, -offset, band) & 0x1FFFFFFF) | 0x40000000;
         JsonArray parts = new JsonArray();
         for (Face face : faces) {
             JsonObject shift = new JsonObject();

@@ -55,6 +55,8 @@ final class ReloadTests {
         Files.writeString(config, configText);
         Files.writeString(yaml, YAML);
         image(data, 0xFF334455);
+        Path unused = data.resolve("images/unused.png");
+        Files.copy(data.resolve("images/button.png"), unused);
         try (var engine = new ReloadEngine(data, PREVIEW)) {
             var first = engine.prepare().get(60, TimeUnit.SECONDS);
             var originalResources = files(data);
@@ -108,6 +110,29 @@ final class ReloadTests {
                 "all实际应用新布局");
             render(all.snapshot());
             check(!engine.prepare().get(60, TimeUnit.SECONDS).changed(), "all后缓存可复用");
+            Path editorCache = data.resolve("editor-cache/assets");
+            Map<Path, java.nio.file.attribute.FileTime> cached = new HashMap<>();
+            try (var paths = Files.list(editorCache)) {
+                for (Path path : paths.toList()) cached.put(path, Files.getLastModifiedTime(path));
+            }
+            check(cached.size() == 2, "all为包括未引用图片的全部编辑器素材建立磁盘缓存");
+            var editorFiles = new DialogMenuEditorFiles(data, null);
+            editorFiles.manifest();
+            check(Arrays.equals(editorFiles.read("images/unused.png"), Files.readAllBytes(unused)),
+                "新文件服务实例可读取上次all落盘的未引用素材");
+            engine.prepare(ReloadEngine.Mode.ALL).get(60, TimeUnit.SECONDS);
+            for (var entry : cached.entrySet())
+                check(Files.getLastModifiedTime(entry.getKey()).equals(entry.getValue()), "未变素材不重写磁盘缓存");
+            for (Path path : cached.keySet())
+                Files.setLastModifiedTime(path, java.nio.file.attribute.FileTime.fromMillis(1));
+            engine.prepare(ReloadEngine.Mode.FULL).get(60, TimeUnit.SECONDS);
+            for (Path path : cached.keySet())
+                check(Files.getLastModifiedTime(path).toMillis() > 1, "full强制重建素材文件缓存");
+            image(data, 0xFF123456);
+            editorFiles.manifest();
+            editorFiles.preload(false, (done, total) -> {});
+            check(Arrays.equals(editorFiles.read("images/button.png"), Files.readAllBytes(data.resolve("images/button.png"))),
+                "素材变更后读回新像素，而不是旧缓存");
             check(Files.isRegularFile(first.snapshot().pack()), "旧快照租约保留旧ZIP");
             check(first.snapshot().settings().resourceBuildCpuPercent() == 80, "默认每路资源CPU预算为80");
             check(first.snapshot().buildThread().equals("DialogMenu-reload"), "资源准备在后台线程完成");

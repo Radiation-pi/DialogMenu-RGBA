@@ -68,9 +68,9 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         });
     private final Map<UUID, View> views = new HashMap<>();
     private record View(LayoutStore.Document document, int width, List<String> history, UUID token,
-                        Double calibrationScale, boolean calibrationCentered) {
+                        Double calibrationScale) {
         View(LayoutStore.Document document, int width, List<String> history, UUID token) {
-            this(document, width, history, token, null, false);
+            this(document, width, history, token, null);
         }
     }
     private int width, maxPixels;
@@ -638,11 +638,8 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
                         if (view.calibrationScale == null)
                             throw new IllegalArgumentException("此动作仅用于尺寸校准");
                         if (value.equals("confirm")) canvasScale(player, Double.toString(view.calibrationScale));
-                        else if (value.equals("align"))
-                            showScaleCalibration(player, view.calibrationScale, !view.calibrationCentered);
                         else showScaleCalibration(player,
-                            ScaleCalibration.adjust(view.calibrationScale, Integer.parseInt(value)),
-                            view.calibrationCentered);
+                            ScaleCalibration.adjust(view.calibrationScale, Integer.parseInt(value)));
                     }
                     case "tell" -> player.sendMessage(SpriteCanvas.legacy(value));
                     case "sound" -> play(player, value);
@@ -782,11 +779,11 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         if (loaded == null) throw new IllegalStateException("Dialog正在准备资源");
         if (!player.hasPermission("dialogmenu.use")) throw new IllegalArgumentException("没有打开此界面的权限");
         close(player, Reason.REPLACED);
-        showScaleCalibration(player, context(player).canvasScale(), false);
+        showScaleCalibration(player, context(player).canvasScale());
     }
-    private void showScaleCalibration(Player player, double scale, boolean centered) throws Exception {
-        var document = ScaleCalibration.document(scale, centered);
-        var next = new View(document, document.menu().width(), List.of(), UUID.randomUUID(), scale, centered);
+    private void showScaleCalibration(Player player, double scale) throws Exception {
+        var document = ScaleCalibration.document(scale);
+        var next = new View(document, document.menu().width(), List.of(), UUID.randomUUID(), scale);
         present(player, next);
         views.put(player.getUniqueId(), next);
     }

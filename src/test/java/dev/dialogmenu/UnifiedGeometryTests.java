@@ -97,7 +97,7 @@ final class UnifiedGeometryTests {
                 type: text
                 content: '&l&o&nA'
                 size: 8
-                scale: {x: %s, y: %s}
+                scale: %s
                 offset: {y: %s}
                 color: '#55AAFF'
                 actions: close
@@ -109,7 +109,7 @@ final class UnifiedGeometryTests {
                 offset: {y: -150}
                 color: '#55AAFF'
                 actions: close
-            """.formatted(x, y, offset, symbol, width, height);
+            """.formatted(x, offset, symbol, width, height);
     }
 
     public static void main(String[] args) throws Exception {

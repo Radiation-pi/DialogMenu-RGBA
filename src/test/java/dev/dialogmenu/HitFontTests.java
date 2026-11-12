@@ -49,7 +49,7 @@ public final class HitFontTests {
             type: text
             content: 'A中'
             size: 8
-            scale: {x: 1.5, y: 2}
+            scale: 1.5
             offset: {y: -65}
             actions: ['tell: STRETCHED']
         """;
@@ -136,7 +136,7 @@ public final class HitFontTests {
                 type: text
                 content: '&l中'
                 size: 8
-                scale: {x: 32, y: 1}
+                scale: 16
                 actions: ['tell: WIDE']
             """);
         var doc = LayoutStore.parse("wide", yaml);

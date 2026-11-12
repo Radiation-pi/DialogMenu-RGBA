@@ -65,27 +65,27 @@ frontend:
       m-6-4: {type: frame, width: 6, height: 6, thickness: 1, color: '#58616A', offset: {x: 16, y: -24}}
   tall-text:
     type: text
-    content: '&8高'
+    content: '&8大'
     size: 8
-    scale: {y: 2}
+    scale: 2
     offset: {x: -66, y: -30, z: 1}
   short-text:
     type: text
-    content: '&8矮'
+    content: '&8小'
     size: 8
-    scale: {y: 0.5}
+    scale: 0.5
     offset: {x: 66, y: -30, z: 1}
   wide-text:
     type: text
-    content: '&8胖'
+    content: '&8大'
     size: 8
-    scale: {x: 2}
+    scale: 2
     offset: {x: -34, y: -48, z: 1}
   narrow-text:
     type: text
-    content: '&8瘦'
+    content: '&8小'
     size: 8
-    scale: {x: 0.5}
+    scale: 0.5
     offset: {x: 34, y: -48, z: 1}
   action:
     type: group

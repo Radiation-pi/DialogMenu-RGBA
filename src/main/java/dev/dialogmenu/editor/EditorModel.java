@@ -6,8 +6,8 @@ import java.util.*;
 /** 源文档树是权威数据，世界空间节点只作为选择句柄。 */
 public final class EditorModel {
     public record Item(String path, String id, JsonObject source, double x, double y,
-                       double parentX, double parentY, double parentScaleX, double parentScaleY,
-                       double scaleX, double scaleY, double width, double height, double z, boolean movable) {
+                       double parentX, double parentY, double parentScale,
+                       double scale, double width, double height, double z, boolean movable) {
         public String type() { return string(source, "type", ""); }
         public boolean contains(double px, double py) {
             return Math.abs(px - x) <= width / 2 && Math.abs(py - y) <= height / 2;
@@ -18,7 +18,7 @@ public final class EditorModel {
     private String page = "", selected = "";
     private boolean dragging;
     private double dragX, dragY, startX, startY;
-    private double resizeWidth, resizeHeight, resizeSourceSize;
+    private double resizeWidth, resizeHeight, resizeScale;
     private JsonObject clipboard;
 
     public void load(JsonObject value) {
@@ -55,30 +55,30 @@ public final class EditorModel {
     public void markSaved(JsonObject value) { saved = value.deepCopy(); }
     public List<Item> items() {
         List<Item> result = new ArrayList<>();
-        walk(object(pageTree(), "frontend"), "frontend", 0, 0, 1, 1, 0, true, result);
+        walk(object(pageTree(), "frontend"), "frontend", 0, 0, 1, 0, true, result);
         return result;
     }
-    private static void walk(JsonObject nodes, String prefix, double ox, double oy, double sx, double sy,
+    private static void walk(JsonObject nodes, String prefix, double ox, double oy, double scale,
                              double oz, boolean parentMovable, List<Item> out) {
         for (var entry : nodes.entrySet()) {
             if (!entry.getValue().isJsonObject()) continue;
             var node = entry.getValue().getAsJsonObject();
-            var offset = object(node, "offset"); var scale = object(node, "scale");
-            double x = ox + number(offset, "x", 0) * sx, y = oy + number(offset, "y", 0) * sy;
-            double nsx = sx * number(scale, "x", 1), nsy = sy * number(scale, "y", 1);
+            var offset = object(node, "offset");
+            double x = ox + number(offset, "x", 0) * scale, y = oy + number(offset, "y", 0) * scale;
+            double nodeScale = scale * number(node, "scale", 1);
             double z = oz + number(offset, "z", 0);
             boolean movable = parentMovable && numeric(offset, "x") && numeric(offset, "y")
-                && numeric(scale, "x") && numeric(scale, "y");
+                && numeric(node, "scale") && nodeScale > 0;
             String path = prefix + "/" + entry.getKey();
             String type = string(node, "type", "");
             double width = number(node, "width", type.equals("text") ?
                 Math.max(8, string(node, "content", "").replaceAll("[&§][0-9a-flr]", "").length()
                     * number(node, "size", 8) * .65) : type.equals("group") ? 24 : 16);
             double height = number(node, "height", type.equals("text") ? number(node, "size", 8) : 16);
-            out.add(new Item(path, entry.getKey(), node, x, y, ox, oy, sx, sy, nsx, nsy,
-                Math.max(1, width * nsx), Math.max(1, height * nsy), z, movable));
+            out.add(new Item(path, entry.getKey(), node, x, y, ox, oy, scale, nodeScale,
+                Math.max(1, width * nodeScale), Math.max(1, height * nodeScale), z, movable));
             if (type.equals("group"))
-                walk(object(node, "children"), path + "/children", x, y, nsx, nsy, z, movable, out);
+                walk(object(node, "children"), path + "/children", x, y, nodeScale, z, movable, out);
         }
     }
     public void replaceSelection(JsonObject source) {
@@ -118,15 +118,15 @@ public final class EditorModel {
         dragX += dx; dragY += dy;
         var node = item.source();
         var offset = ensure(node, "offset");
-        offset.addProperty("x", snap(startX + dragX / item.parentScaleX(), grid));
-        offset.addProperty("y", snap(startY + dragY / item.parentScaleY(), grid));
+        offset.addProperty("x", snap(startX + dragX / item.parentScale(), grid));
+        offset.addProperty("y", snap(startY + dragY / item.parentScale(), grid));
     }
     public void beginResize() {
         Item item = selection();
         if (item == null || !item.movable()) throw new IllegalArgumentException("Element cannot be resized");
         resizeWidth = item.width();
         resizeHeight = item.height();
-        resizeSourceSize = number(item.source(), "size", 8);
+        resizeScale = number(item.source(), "scale", 1);
         checkpoint();
         dragging = true;
     }
@@ -135,12 +135,13 @@ public final class EditorModel {
         if (item == null || !item.movable()) return;
         if (!Double.isFinite(width) || !Double.isFinite(height) || width <= 0 || height <= 0)
             throw new IllegalArgumentException("Invalid element size");
-        if (item.type().equals("text")) {
-            item.source().addProperty("size", resizeSourceSize * height / resizeHeight);
-            return;
-        }
-        item.source().addProperty("width", width / item.scaleX());
-        item.source().addProperty("height", height / item.scaleY());
+        if (Set.of("rectangle", "frame", "line").contains(item.type())) {
+            if (!numeric(item.source(), "width") || !numeric(item.source(), "height"))
+                throw new IllegalArgumentException("Edit dynamic dimensions as expressions");
+            double scale = resizeScale * item.parentScale();
+            item.source().addProperty("width", width / scale);
+            item.source().addProperty("height", height / scale);
+        } else item.source().addProperty("scale", resizeScale * Math.min(width / resizeWidth, height / resizeHeight));
     }
     public void resizeBy(double dx, double dy) {
         resize(Math.max(4, resizeWidth + dx), Math.max(4, resizeHeight + dy));
@@ -179,7 +180,8 @@ public final class EditorModel {
                 node.addProperty("source", "minecraft:item/book"); node.addProperty("width", 32); node.addProperty("height", 32);
             }
             case "rectangle", "frame", "line" -> {
-                node.addProperty("width", 60); node.addProperty("height", 24); node.addProperty("color", "#CBD0D5");
+                node.addProperty("width", 60); node.addProperty("height", type.equals("line") ? 2 : 24);
+                node.addProperty("color", "#CBD0D5");
             }
             case "group" -> node.add("children", new JsonObject());
             default -> {}

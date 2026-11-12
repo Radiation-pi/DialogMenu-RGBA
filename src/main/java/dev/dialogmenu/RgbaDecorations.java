@@ -35,14 +35,24 @@ final class RgbaDecorations {
         // The parent text is repeated per row; an off-row decoration emits only its advance.
         int start = band == 0 ? 0 : 9;
         if (top + height <= start || top >= start + 9) return SpriteCanvas.space(width);
-        var glyph = MenuText.glyphs(Component.text(Character.toString(RgbaText.RULE))).getFirst();
         var result = Component.text();
-        while (width > 0) {
-            int length = Math.min(512, width);
-            result.append(RgbaText.ink(glyph, rgba.index(color), length, height, top, band));
-            result.append(SpriteCanvas.space(length - 2));
-            width -= length;
-        }
+        squares(result, width, height, 0, top, band, rgba.index(color));
+        result.append(SpriteCanvas.space(width));
         return result.build();
+    }
+
+    private static void squares(net.kyori.adventure.text.TextComponent.Builder result,
+                                int width, int height, int x, int top, int band, int color) {
+        int size = Math.min(width, height);
+        if (size <= 0) return;
+        var glyph = MenuText.glyphs(Component.text(Character.toString(RgbaText.RULE))).getFirst();
+        int start = band == 0 ? 0 : 9;
+        if (top + size > start && top < start + 9) {
+            result.append(SpriteCanvas.space(x));
+            result.append(RgbaText.ink(glyph, color, size, size, top, band));
+            result.append(SpriteCanvas.space(-x - 2));
+        }
+        if (width > size) squares(result, width - size, height, x + size, top, band, color);
+        if (height > size) squares(result, width, height - size, x, top + size, band, color);
     }
 }

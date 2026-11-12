@@ -85,8 +85,10 @@ final class ScaleCalibrationTests {
             var gpuCases = new ArrayList<Map<String, Object>>();
             var tokens = new ActionTokens();
             int maxBytes = 0;
-            for (double scale : samples) for (boolean centered : List.of(false, true)) {
-                var doc = ScaleCalibration.document(scale, centered);
+            check(ScaleCalibration.document().menu().width() == 324,
+                "Default resource preparation uses the centered calibration");
+            for (double scale : samples) {
+                var doc = ScaleCalibration.document(scale);
                 check(Boolean.TRUE.equals(doc.menu().closeWithEscape()), "Esc remains available");
                 var frame = snapshot.renderer().drawRuntime(doc.menu(), reference,
                     doc.menu().width(), ScaleCalibration.PIXELS);
@@ -97,8 +99,8 @@ final class ScaleCalibrationTests {
                     actions.put(region.id(), region.actions());
                     return page.bind(() -> received.add(region.actions().getFirst()));
                 });
-                check(output.bodyWidth() == (centered ? 334 : 1024) && output.rows() == 114,
-                    "Centering narrows only the native body; reference height does not zoom");
+                check(output.bodyWidth() == 334 && output.rows() == 114,
+                    "Calibration always uses a narrow centered body; reference height does not zoom");
                 var plain = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
                     .serialize(output.component());
                 String visible = plain.codePoints().filter(cp -> cp < 0xF0000)
@@ -115,39 +117,30 @@ final class ScaleCalibrationTests {
                 }
                 check(actions.get("confirm").equals(List.of("calibrate-scale: confirm")), "Confirm has a distinct action");
                 check(actions.get("cancel").equals(List.of("close")), "Cancel only closes");
-                check(actions.get("alignment").equals(List.of("calibrate-scale: align")),
-                    "Alignment is a separate view action, not a scale adjustment or save");
-                check(visible.contains(centered ? "[靠左显示]" : "[水平居中]"), "Alignment toggle shows reverse action");
-                int row = 0, rules = 0, offset = 0, boundaryLeft = -1;
-                var rows = new ArrayList<Map<String, Integer>>();
-                for (var glyph : MenuText.glyphs(output.component())) {
-                    if (glyph.code() == '\n') { row++; offset = 0; }
-                    if (SpriteCanvas.SPACE.equals(glyph.style().font())
-                        && glyph.code() >= 0xF0000 && glyph.code() <= 0xF0800)
-                        offset += glyph.code() - 0xF0400;
-                    if (glyph.code() != RgbaText.RULE) continue;
-                    rules++;
-                    int payload = glyph.style().shadowColor().value();
-                    int[] geometry = RowPackTests.textGeometry(payload);
-                    check(geometry[0] == 1 && row * 9 + geometry[1] == Math.round(177 * scale) - 1,
-                        "White boundary follows the scaled baseline bottom");
-                    check((payload & 255) == snapshot.fonts().imageTint(0xFFFFFFFF), "Boundary remains white");
-                    int width = ((payload >>> 8) & 511) + 1;
-                    check(width == 320, "Horizontal alignment does not resize the boundary");
-                    check(centered ? offset * 2 + width == doc.menu().width() + 2 : offset == 24,
-                        "Actual encoded boundary is centered in the native row or retains original left margin");
-                    boundaryLeft = offset;
-                    rows.add(Map.of("row", row, "payload", payload));
-                }
-                check(rules == 1, "Exactly one boundary replaces all selection stripes");
-                gpuCases.add(Map.of("scale", scale, "top", Math.round(177 * scale) - 1, "rows", rows,
-                    "centered", centered, "bodyWidth", output.bodyWidth(), "left", boundaryLeft));
+                check(!actions.containsKey("alignment")
+                    && actions.values().stream().noneMatch(value -> value.contains("calibrate-scale: align")),
+                    "Calibration exposes no alignment action");
+                check(!visible.contains("靠左") && !visible.contains("居中"),
+                    "Calibration exposes no alignment option");
+                var boundary = doc.menu().nodes().stream().filter(node -> node.id().equals("boundary"))
+                    .findFirst().orElseThrow();
+                var style = new TextStyle(boundary.size(), boundary.scale());
+                check(snapshot.fonts().textWidth(MenuText.parse(boundary.text()), style) == 320 && style.height() == 1,
+                    "Calibration boundary uses adjacent proportional one-pixel glyphs");
+                int top = SpriteCanvas.textTop(doc.menu(), boundary, frame.width(), 0, style);
+                check(top == Math.round(177 * scale) - 1,
+                    "White boundary follows the scaled baseline bottom");
+                check(boundary.x() + frame.width() / 2.0 == 3, "Boundary remains centered in the native body advance");
+                List<Map<String, Integer>> rows = new ArrayList<>();
+                for (var row : RgbaRows.slices(top, 1))
+                    rows.add(Map.of("row", row.row(), "payload", RgbaText.payload(1, 1, row.local(top), row.band(), 0, false)));
+                gpuCases.add(Map.of("scale", scale, "top", top, "centered", true,
+                    "bodyWidth", output.bodyWidth(), "left", 3, "rows", rows, "repeat", 320));
                 String encoded = net.kyori.adventure.text.serializer.gson.GsonComponentSerializer.gson()
                     .serialize(output.component());
                 maxBytes = Math.max(maxBytes, encoded.getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
                 check(maxBytes < 2_097_152, "Encoded page remains within the 2MiB budget");
-                if (scale == 1) Files.writeString(data.resolve(
-                    centered ? "calibration-centered-component.json" : "calibration-component.json"), encoded);
+                if (scale == 1) Files.writeString(data.resolve("calibration-centered-component.json"), encoded);
                 tokens.publish(player, page);
                 int index = 0;
                 for (var action : actions.values()) {

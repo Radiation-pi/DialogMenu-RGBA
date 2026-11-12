@@ -7,31 +7,35 @@ import java.util.Map;
 public final class MenuModel {
     private MenuModel() {}
 
-    public record Node(String id, String type, double x, double y, double z, double scaleX, double scaleY,
+    public record Node(String id, String type, double x, double y, double z, double scale,
                        double width, double height, int argb, String text, String source,
                        String alignment, int size, double thickness, double rotation,
                        int columns, int slotSize, List<Integer> slots, int maxLines,
                        Interaction interaction, boolean reuseTexture, TextureRegion atlas) {
-        public Node(String id, String type, double x, double y, double z, double scaleX, double scaleY,
+        public Node {
+            if (!Double.isFinite(scale) || scale <= 0)
+                throw new IllegalArgumentException("scale须为有限正数");
+        }
+        public Node(String id, String type, double x, double y, double z, double scale,
                     double width, double height, int argb, String text, String source,
                     String alignment, int size, double thickness, double rotation,
                     int columns, int slotSize, List<Integer> slots, int maxLines,
                     Interaction interaction, boolean reuseTexture) {
-            this(id, type, x, y, z, scaleX, scaleY, width, height, argb, text, source, alignment,
+            this(id, type, x, y, z, scale, width, height, argb, text, source, alignment,
                 size, thickness, rotation, columns, slotSize, slots, maxLines, interaction, reuseTexture, null);
         }
-        public Node(String id, String type, double x, double y, double z, double scaleX, double scaleY,
+        public Node(String id, String type, double x, double y, double z, double scale,
                     double width, double height, int argb, String text, String source,
                     String alignment, int size, double thickness, double rotation,
                     int columns, int slotSize, List<Integer> slots, int maxLines) {
-            this(id, type, x, y, z, scaleX, scaleY, width, height, argb, text, source, alignment,
+            this(id, type, x, y, z, scale, width, height, argb, text, source, alignment,
                 size, thickness, rotation, columns, slotSize, slots, maxLines, null, false);
         }
-        public Node(String id, String type, double x, double y, double z, double scaleX, double scaleY,
+        public Node(String id, String type, double x, double y, double z, double scale,
                     double width, double height, int argb, String text, String source,
                     String alignment, int size, double thickness, double rotation,
                     int columns, int slotSize, List<Integer> slots) {
-            this(id, type, x, y, z, scaleX, scaleY, width, height, argb, text, source, alignment,
+            this(id, type, x, y, z, scale, width, height, argb, text, source, alignment,
                 size, thickness, rotation, columns, slotSize, slots, 0);
         }
     }

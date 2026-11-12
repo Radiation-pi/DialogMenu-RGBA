@@ -46,7 +46,7 @@ public final class PersistenceTests {
                 type: text
                 content: 'XY汉'
                 offset: {x: 0, y: 50}
-                scale: {x: 1.5, y: 2}
+                scale: 1.5
                 actions: ['tell: STRETCH']
               dynamic:
                 type: text
@@ -120,6 +120,17 @@ public final class PersistenceTests {
             full = engine.prepare().get(90, TimeUnit.SECONDS).snapshot();
             check(Files.size(metadata) > 0, "full reload saved on disk");
             check(!engine.prepare().get(90, TimeUnit.SECONDS).changed(), "saved build still reuses stamps");
+        }
+        Path alias = Files.createDirectories(data.getParent().resolve("server-alias"))
+            .resolve("plugins/DialogMenu");
+        Files.createDirectories(alias.getParent());
+        Files.createSymbolicLink(alias, data);
+        try (var engine = new ReloadEngine(alias, CONTEXT)) {
+            var restored = engine.restore().get(90, TimeUnit.SECONDS);
+            check(restored.snapshot().pack().equals(full.pack()), "symlink data root restores the shared compiled cache");
+            var startup = engine.startup().get(90, TimeUnit.SECONDS);
+            check(!startup.result().changed() && startup.yamlError() == null,
+                "symlink data root completes startup without rebuilding an unchanged snapshot");
         }
         String before = render(full);
         var oldTime = Files.getLastModifiedTime(full.pack());

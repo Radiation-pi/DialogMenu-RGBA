@@ -6,14 +6,14 @@ void dialogmenu_model(inout vec3 position, inout vec2 imageUv) {
     if (dialogmenuMarked != 0) return;
     uvec4 bytes = uvec4(round(Color * 255.0));
     uint payload = (bytes.a << 24u) | (bytes.r << 16u) | (bytes.g << 8u) | bytes.b;
-    if ((payload & 0xE0000000u) == 0x60000000u && dialogmenu_native_scope(position)) {
+    if ((payload & 0xE0000000u) == 0xE0000000u && dialogmenu_native_scope(position)) {
         position.x += 65536.0;
         int corner = (gl_VertexIndex - gl_BaseVertex) % 4;
         vec2 edge = vec2(corner >= 2 ? 1.0 : 0.0, corner == 1 || corner == 2 ? 1.0 : 0.0);
-        vec2 size = vec2(float(((payload >> 19u) & 511u) + 1u),
-                        float(((payload >> 10u) & 511u) + 1u));
-        int localY = int(payload & 1023u);
-        if (localY >= 512) localY -= 1024;
+        // Native inventory sprites are square. Non-square sources use metadata wrappers.
+        vec2 size = vec2(float(((payload >> 11u) & 1023u) + 1u));
+        int localY = int(payload & 2047u);
+        if (localY >= 1024) localY -= 2048;
         position.xy += vec2(-1.0, float(localY)) + edge * (size - vec2(8.0));
         vertexColor = vec4(1.0);
         dialogmenuMarked = 4;
@@ -37,10 +37,9 @@ void dialogmenu_model(inout vec3 position, inout vec2 imageUv) {
     vec2 edge = vec2(corner >= 2 ? 1.0 : 0.0, corner == 1 || corner == 2 ? 1.0 : 0.0);
     ivec2 atlasSize = textureSize(Sampler0, 0);
     vec4 data = ce ? modelCeData(record * 5 + corner) : modelVanillaData(record * 5 + corner);
-    vec2 size = vec2(float(((payload >> 19u) & 511u) + 1u),
-                    float(((payload >> 10u) & 511u) + 1u));
-    int localY = int(payload & 1023u);
-    if (localY >= 512) localY -= 1024;
+    vec2 size = vec2(float(((payload >> 11u) & 1023u) + 1u));
+    int localY = int(payload & 2047u);
+    if (localY >= 1024) localY -= 2048;
     vec2 origin = position.xy - edge * 8.0 - vec2(1.0);
     position.xy = origin + data.xy * size + vec2(0.0, float(localY));
     imageUv += data.zw / vec2(atlasSize);

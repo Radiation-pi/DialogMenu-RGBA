@@ -38,7 +38,7 @@ final class CompiledSnapshot {
             else {
                 ByteArrayOutputStream bytes = new ByteArrayOutputStream();
                 for (String name : List.of("CompiledSnapshot.class", "ReloadEngine.class", "FontPack.class",
-                    "RgbaImages.class", "RegisteredImages.class", "ImageRegistry.class", "ImageTiles.class",
+                    "RgbaImages.class", "RegisteredImages.class", "ImageRegistry.class", "PrimitiveShapes.class",
                     "RgbaHits.class", "RgbaOffsets.class", "RgbaDecorations.class",
                     "CanvasScale.class", "ScaleCalibration.class", "NativeUiTextures.class", "MenuOpeners.class", "MenuRenderer.class",
                     "SpriteCanvas.class", "LayoutStore.class", "MenuTemplate.class", "ModelPack.class",

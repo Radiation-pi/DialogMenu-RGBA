@@ -37,7 +37,7 @@ final class CoordinateTests {
               group:
                 type: group
                 offset: {x: 10, y: 50}
-                scale: {x: 2, y: 2}
+                scale: 2
                 children:
                   label: {type: text, content: Child, offset: {y: -6}, tooltip: Child}
                   frame: {type: frame, width: 12, height: 8, offset: {x: 25, y: -20}}

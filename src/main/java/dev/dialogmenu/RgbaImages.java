@@ -15,25 +15,28 @@ final class RgbaImages {
     private final transient Map<BufferedImage, String> hashes = new WeakHashMap<>();
 
     static boolean eligible(Sprite sprite) {
-        return sprite.texture() == null && sprite.original() != null
-            && sprite.original().getWidth() <= 254 && sprite.original().getHeight() <= 254
-            && sprite.width() <= 512 && sprite.height() <= 512;
+        return (sprite.texture() == null || PrimitiveShapes.sprite(sprite)) && sprite.original() != null
+            && sprite.original().getWidth() <= 254 && sprite.original().getHeight() <= 254;
     }
 
-    static int payload(int width, int height, int localY, int band) {
-        if (width < 1 || width > 512 || height < 1 || height > 512 || localY < -512 || localY > 511)
-            throw new IllegalArgumentException("Shader图片须宽高1..512、切片源Y=-512..511");
-        return 0x20000000 | (band == 9 ? 1 << 28 : 0)
-            | (width - 1) << 19 | (height - 1) << 10 | localY & 1023;
+    static int imagePayload(int height, int localY, int band) {
+        if (height < 1 || height > 1024 || localY < -1024 || localY > 1023)
+            throw new IllegalArgumentException("等比Shader图片高度须为1..1024、切片源Y=-1024..1023");
+        return 0xA0000000 | (band == 9 ? 1 << 28 : 0) | (height - 1) << 11 | localY & 2047;
     }
 
     private synchronized String key(Sprite sprite, int tint) {
-        return hashes.computeIfAbsent(sprite.original(), FontPack::hash) + ":" + tint;
+        return hashes.computeIfAbsent(sprite.original(), FontPack::hash) + ":" + tint + ":" + PrimitiveShapes.sprite(sprite);
     }
 
     void prepare(Sprite sprite, int tint) {
         images.computeIfAbsent(key(sprite, tint), key -> {
             BufferedImage image = wrap(sprite.original(), tint);
+            if (PrimitiveShapes.sprite(sprite)) {
+                int last = image.getWidth() - 1;
+                for (int x : new int[]{0, last}) for (int y : new int[]{0, last})
+                    image.setRGB(x, y, (image.getRGB(x, y) & 0xFFFF00FF) | 86 << 8);
+            }
             return new Entry(new Glyph(0xE000 + images.size(), 2),
                 "generated/rgba_image_" + hashes.get(sprite.original()) + "_" + tint + ".png",
                 image);

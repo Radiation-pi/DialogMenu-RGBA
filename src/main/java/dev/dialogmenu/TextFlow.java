@@ -12,7 +12,7 @@ final class TextFlow {
                                  ToIntFunction<MenuText.Glyph> measure) {
         List<MenuText.Glyph> glyphs = MenuText.glyphs(text);
         int limit = node.maxLines() == 0 ? Integer.MAX_VALUE
-            : Math.max(1, (int) Math.floor(node.width() * node.scaleX() * zoom));
+            : Math.max(1, (int) Math.floor(node.width() * node.scale() * zoom));
         List<Component> lines = new ArrayList<>();
         List<MenuText.Glyph> line = new ArrayList<>();
         int used = 0;

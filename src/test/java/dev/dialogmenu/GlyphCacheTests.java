@@ -45,7 +45,7 @@ public final class GlyphCacheTests {
           stretched:
             type: text
             content: 'XY汉'
-            scale: {x: 1.5, y: 2}
+            scale: 1.5
             offset: {y: 50}
             actions: ['tell: STRETCH']
           button:

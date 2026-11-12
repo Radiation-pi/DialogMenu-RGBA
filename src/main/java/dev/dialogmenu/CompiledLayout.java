@@ -52,7 +52,7 @@ final class CompiledLayout {
             if (node.contains("color"))
                 fields.add(new Field(path + ".color", node.getString("color"), Kind.TEXT));
             for (String key : List.of("x", "y", "offset.x", "offset.y", "offset.z",
-                "width", "height", "size", "line-width"))
+                "width", "height", "size", "line-width", "scale"))
                 if (node.get(key) instanceof String value)
                     fields.add(new Field(path + "." + key, value, Kind.NUMBER));
             var children = node.getConfigurationSection("children");
@@ -78,7 +78,7 @@ final class CompiledLayout {
                     yaml.set(field.path(), values.get(i));
             }
             List<Node> nodes = new ArrayList<>();
-            LayoutStore.flatten(yaml.getConfigurationSection("frontend"), 0, 0, 0, 1, 1, nodes);
+            LayoutStore.flatten(yaml.getConfigurationSection("frontend"), 0, 0, 0, 1, nodes);
             List<Node> result = List.copyOf(nodes);
             synchronized (cache) { cache.put(key, result); }
             return result;

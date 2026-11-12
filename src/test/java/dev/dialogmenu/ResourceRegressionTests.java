@@ -63,7 +63,7 @@ public final class ResourceRegressionTests {
         checks += CoordinateTests.run(root);
         checks += ScaleCalibrationTests.run(root);
         checks += NativeUiTextureTests.run(root);
-        checks += ImageTilesTests.run(root);
+        checks += ProportionalImageTests.run(root);
         checks += GraphicLimitTests.run(root);
         checks += CanvasScaleTests.run(root);
         cacheAndReload(root);
@@ -159,13 +159,13 @@ public final class ResourceRegressionTests {
             var prepared = FontPack.create(List.of(styled), renderer, PREVIEW, List.of(300), 131072);
             new SpriteCanvas().encode(styled.menu(), renderer.draw(styled.menu(), PREVIEW, 300, 131072),
                 PREVIEW, prepared, region -> null);
-            fonts.rgbaText(MenuText.parse(decoration + "A"), -1, 9, new TextStyle(8, 1, 1), 9);
+            fonts.rgbaText(MenuText.parse(decoration + "A"), -1, 9, new TextStyle(8, 1), 9);
             checks += 2;
         }
-        rejects(() -> fonts.rgbaText(MenuText.parse("&#123456A"), -1, 9, new TextStyle(8, 1, 1), 9), "undeclared HEX accepted");
+        rejects(() -> fonts.rgbaText(MenuText.parse("&#123456A"), -1, 9, new TextStyle(8, 1), 9), "undeclared HEX accepted");
         var declared = FontPack.create(List.of(document), renderer, context("A"), List.of(300), 131072,
             "", List.of(1.0), List.of(1.0), List.of(0x123456));
-        declared.rgbaText(MenuText.parse("&#123456A"), -1, 9, new TextStyle(8, 1, 1), 9); checks++;
+        declared.rgbaText(MenuText.parse("&#123456A"), -1, 9, new TextStyle(8, 1), 9); checks++;
         var palette = new RgbaOffsets();
         for (int color = 0; color < 240; color++) palette.add(0x100000 + color);
         rejects(() -> palette.add(0x123456), "palette overflow accepted");
@@ -247,14 +247,81 @@ public final class ResourceRegressionTests {
                 color: '#55AAFF'
                 size: 8
                 width: 100
-                scale: {x: 1.5, y: 2}
+                scale: 1.5
                 offset: {y: -20}
                 actions: ['tell: TEXT']
             """);
         var document = LayoutStore.parse("probe", yaml);
         var renderer = new MenuRenderer(new VanillaAssets(data.resolve("images")));
+        Sprite fitted = renderer.draw(document.menu(), PREVIEW, 300, 131072).sprites().stream()
+            .filter(sprite -> sprite.id().equals("frontend.icon")).findFirst().orElseThrow();
+        check(fitted.width() == 24 && fitted.height() == 24 && fitted.x() == 138,
+            "Image preserves its source aspect ratio inside the configured 32x24 box");
+        var invalidImage = new YamlConfiguration();
+        invalidImage.loadFromString("""
+            schema-version: 1
+            id: invalid-image
+            canvas: {width: 300, height: 180}
+            frontend:
+              icon:
+                type: image
+                source: sample.png
+                width: 32
+                height: 24
+                scale: 2
+            """);
+        var scaledImage = LayoutStore.parse("invalid-image", invalidImage);
+        check(scaledImage.menu().nodes().stream().filter(node -> node.type().equals("image"))
+            .findFirst().orElseThrow().scale() == 2, "Single scalar scale applies uniformly to images");
+        for (String kind : List.of("text", "rectangle", "frame", "line", "model", "image", "group"))
+            for (String scale : List.of("{x: 1.5, y: 2}", "{x: 2, y: 2}", "{x: 2}")) {
+            String node = kind.equals("model")
+                ? "type: model\n    source: minecraft:stone\n    size: 16"
+                : kind.equals("image") ? "type: image\n    source: sample.png\n    width: 16\n    height: 16"
+                : kind.equals("text") ? "type: text\n    content: A"
+                : "type: " + kind + "\n    width: 16\n    height: 16";
+            var anisotropic = new YamlConfiguration();
+            anisotropic.loadFromString("""
+                schema-version: 1
+                id: anisotropic
+                canvas: {width: 300, height: 180}
+                frontend:
+                  item:
+                    %s
+                    scale: %s
+                """.formatted(node, scale));
+            boolean rejected = false;
+            try { LayoutStore.parse("anisotropic", anisotropic); }
+            catch (IllegalArgumentException error) {
+                rejected = error.getMessage().contains("已移除scale.x/scale.y");
+            }
+            check(rejected, "Independent XY scaling must be rejected for " + kind);
+        }
+        var dynamicScale = new YamlConfiguration();
+        dynamicScale.loadFromString("""
+            schema-version: 1
+            id: dynamic-scale
+            variables:
+              factor: {type: external, preview: '1'}
+            pages:
+              dynamic-scale:
+                canvas: {width: 300, height: 180}
+                frontend:
+                  group:
+                    type: group
+                    scale: '{factor}'
+                    children:
+                      label: {type: text, content: A, scale: 3, offset: {x: 5, y: 7}}
+            """);
+        var scaleTemplate = MenuTemplate.load("dynamic-scale", dynamicScale).get("dynamic-scale").template();
+        for (int factor : List.of(1, 2, 3)) {
+            var node = scaleTemplate.document(Map.of(), text -> text.replace("{factor}", Integer.toString(factor)))
+                .menu().nodes().getFirst();
+            check(node.scale() == factor * 3 && node.x() == factor * 5 && node.y() == factor * 7,
+                "Dynamic group scale uniformly transforms both offsets and descendant glyph size");
+        }
         var fonts = FontPack.create(List.of(document), renderer, PREVIEW, List.of(300), 131072);
-        TextStyle stretched = new TextStyle(8, 1.5, 2);
+        TextStyle stretched = new TextStyle(8, 1.5);
         check(fonts.textFont(stretched, MenuText.parse("A中")).equals(fonts.textFont(8)),
             "Text scale shares the fixed source font");
         check(fonts.textWidth(MenuText.parse("A中"), stretched) > fonts.textWidth(MenuText.parse("A中"), 8),
