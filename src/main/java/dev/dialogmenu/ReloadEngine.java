@@ -43,7 +43,14 @@ final class ReloadEngine implements AutoCloseable {
     record Snapshot(Map<String, LayoutStore.Document> documents, VanillaAssets assets, MenuRenderer renderer,
                     FontPack fonts, Settings settings, Path pack, Map<Path, Stamp> inputs,
                     Map<Path, Stamp> resourceInputs, long buildMillis,
-                    String buildThread, long generation) {}
+                    String buildThread, long generation, PreparedLayouts presentations) {
+        Snapshot(Map<String, LayoutStore.Document> documents, VanillaAssets assets, MenuRenderer renderer,
+                 FontPack fonts, Settings settings, Path pack, Map<Path, Stamp> inputs,
+                 Map<Path, Stamp> resourceInputs, long buildMillis, String buildThread, long generation) {
+            this(documents, assets, renderer, fonts, settings, pack, inputs, resourceInputs,
+                buildMillis, buildThread, generation, new PreparedLayouts(fonts));
+        }
+    }
     record Result(Snapshot snapshot, boolean changed, boolean resourcesChanged, Set<String> menus) {
         Result(Snapshot snapshot, boolean changed, boolean resourcesChanged) {
             this(snapshot, changed, resourcesChanged, Set.of());
@@ -107,6 +114,7 @@ final class ReloadEngine implements AutoCloseable {
     private Result restored() throws Exception {
         if (latest == null) {
             var saved = persisted().load();
+            saved.snapshot().presentations().prepare(saved.snapshot(), preview);
             latest = saved.snapshot();
             builtInputs = saved.builtInputs();
             generation = latest.generation();
@@ -123,7 +131,8 @@ final class ReloadEngine implements AutoCloseable {
             } catch (Exception error) { throw new CompletionException(error); }
         }, worker);
     }
-    private void install(Snapshot next, Map<Path, Stamp> built) throws IOException {
+    private void install(Snapshot next, Map<Path, Stamp> built) throws Exception {
+        next.presentations().prepare(next, preview);
         persisted().save(next, built);
         cache.retain(next, next.pack());
         builtInputs = built;

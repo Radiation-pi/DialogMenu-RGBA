@@ -31,7 +31,7 @@ final class ActionTokens {
     }
     private final Map<UUID, Page> pages = new HashMap<>();
     void publish(UUID player, Page page) { pages.put(player, page); }
-    void remove(UUID player) { pages.remove(player); }
+    Page remove(UUID player) { return pages.remove(player); }
     void clear() { pages.clear(); }
     Consumer<DialogResponseView> takeResponse(UUID player, String identifier) {
         String[] parts = identifier.split("/", -1);

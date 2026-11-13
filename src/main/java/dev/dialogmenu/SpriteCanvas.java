@@ -40,13 +40,23 @@ final class SpriteCanvas {
             - style.height() / 2.0 + line * style.stride());
     }
     Output encode(Menu menu, Rendered frame, Context context, FontPack fonts, Function<Region, ClickEvent> bind) {
-        return encode(menu, frame, context, fonts, bind, null).body();
+        return encode(menu, frame, context, fonts, bind, null, null).body();
+    }
+    Output encode(Menu menu, Rendered frame, Context context, FontPack fonts, Function<Region, ClickEvent> bind,
+                  PreparedLayouts prepared) {
+        return encode(menu, frame, context, fonts, bind, null, prepared).body();
     }
     NativeOutput encodeNative(LayoutStore.Document doc, Rendered frame, Context context, FontPack fonts,
                               Function<Region, ClickEvent> bind) {
         var layout = NativeInk.layout(doc.controls(), frame.width(), frame.height(), context::permitted);
         NativeInk.validate(doc, frame, context, fonts, layout);
-        return encode(doc.menu(), frame, context, fonts, bind, layout);
+        return encode(doc.menu(), frame, context, fonts, bind, layout, null);
+    }
+    NativeOutput encodeNative(LayoutStore.Document doc, Rendered frame, Context context, FontPack fonts,
+                              Function<Region, ClickEvent> bind, PreparedLayouts prepared) {
+        var layout = NativeInk.layout(doc.controls(), frame.width(), frame.height(), context::permitted);
+        NativeInk.validate(doc, frame, context, fonts, layout);
+        return encode(doc.menu(), frame, context, fonts, bind, layout, prepared);
     }
     private static List<List<Component>> rows(int count) {
         List<List<Component>> result = new ArrayList<>();
@@ -54,7 +64,8 @@ final class SpriteCanvas {
         return result;
     }
     private NativeOutput encode(Menu menu, Rendered frame, Context context, FontPack fonts,
-                                Function<Region, ClickEvent> bind, NativeInk.Layout nativeLayout) {
+                                Function<Region, ClickEvent> bind, NativeInk.Layout nativeLayout,
+                                PreparedLayouts prepared) {
         int width = frame.width(), height = frame.height(), rows = (height + 8) / 9;
         int bodyRows = nativeLayout == null ? rows : nativeLayout.bodyRows();
         List<List<Component>> bodyParts = rows(Math.max(rows, bodyRows));
@@ -65,40 +76,13 @@ final class SpriteCanvas {
         // 文字和图形共用绘制顺序，LayoutStore 已按 Z 排序。
         for (Node node : menu.nodes()) {
             List<List<Component>> parts = nativeLayout == null ? bodyParts : rows(rows);
-            if (node.type().equals("model")) {
-                double zoom = width / (double) menu.width();
-                int x = (int) Math.round((menu.width() / 2.0 + node.x()) * zoom);
-                int center = (int) Math.round((menu.height() / 2.0 - node.y()) * zoom);
-                int size = (int) Math.round(node.size() * node.scale() * zoom);
-                var area = fonts.modelArea(menu, node, width, height);
+            var fragment = prepared == null ? null : prepared.fragment(menu, node, frame, context, this);
+            if (fragment != null) {
                 Region region = node.interaction() == null ? null : node.interaction().region(node);
                 ClickEvent click = region != null && region.hasActions() ? clicks.computeIfAbsent(region, bind) : null;
-                var hover = region == null ? null : hover(region, context);
-                for (var slice : RgbaRows.slices(area.y, area.height)) {
-                    parts.get(slice.row()).add(positioned(fonts.model(node.source(), size,
-                        -slice.local(center), slice.band()), x, 0));
-                    if (click != null || hover != null)
-                        parts.get(slice.row()).add(positioned(RgbaHits.rectangle(slice.local(slice.top()),
-                            area.width, slice.height(), click, hover), area.x, 0));
-                }
-            } else if (node.type().equals("text")) {
-                addText(parts, menu, node, context, fonts, clicks, bind, width, height);
-            } else {
-                Sprite sprite = sprites.get(node.id());
-                if (sprite == null) continue;
-                Region region = node.interaction() == null ? null : node.interaction().region(node);
-                int argb = node.type().equals("image")
-                    ? fonts.registeredImages().color(node.source(), node.argb()) : node.argb();
-                if (PrimitiveShapes.sprite(sprite)) {
-                    for (var rect : PrimitiveShapes.rectangles(node, sprite.width(), sprite.height(),
-                        width / (double) menu.width()))
-                        addSprite(parts, new Sprite(sprite.id(), sprite.x() + rect.x, sprite.y() + rect.y,
-                            null, sprite.texture(), sprite.original(), null, rect.width, rect.height),
-                            fonts, argb, null, null);
-                } else addSprite(parts, sprite, fonts, argb,
-                    region == null || !region.hasActions() ? null : clicks.computeIfAbsent(region, bind),
-                    region == null ? null : hover(region, context));
-            }
+                fragment.append(parts, click, region == null ? null : hover(region, context));
+            } else appendNode(parts, menu, node, frame, context, fonts, clicks, bind,
+                region -> hover(region, context), sprites.get(node.id()));
             if (nativeLayout != null) {
                 boolean interactive = node.interaction() != null
                     && (node.interaction().region(node).hasActions() || !node.interaction().tooltip().isEmpty());
@@ -122,6 +106,52 @@ final class SpriteCanvas {
         return new NativeOutput(new Output(clean(body.build()), width + 10, bodyRows, frame.sprites().size()),
             clean(foreground.build()), nativeLayout);
     }
+    PreparedLayouts.Fragment compileNode(Menu menu, Node node, Rendered frame, Context context, FontPack fonts) {
+        var parts = rows((frame.height() + 8) / 9);
+        Sprite sprite = frame.sprites().stream().filter(value -> value.id().equals(node.id())).findFirst().orElse(null);
+        appendNode(parts, menu, node, frame, context, fonts, new HashMap<>(),
+            region -> PreparedLayouts.CLICK_SLOT,
+            region -> region.tooltip().isEmpty() ? null : PreparedLayouts.HOVER_SLOT, sprite);
+        return new PreparedLayouts.Fragment(parts, !node.type().equals("text"));
+    }
+    private void appendNode(List<List<Component>> parts, Menu menu, Node node, Rendered frame, Context context,
+                            FontPack fonts, Map<Region, ClickEvent> clicks, Function<Region, ClickEvent> bind,
+                            Function<Region, HoverEvent<Component>> hover, Sprite sprite) {
+        int width = frame.width(), height = frame.height();
+        if (node.type().equals("model")) {
+            double zoom = width / (double) menu.width();
+            int x = (int) Math.round((menu.width() / 2.0 + node.x()) * zoom);
+            int center = (int) Math.round((menu.height() / 2.0 - node.y()) * zoom);
+            int size = (int) Math.round(node.size() * node.scale() * zoom);
+            var area = fonts.modelArea(menu, node, width, height);
+            Region region = node.interaction() == null ? null : node.interaction().region(node);
+            ClickEvent click = region != null && region.hasActions() ? clicks.computeIfAbsent(region, bind) : null;
+            var tooltip = region == null ? null : hover.apply(region);
+            for (var slice : RgbaRows.slices(area.y, area.height)) {
+                parts.get(slice.row()).add(positioned(fonts.model(node.source(), size,
+                    -slice.local(center), slice.band()), x, 0));
+                if (click != null || tooltip != null)
+                    parts.get(slice.row()).add(positioned(RgbaHits.rectangle(slice.local(slice.top()),
+                        area.width, slice.height(), click, tooltip), area.x, 0));
+            }
+        } else if (node.type().equals("text")) {
+            addText(parts, menu, node, context, fonts, clicks, bind, hover, width, height);
+        } else {
+            if (sprite == null) return;
+            Region region = node.interaction() == null ? null : node.interaction().region(node);
+            int argb = node.type().equals("image")
+                ? fonts.registeredImages().color(node.source(), node.argb()) : node.argb();
+            if (PrimitiveShapes.sprite(sprite)) {
+                for (var rect : PrimitiveShapes.rectangles(node, sprite.width(), sprite.height(),
+                    width / (double) menu.width()))
+                    addSprite(parts, new Sprite(sprite.id(), sprite.x() + rect.x, sprite.y() + rect.y,
+                        null, sprite.texture(), sprite.original(), null, rect.width, rect.height),
+                        fonts, argb, null, null);
+            } else addSprite(parts, sprite, fonts, argb,
+                region == null || !region.hasActions() ? null : clicks.computeIfAbsent(region, bind),
+                region == null ? null : hover.apply(region));
+        }
+    }
     private static Component clean(Component value) {
         return value.decoration(TextDecoration.BOLD, false).decoration(TextDecoration.ITALIC, false)
             .shadowColor(ShadowColor.none());
@@ -137,8 +167,8 @@ final class SpriteCanvas {
             .append(positioned(overlay.foreground(), overlay.layout().canvasOffset(frame.width()), 0)));
     }
     private void addText(List<List<Component>> parts, Menu menu, Node node, Context context,
-                                FontPack fonts, Map<Region, ClickEvent> clicks,
-                                Function<Region, ClickEvent> bind, int width, int height) {
+                         FontPack fonts, Map<Region, ClickEvent> clicks, Function<Region, ClickEvent> bind,
+                         Function<Region, HoverEvent<Component>> hover, int width, int height) {
         int size = textSize(menu, node, width, context.textScale(), context.canvasScale());
         TextStyle style = new TextStyle(size, node.scale());
         double zoom = width / (double) menu.width();
@@ -190,7 +220,7 @@ final class SpriteCanvas {
                 parts.get(slice.row()).add(positioned(cachedLabel, x, advance));
                 if (region != null)
                     parts.get(slice.row()).add(positioned(fonts.rgbaHit(slice.local(slice.top()), slice.height(), style, text,
-                        clicks.get(region), hover(region, context)), x, advance));
+                        clicks.get(region), hover.apply(region)), x, advance));
             }
         }
     }

@@ -1,5 +1,6 @@
 package dev.dialogmenu;
 
+import com.destroystokyo.paper.event.server.ServerTickEndEvent;
 import io.papermc.paper.connection.PlayerGameConnection;
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.dialog.DialogResponseView;
@@ -41,9 +42,25 @@ import static dev.dialogmenu.DialogMenuClosedEvent.Reason;
 
 public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabExecutor, MenuSessions.Host {
     private LayoutStore store;
-    private MenuRenderer renderer;
-    private FontPack fonts;
-    private SpriteCanvas canvas = new SpriteCanvas();
+    private final ExecutorService presentationWorker = Executors.newSingleThreadExecutor(task -> {
+        Thread thread = new Thread(task, "DialogMenu-present");
+        thread.setDaemon(true);
+        return thread;
+    });
+    private final LatestTasks<UUID> pendingPresentations = new LatestTasks<>(presentationWorker);
+    private final ExecutorService previewWorker = Executors.newSingleThreadExecutor(task -> {
+        Thread thread = new Thread(task, "DialogMenu-preview");
+        thread.setDaemon(true);
+        return thread;
+    });
+    private record PresentationCache(MenuRenderer renderer, SpriteCanvas canvas) {}
+    private final Map<MenuRenderer, PresentationCache> presentationCaches = new WeakHashMap<>();
+    private final Map<MenuRenderer, PresentationCache> immediateCaches = new WeakHashMap<>();
+    private final Map<MenuRenderer, PresentationCache> previewCaches = new WeakHashMap<>();
+    private final Map<UUID, Integer> presentationTicks = new HashMap<>();
+    private final ConcurrentMap<UUID, Runnable> readyPresentations = new ConcurrentHashMap<>();
+    private final AtomicLong presentationSequence = new AtomicLong();
+    private final ConcurrentMap<UUID, Long> presentationRequests = new ConcurrentHashMap<>();
     private MenuSessions application;
     private ReloadEngine reloadEngine;
     private EditorBridge editor;
@@ -144,6 +161,9 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         catch (Exception error) { failure(binding.player, error); return false; }
     }
     public void showForm(Player player, MenuTemplate.FormSpec form, Consumer<Map<String, String>> submitted, Runnable cancelled) {
+        presentationRequests.remove(player.getUniqueId());
+        pendingPresentations.cancel(player.getUniqueId());
+        readyPresentations.remove(player.getUniqueId());
         gestures.cancel(player.getUniqueId());
         ActionTokens.Page page = new ActionTokens.Page();
         ClickEvent submit = page.bind(response -> {
@@ -187,6 +207,9 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         catch (Exception error) { failure(binding.player, error); return false; }
     }
     public void suspendApplication(Player player) {
+        presentationRequests.remove(player.getUniqueId());
+        pendingPresentations.cancel(player.getUniqueId());
+        readyPresentations.remove(player.getUniqueId());
         gestures.cancel(player.getUniqueId());
         tokens.remove(player.getUniqueId());
         DialogCompat.close(player);
@@ -232,6 +255,9 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
     @Override public void onDisable() {
         if (activeReload != null) finishReloadDisplay(activeReload);
         reloadProgressLogger.shutdownNow();
+        pendingPresentations.clear();
+        presentationWorker.shutdownNow();
+        previewWorker.shutdownNow();
         Bukkit.getServicesManager().unregisterAll(this);
         if (editor != null) editor.close();
         if (craftEngineBridge != null) craftEngineBridge.close();
@@ -242,6 +268,10 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
             if (player != null) close(player, Reason.DISABLED);
         }
         views.clear();
+        presentationRequests.clear();
+        presentationTicks.clear();
+        readyPresentations.clear();
+        immediateCaches.clear();
         gestures.clear();
         tokens.clear();
         if (application != null) application.clear(Reason.DISABLED);
@@ -388,9 +418,6 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         if (result.menus().isEmpty()) application.clear();
         else application.clear(result.menus());
         loaded = result.snapshot();
-        renderer = loaded.renderer();
-        fonts = loaded.fonts();
-        canvas = new SpriteCanvas();
         width = loaded.settings().width();
         maxPixels = loaded.settings().maxPixels();
         store.publish(loaded.documents());
@@ -522,9 +549,16 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         }
         if (doc.template() != null) return application.open(player, doc, targetWidth, history);
         View next = new View(doc, targetWidth, List.copyOf(history), UUID.randomUUID());
-        present(player, next);
-        application.remove(player);
         View previous = views.put(player.getUniqueId(), next);
+        application.remove(player);
+        var previousTokens = tokens.remove(player.getUniqueId());
+        try { present(player, next); }
+        catch (Exception error) {
+            if (previous == null) views.remove(player.getUniqueId(), next);
+            else views.put(player.getUniqueId(), previous);
+            if (previousTokens != null) tokens.publish(player.getUniqueId(), previousTokens);
+            throw error;
+        }
         if (previous != null) closed(player, previous, Reason.REPLACED);
         lifecycle(player, doc.open());
         return true;
@@ -536,8 +570,15 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         View next = new View(document, targetWidth, List.copyOf(history),
             refresh ? previous.token : UUID.randomUUID());
         if (refresh) next.inputs.putAll(previous.inputs);
-        present(player, next);
         views.put(player.getUniqueId(), next);
+        var previousTokens = refresh ? null : tokens.remove(player.getUniqueId());
+        try { present(player, next); }
+        catch (Exception error) {
+            if (previous == null) views.remove(player.getUniqueId(), next);
+            else views.put(player.getUniqueId(), previous);
+            if (previousTokens != null) tokens.publish(player.getUniqueId(), previousTokens);
+            throw error;
+        }
         if (!refresh) {
             if (previous != null) closed(player, previous, Reason.REPLACED);
             lifecycle(player, document.open());
@@ -545,34 +586,144 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
     }
     public void closeApplication(Player player) { close(player); }
     public void later(Runnable action) { Bukkit.getScheduler().runTaskLater(this, action, 1); }
-    private void present(Player player, View view) throws Exception {
-        try (var ignored = application.frame(player)) { presentFrame(player, view); }
+    private record PreparedPresentation(ReloadEngine.Snapshot snapshot, View view,
+                                       FrozenContext context, SpriteCanvas.Output output,
+                                       ActionTokens.Page page, List<Component> nativeLabels,
+                                       boolean escape) {}
+
+    record FrozenContext(Map<String, String> values, Map<String, Boolean> permissions,
+                         double textScale, double canvasScale) implements Context {
+        public String expand(String text) {
+            String value = values.get(text);
+            if (value == null) throw new IllegalStateException("未在主线程快照的菜单文本");
+            return value;
+        }
+        public Icon item(int slot) { return null; }
+        public boolean permitted(String permission) { return permissions.getOrDefault(permission, false); }
+        boolean permissionsMatch(Context current) {
+            return permissions.entrySet().stream()
+                .allMatch(entry -> current.permitted(entry.getKey()) == entry.getValue());
+        }
     }
-    private void presentFrame(Player player, View view) throws Exception {
+
+    private long nextPresentationRequest(UUID id) {
+        long request = presentationSequence.incrementAndGet();
+        presentationRequests.put(id, request);
+        readyPresentations.remove(id);
+        return request;
+    }
+
+    private boolean currentPresentationRequest(UUID id, long request) {
+        return Objects.equals(presentationRequests.get(id), request);
+    }
+
+    private void publishPresentationLater(UUID id, long request, Runnable action) {
+        if (!isEnabled() || !currentPresentationRequest(id, request)) return;
+        readyPresentations.put(id, action);
+        try {
+            if (!isEnabled()) { readyPresentations.remove(id, action); return; }
+            Bukkit.getScheduler().runTask(this, () -> publishReady(id, action));
+        }
+        catch (org.bukkit.plugin.IllegalPluginAccessException error) {
+            readyPresentations.remove(id, action);
+            if (isEnabled()) throw error;
+        }
+    }
+
+    private void publishReady(UUID id, Runnable action) {
+        if (readyPresentations.remove(id, action)) action.run();
+    }
+
+    @EventHandler public void tickEnd(ServerTickEndEvent event) {
+        // Only take work already ready; never wait for rendering or drain new arrivals indefinitely.
+        for (var entry : List.copyOf(readyPresentations.entrySet()))
+            publishReady(entry.getKey(), entry.getValue());
+    }
+
+    private PresentationCache presentationCache(ReloadEngine.Snapshot snapshot,
+                                                Map<MenuRenderer, PresentationCache> caches) {
+        return caches.computeIfAbsent(snapshot.renderer(),
+            ignored -> new PresentationCache(new MenuRenderer(snapshot.assets()), new SpriteCanvas()));
+    }
+
+    CompletableFuture<SpriteCanvas.Output> renderPreview(ReloadEngine.Snapshot snapshot,
+                                                          LayoutStore.Document document,
+                                                          Context context) {
+        var result = new CompletableFuture<SpriteCanvas.Output>();
+        previewWorker.execute(() -> {
+            try {
+                var cache = presentationCache(snapshot, previewCaches);
+                var frame = cache.renderer().drawRuntime(document.menu(), context,
+                    snapshot.settings().width(), snapshot.settings().maxPixels());
+                result.complete(cache.canvas().encode(document.menu(), frame, context,
+                    snapshot.fonts(), region -> null));
+            } catch (Exception error) { result.completeExceptionally(error); }
+        });
+        return result;
+    }
+
+    private void present(Player player, View view) throws Exception {
+        if (!Bukkit.isPrimaryThread()) throw new IllegalStateException("Menu presentation must be requested on the server thread");
         UUID id = player.getUniqueId();
+        ReloadEngine.Snapshot snapshot = loaded;
+        if (snapshot == null) throw new IllegalStateException("Dialog资源尚未准备");
+        long request = nextPresentationRequest(id);
         boolean calibrating = view.calibrationScale != null;
-        Context context = calibrating ? ScaleCalibration.reference(context(player)) : context(player);
+        FrozenContext frozen;
+        try (var ignored = application.frame(player)) {
+            Context liveContext = calibrating ? ScaleCalibration.reference(context(player)) : context(player);
+            frozen = freezeContext(view.document, liveContext);
+        }
         var pending = gestures.pending(id);
         if (pending != null) {
             // 数据可以刷新，但此处替换对话框会吞掉尚在途中的第二次点击。
             if (player.hasPermission("dialogmenu.use")
-                && gestures.hold(id, view.token, view.document.menu(), context)) return;
+                && gestures.hold(id, view.token, view.document.menu(), frozen)) return;
             gestures.cancel(id);
-            tokens.remove(id);
         }
-        var frame = renderer.drawRuntime(view.document.menu(), context, view.width,
-            calibrating ? ScaleCalibration.PIXELS : maxPixels);
+        View renderView = new View(view.document, view.width, List.copyOf(view.history), view.token,
+            view.calibrationScale, Map.copyOf(view.inputs));
+        int tick = Bukkit.getCurrentTick();
+        Integer previousTick = presentationTicks.put(id, tick);
+        if (previousTick == null || tick - previousTick >= 2) {
+            pendingPresentations.cancel(id);
+            publishPresentation(player, request,
+                preparePresentation(player, snapshot, view, renderView, frozen, immediateCaches));
+            return;
+        }
+        pendingPresentations.submit(id, () -> {
+            try {
+                if (!currentPresentationRequest(id, request)) return;
+                var prepared = preparePresentation(player, snapshot, view, renderView, frozen, presentationCaches);
+                publishPresentationLater(id, request, () -> {
+                    try { publishPresentation(player, request, prepared); }
+                    catch (Exception error) { failPresentation(player, request, view, error); }
+                });
+            } catch (Exception error) {
+                publishPresentationLater(id, request, () -> failPresentation(player, request, view, error));
+            }
+        });
+    }
+
+    private PreparedPresentation preparePresentation(Player player, ReloadEngine.Snapshot snapshot,
+            View view, View renderView, FrozenContext frozen, Map<MenuRenderer, PresentationCache> caches) throws Exception {
+        var cache = presentationCache(snapshot, caches);
+        var frame = snapshot.presentations().frame(cache.renderer(), renderView.document.menu(), frozen, renderView.width,
+            renderView.calibrationScale != null ? ScaleCalibration.PIXELS : snapshot.settings().maxPixels());
         var page = new ActionTokens.Page();
         java.util.function.Function<MenuModel.Region, ClickEvent> bind = region -> {
-                var target = ClickGestures.Target.of(view.token, view.document.menu(), region, context);
-                return page.bind(() -> activate(player, target), target.twice().isEmpty() ? null : target);
-            };
-        var nativeSpec = view.document.controls();
+            var target = ClickGestures.Target.of(renderView.token, renderView.document.menu(), region, frozen);
+            return page.bind(() -> activate(player, target), target.twice().isEmpty() ? null : target);
+        };
+        var nativeSpec = renderView.document.controls();
+        SpriteCanvas canvas = cache.canvas();
         var overlay = nativeSpec.overlay() && !nativeSpec.empty()
-            ? canvas.encodeNative(view.document, frame, context, fonts, bind) : null;
-        var output = overlay == null ? canvas.encode(view.document.menu(), frame, context, fonts, bind) : overlay.body();
+            ? canvas.encodeNative(renderView.document, frame, frozen, snapshot.fonts(), bind, snapshot.presentations()) : null;
+        var output = overlay == null
+            ? canvas.encode(renderView.document.menu(), frame, frozen, snapshot.fonts(), bind, snapshot.presentations())
+            : overlay.body();
         Component body = output.component();
-        for (LayoutStore.FlowRow row : view.document.flowRows()) {
+        for (LayoutStore.FlowRow row : renderView.document.flowRows()) {
             body = body.append(Component.newline());
             if (row.id().isBlank()) body = body.append(Component.text(row.text()));
             else body = body.append(Component.text(row.text()).clickEvent(page.bind(() -> {
@@ -580,51 +731,128 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
                 catch (Exception error) { failure(player, error); close(player); }
             })));
         }
-        Component content = body;
-        boolean escape = view.document.menu().closeWithEscape() == null ? loaded.settings().escape()
-            : view.document.menu().closeWithEscape();
-        List<ActionButton> buttons = new ArrayList<>();
+        output = new SpriteCanvas.Output(body, output.bodyWidth(), output.rows(), output.sprites());
+        List<Component> labels = new ArrayList<>();
         for (var button : nativeSpec.buttons()) {
-            if (!context.permitted(button.permission())) continue;
-            ClickEvent event = page.bind(response -> submitNative(player, view, button, response));
-            Component label = Component.text(context.expand(button.label()));
-            if (overlay != null && button.equals(overlay.layout().buttons().getLast()))
-                label = SpriteCanvas.nativeLabel(context.expand(button.label()), fonts, frame, overlay);
-            var action = ActionButton.builder(label).width(button.width())
+            String label = frozen.expand(button.label());
+            labels.add(overlay != null && button.equals(overlay.layout().buttons().getLast())
+                ? SpriteCanvas.nativeLabel(label, snapshot.fonts(), frame, overlay)
+                : Component.text(label));
+        }
+        boolean escape = renderView.document.menu().closeWithEscape() == null
+            ? snapshot.settings().escape() : renderView.document.menu().closeWithEscape();
+        return new PreparedPresentation(snapshot, view, frozen, output,
+            page, List.copyOf(labels), escape);
+    }
+
+    static FrozenContext freezeContext(LayoutStore.Document document, Context source) {
+        Map<String, String> values = new HashMap<>();
+        java.util.function.Consumer<String> add = value -> {
+            if (value != null && !values.containsKey(value)) values.put(value, source.expand(value));
+        };
+        add.accept(document.menu().permission());
+        for (Node node : document.menu().nodes()) {
+            if (node.type().equals("text")) add.accept(node.text());
+            if (node.interaction() != null) {
+                var region = node.interaction().region(node);
+                add.accept(region.permission());
+                region.tooltip().forEach(add);
+                add.accept(String.join("\n", region.tooltip()));
+                region.actions().forEach(add);
+                region.doubleActions().forEach(add);
+            }
+        }
+        for (var field : document.controls().inputs()) {
+            add.accept(field.label());
+            add.accept(field.initial());
+        }
+        for (var button : document.controls().buttons()) {
+            add.accept(button.label());
+            add.accept(button.permission());
+            button.tooltip().forEach(add);
+            add.accept(String.join("\n", button.tooltip()));
+            button.actions().forEach(add);
+        }
+        Set<String> permissions = new HashSet<>();
+        permissions.add("");
+        permissions.add(document.menu().permission());
+        for (Node node : document.menu().nodes()) if (node.interaction() != null)
+            permissions.add(node.interaction().region(node).permission());
+        for (var button : document.controls().buttons()) permissions.add(button.permission());
+        Map<String, Boolean> allowed = new HashMap<>();
+        for (String permission : permissions) allowed.put(permission, source.permitted(permission));
+        double textScale = source.textScale(), canvasScale = source.canvasScale();
+        return new FrozenContext(Map.copyOf(values), Map.copyOf(allowed), textScale, canvasScale);
+    }
+
+    private void publishPresentation(Player player, long request, PreparedPresentation prepared) throws Exception {
+        UUID id = player.getUniqueId();
+        if (!isEnabled() || !player.isOnline() || !currentPresentationRequest(id, request)
+            || views.get(id) != prepared.view()
+            || application.suspended(player)
+            || !player.hasPermission("dialogmenu.use")
+            || !allowed(player, prepared.view().document().menu().permission())) return;
+        var nativeSpec = prepared.view().document().controls();
+        List<ActionButton> buttons = new ArrayList<>();
+        int label = 0;
+        Context live = context(player);
+        if (loaded != prepared.snapshot() || !prepared.context().permissionsMatch(live)) {
+            present(player, prepared.view());
+            return;
+        }
+        Context frozen = prepared.context();
+        for (var button : nativeSpec.buttons()) {
+            Component buttonLabel = prepared.nativeLabels().get(label++);
+            if (!frozen.permitted(button.permission())) continue;
+            ClickEvent event = prepared.page().bind(response ->
+                submitNative(player, prepared.view(), button, response));
+            var action = ActionButton.builder(buttonLabel).width(button.width())
                 .action(formAction(event));
             if (!button.tooltip().isEmpty())
-                action.tooltip(SpriteCanvas.legacy(context.expand(String.join("\n", button.tooltip()))));
+                action.tooltip(SpriteCanvas.legacy(frozen.expand(String.join("\n", button.tooltip()))));
             buttons.add(action.build());
         }
         var dialogType = buttons.isEmpty()
             ? DialogType.dialogList(RegistrySet.keySet(RegistryKey.DIALOG, List.of())).build()
             : DialogType.multiAction(buttons).columns(1).build();
         Dialog dialog = Dialog.create(factory -> factory.empty()
-            .base(DialogBase.builder(Component.empty()).pause(false).canCloseWithEscape(escape)
+            .base(DialogBase.builder(Component.empty()).pause(false).canCloseWithEscape(prepared.escape())
                 .afterAction(DialogBase.DialogAfterAction.NONE)
-                .inputs(NativeControls.inputs(nativeSpec, context, view.inputs))
-                .body(List.of(DialogBody.plainMessage(content, output.bodyWidth()))).build())
+                .inputs(NativeControls.inputs(nativeSpec, frozen, prepared.view().inputs()))
+                .body(List.of(DialogBody.plainMessage(prepared.output().component(), prepared.output().bodyWidth())))
+                .build())
             .type(dialogType));
         player.showDialog(dialog);
-        tokens.publish(player.getUniqueId(), page);
+        tokens.publish(id, prepared.page());
+    }
+
+    private void failPresentation(Player player, long request, View view, Exception error) {
+        UUID id = player.getUniqueId();
+        if (!currentPresentationRequest(id, request) || views.get(id) != view) return;
+        failure(player, error);
+        close(player);
     }
     private void submitNative(Player player, View view, NativeControls.Button button, DialogResponseView response) {
         UUID id = player.getUniqueId();
-        if (views.get(id) != view || !player.isOnline() || application.suspended(player)) return;
+        View active = views.get(id);
+        if (active == null || !active.token.equals(view.token)
+            || !active.document.controls().equals(view.document.controls())
+            || !active.document.controls().buttons().contains(button)
+            || !player.isOnline() || application.suspended(player)) return;
         try {
-            if (!player.hasPermission("dialogmenu.use") || !allowed(player, view.document.menu().permission())
+            if (!player.hasPermission("dialogmenu.use") || !allowed(player, active.document.menu().permission())
                 || !allowed(player, button.permission())) { close(player); return; }
-            Map<String, String> values = NativeControls.values(view.document.controls(), response);
-            view.inputs.putAll(values);
+            Map<String, String> values = NativeControls.values(active.document.controls(), response);
+            active.inputs.putAll(values);
             List<String> actions = button.actions().stream()
                 .map(action -> NativeControls.expand(context(player).expand(action), values)).toList();
             executeActions(player, actions, false);
             View current = views.get(id);
-            if (current != null && current.token.equals(view.token) && !application.suspended(player)) {
+            if (current != null && current.token.equals(active.token) && !application.suspended(player)) {
                 if (button.close()) close(player);
-                else if (current == view) {
+                else if (current == active) {
                     if (application.active(player)) application.refresh(player);
-                    else present(player, view);
+                    else present(player, active);
                 }
             }
         } catch (Exception error) { failure(player, error); close(player); }
@@ -734,9 +962,13 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
     }
     private void close(Player player) { close(player, Reason.CLOSED); }
     private void close(Player player, Reason reason) {
-        View view = views.remove(player.getUniqueId());
-        gestures.cancel(player.getUniqueId());
-        tokens.remove(player.getUniqueId());
+        UUID id = player.getUniqueId();
+        presentationRequests.remove(id);
+        pendingPresentations.cancel(id);
+        readyPresentations.remove(id);
+        View view = views.remove(id);
+        gestures.cancel(id);
+        tokens.remove(id);
         DialogCompat.close(player);
         application.remove(player, reason);
         if (view != null) closed(player, view, reason);
@@ -759,6 +991,7 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         if (activeReload != null && activeReload.bossBar != null)
             activeReload.bossBar.removePlayer(event.getPlayer());
         close(event.getPlayer(), Reason.PLAYER_QUIT);
+        presentationTicks.remove(event.getPlayer().getUniqueId());
     }
     @EventHandler public void ownerDisabled(PluginDisableEvent event) {
         if (event.getPlugin() != this) application.ownerDisabled(event.getPlugin());
@@ -826,8 +1059,9 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
     private void showScaleCalibration(Player player, double scale) throws Exception {
         var document = ScaleCalibration.document(scale);
         var next = new View(document, document.menu().width(), List.of(), UUID.randomUUID(), scale);
-        present(player, next);
         views.put(player.getUniqueId(), next);
+        tokens.remove(player.getUniqueId());
+        present(player, next);
     }
     @Override public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         try {

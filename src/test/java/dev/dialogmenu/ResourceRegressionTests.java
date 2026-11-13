@@ -63,6 +63,8 @@ public final class ResourceRegressionTests {
         checks += CoordinateTests.run(root);
         checks += ScaleCalibrationTests.run(root);
         checks += NativeControlsTests.run(root);
+        checks += PresentationContextTests.run(root);
+        checks += PreparedLayoutTests.run(root);
         checks += NativeUiTextureTests.run(root);
         checks += ProportionalImageTests.run(root);
         checks += GraphicLimitTests.run(root);
@@ -94,6 +96,7 @@ public final class ResourceRegressionTests {
         var consumed = new SourceFiles(); consumed.read(input); consumed.verify();
         Files.writeString(input, "B");
         rejects(consumed::verify, "changed consumed input accepted");
+        checks += PresentationLifecycleTests.run(root);
         System.out.println("PASS " + checks + " resource regression checks (offline, no client)");
     }
     private static void cacheAndReload(Path root) throws Exception {

@@ -116,20 +116,17 @@ final class EditorBridge implements PluginMessageListener, Listener, AutoCloseab
                 if (preview == null || !preview.token().toString().equals(value(request, "token"))
                     || System.currentTimeMillis() - preview.created() > 300_000)
                     throw new IOException("Preview expired; generate it again");
+                var doc = preview.snapshot().documents().get(preview.page());
+                Context context = MenuTemplate.preview(doc, DialogMenuPlugin.PREVIEW);
+                var output = plugin.renderPreview(preview.snapshot(), doc, context).get();
+                JsonElement component = JsonParser.parseString(
+                    GsonComponentSerializer.gson().serialize(output.component()));
+                previewFonts(component);
+                Component rendered = GsonComponentSerializer.gson().deserialize(component.toString());
                 main(() -> {
                     Player player = Bukkit.getPlayer(owner);
                     if (player == null || !permitted(player)) return;
-                    try {
-                        var doc = preview.snapshot().documents().get(preview.page());
-                        Context context = MenuTemplate.preview(doc, DialogMenuPlugin.PREVIEW);
-                        var frame = preview.snapshot().renderer().drawRuntime(doc.menu(), context,
-                            preview.snapshot().settings().width(), preview.snapshot().settings().maxPixels());
-                        var output = new SpriteCanvas().encode(doc.menu(), frame, context, preview.snapshot().fonts(), r -> null);
-                        JsonElement component = JsonParser.parseString(GsonComponentSerializer.gson().serialize(output.component()));
-                        previewFonts(component);
-                        plugin.showEditorPreview(player, GsonComponentSerializer.gson().deserialize(component.toString()),
-                            output.bodyWidth());
-                    } catch (Exception error) { throw new CompletionException(error); }
+                    plugin.showEditorPreview(player, rendered, output.bodyWidth());
                 }).get();
             }
             case "apply" -> {
