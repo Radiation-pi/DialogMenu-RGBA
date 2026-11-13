@@ -35,6 +35,7 @@ final class FontPack {
     private final RgbaOffsets rgba = new RgbaOffsets();
     private final RgbaHits rgbaHits = new RgbaHits();
     private final RgbaImages rgbaImages = new RgbaImages();
+    private final NativeInk nativeInk = new NativeInk();
     private final RegisteredImages registeredImages = new RegisteredImages();
     private final transient Map<BufferedImage, String> imageKeys = new WeakHashMap<>();
     private final transient CanvasRows.Cache spriteParts = new CanvasRows.Cache();
@@ -105,6 +106,22 @@ final class FontPack {
         List<FrameJob> jobs = new ArrayList<>();
         Map<String, ImageRegistry.Entry> imageSources = new TreeMap<>(renderer.assets.registeredImages());
         for (var doc : docs.stream().sorted(Comparator.comparing(d -> d.menu().id())).toList())
+            if (!doc.controls().empty() && doc.controls().overlay()) {
+                var characters = new TreeSet<>(commonCodes);
+                for (int cp = 33; cp <= 126; cp++) characters.add(cp);
+                for (var button : doc.controls().buttons()) {
+                    String label = MenuTemplate.preview(doc, context).expand(button.label());
+                    characters.addAll(codes(List.of(label)));
+                }
+                for (var field : doc.controls().inputs())
+                    characters.addAll(codes(List.of(MenuTemplate.preview(doc, context).expand(field.label()))));
+                var font = pack.textFonts.computeIfAbsent(RgbaText.FONT,
+                    key -> new TextFont(new TextStyle(8, 1), new TreeSet<>()));
+                font.characters().addAll(characters);
+                for (int cp : characters) pack.measure(cp, renderer.assets);
+                pack.rgba.add(0xFFFFFF);
+            }
+        for (var doc : docs.stream().sorted(Comparator.comparing(d -> d.menu().id())).toList())
             for (double canvasScale : new TreeSet<>(canvasScales))
             for (int requestedWidth : MenuRenderer.preparedWidths(doc.menu(), widths, canvasScale, maxPixels))
                 jobs.add(new FrameJob(doc, CanvasScale.context(MenuTemplate.preview(doc, context), canvasScale),
@@ -123,6 +140,7 @@ final class FontPack {
                 double canvasScale = prepared.job().scale();
                 Rendered frame = prepared.frame();
                 int width = frame.width();
+                pack.nativeInk.prepare(doc.controls(), doc.menu(), width, frame.height());
                 for (Sprite sprite : frame.sprites()) {
                     BuildBudget.checkpoint();
                     try {
@@ -287,6 +305,7 @@ final class FontPack {
         return pack;
     }
     boolean reusedGlyphs() { return reusedGlyphs; }
+    NativeInk nativeInk() { return nativeInk; }
 
     /** One validation pass owns this cache; it is not persisted or retained by the snapshot. */
     static final class Validation {
@@ -312,6 +331,7 @@ final class FontPack {
     }
     void validateDynamic(LayoutStore.Document doc, Context context, int width, String extra,
                          Validation validation) throws IOException {
+        width = doc.menu().requestedWidth(width);
         for (Node node : doc.menu().nodes()) if (node.type().equals("text") && MenuTemplate.dynamicText(node)) {
             int size = SpriteCanvas.textSize(doc.menu(), node, width, context.textScale(), context.canvasScale());
             var key = textFont(new TextStyle(size, node.scale()));
@@ -551,6 +571,7 @@ final class FontPack {
         for (int x = -1024; x <= 1024; x++) spaces.put(SpriteCanvas.move(x), x);
         ModelPack.faceSpaces(spaces);
         RgbaOffsets.nativeSpaces(spaces);
+        NativeInk.spaces(spaces);
         writeJson(base.resolve("font/space.json"), Map.of("providers", List.of(Map.of("type", "space", "advances", spaces))));
         writes.add(path -> {
             List<Object> graphics = SpriteAtlases.write(sprites.values(), base);
@@ -599,7 +620,7 @@ final class FontPack {
         writeJson(target.resolve("pack.mcmeta"), metadata);
         writes.add(path -> { rgbaImages.write(path); return null; });
         writes.add(path -> { rgbaHits.write(path); return null; });
-        writes.add(path -> { rgba.write(path); return null; });
+        writes.add(path -> { rgba.write(path); nativeInk.write(path); return null; });
         int[] completed = {0};
         BuildTasks.ordered(tasks, writes, write -> write.apply(target),
             ignored -> progress.accept(++completed[0] * 100 / writes.size()));

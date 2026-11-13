@@ -6,8 +6,9 @@ import static dev.dialogmenu.MenuModel.*;
 
 /** Fixed-reference preview; adjustments stay in the current view until confirmed. */
 final class ScaleCalibration {
+    // Current 1x design reference, not a viewport limit for every client window.
     static final int BASE_WIDTH = 452;
-    static final int BASE_HEIGHT = 177;
+    static final int BASE_HEIGHT = 205;
     static final int WIDTH = 324;
     static final int HEIGHT = 1024;
     static final int PIXELS = WIDTH * HEIGHT;

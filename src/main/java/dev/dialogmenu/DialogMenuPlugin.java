@@ -68,7 +68,10 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         });
     private final Map<UUID, View> views = new HashMap<>();
     private record View(LayoutStore.Document document, int width, List<String> history, UUID token,
-                        Double calibrationScale) {
+                        Double calibrationScale, Map<String, String> inputs) {
+        View(LayoutStore.Document document, int width, List<String> history, UUID token, Double calibrationScale) {
+            this(document, width, history, token, calibrationScale, new LinkedHashMap<>());
+        }
         View(LayoutStore.Document document, int width, List<String> history, UUID token) {
             this(document, width, history, token, null);
         }
@@ -193,7 +196,7 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         try {
             getLogger().info("Renderer edition: " + RenderingEdition.ID);
             saveDefaultConfig();
-            getConfig().addDefault("close-with-escape", false);
+            getConfig().addDefault("close-with-escape", true);
             getConfig().addDefault("text-scales", CanvasScale.DEFAULTS);
             getConfig().addDefault("default-text-scale", 1);
             getConfig().addDefault("craftengine-auto-reload", true);
@@ -532,6 +535,7 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         boolean refresh = previous != null && previous.document.menu().id().equals(document.menu().id());
         View next = new View(document, targetWidth, List.copyOf(history),
             refresh ? previous.token : UUID.randomUUID());
+        if (refresh) next.inputs.putAll(previous.inputs);
         present(player, next);
         views.put(player.getUniqueId(), next);
         if (!refresh) {
@@ -559,11 +563,14 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         var frame = renderer.drawRuntime(view.document.menu(), context, view.width,
             calibrating ? ScaleCalibration.PIXELS : maxPixels);
         var page = new ActionTokens.Page();
-        var output = canvas.encode(view.document.menu(), frame, context, fonts,
-            region -> {
+        java.util.function.Function<MenuModel.Region, ClickEvent> bind = region -> {
                 var target = ClickGestures.Target.of(view.token, view.document.menu(), region, context);
                 return page.bind(() -> activate(player, target), target.twice().isEmpty() ? null : target);
-            });
+            };
+        var nativeSpec = view.document.controls();
+        var overlay = nativeSpec.overlay() && !nativeSpec.empty()
+            ? canvas.encodeNative(view.document, frame, context, fonts, bind) : null;
+        var output = overlay == null ? canvas.encode(view.document.menu(), frame, context, fonts, bind) : overlay.body();
         Component body = output.component();
         for (LayoutStore.FlowRow row : view.document.flowRows()) {
             body = body.append(Component.newline());
@@ -576,16 +583,51 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         Component content = body;
         boolean escape = view.document.menu().closeWithEscape() == null ? loaded.settings().escape()
             : view.document.menu().closeWithEscape();
-        var dialogType = DialogType.dialogList(RegistrySet.keySet(RegistryKey.DIALOG, List.of()));
-        if (escape) dialogType.exitAction(ActionButton.create(Component.text("关闭"), null, 150,
-            DialogAction.staticAction(page.bind(() -> close(player)))));
+        List<ActionButton> buttons = new ArrayList<>();
+        for (var button : nativeSpec.buttons()) {
+            if (!context.permitted(button.permission())) continue;
+            ClickEvent event = page.bind(response -> submitNative(player, view, button, response));
+            Component label = Component.text(context.expand(button.label()));
+            if (overlay != null && button.equals(overlay.layout().buttons().getLast()))
+                label = SpriteCanvas.nativeLabel(context.expand(button.label()), fonts, frame, overlay);
+            var action = ActionButton.builder(label).width(button.width())
+                .action(formAction(event));
+            if (!button.tooltip().isEmpty())
+                action.tooltip(SpriteCanvas.legacy(context.expand(String.join("\n", button.tooltip()))));
+            buttons.add(action.build());
+        }
+        var dialogType = buttons.isEmpty()
+            ? DialogType.dialogList(RegistrySet.keySet(RegistryKey.DIALOG, List.of())).build()
+            : DialogType.multiAction(buttons).columns(1).build();
         Dialog dialog = Dialog.create(factory -> factory.empty()
             .base(DialogBase.builder(Component.empty()).pause(false).canCloseWithEscape(escape)
                 .afterAction(DialogBase.DialogAfterAction.NONE)
+                .inputs(NativeControls.inputs(nativeSpec, context, view.inputs))
                 .body(List.of(DialogBody.plainMessage(content, output.bodyWidth()))).build())
-            .type(dialogType.build()));
+            .type(dialogType));
         player.showDialog(dialog);
         tokens.publish(player.getUniqueId(), page);
+    }
+    private void submitNative(Player player, View view, NativeControls.Button button, DialogResponseView response) {
+        UUID id = player.getUniqueId();
+        if (views.get(id) != view || !player.isOnline() || application.suspended(player)) return;
+        try {
+            if (!player.hasPermission("dialogmenu.use") || !allowed(player, view.document.menu().permission())
+                || !allowed(player, button.permission())) { close(player); return; }
+            Map<String, String> values = NativeControls.values(view.document.controls(), response);
+            view.inputs.putAll(values);
+            List<String> actions = button.actions().stream()
+                .map(action -> NativeControls.expand(context(player).expand(action), values)).toList();
+            executeActions(player, actions, false);
+            View current = views.get(id);
+            if (current != null && current.token.equals(view.token) && !application.suspended(player)) {
+                if (button.close()) close(player);
+                else if (current == view) {
+                    if (application.active(player)) application.refresh(player);
+                    else present(player, view);
+                }
+            }
+        } catch (Exception error) { failure(player, error); close(player); }
     }
     private void activate(Player player, ClickGestures.Target target) {
         UUID id = player.getUniqueId();

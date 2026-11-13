@@ -62,6 +62,7 @@ public final class ResourceRegressionTests {
         checks += InventoryAssetsTests.run(root);
         checks += CoordinateTests.run(root);
         checks += ScaleCalibrationTests.run(root);
+        checks += NativeControlsTests.run(root);
         checks += NativeUiTextureTests.run(root);
         checks += ProportionalImageTests.run(root);
         checks += GraphicLimitTests.run(root);
@@ -130,6 +131,31 @@ public final class ResourceRegressionTests {
         }
     }
     private static void configuration(Path root) throws Exception {
+        Path escapeData = data(root, "escape-config", "A");
+        try (var engine = new ReloadEngine(escapeData, PREVIEW)) {
+            var initial = engine.prepare().get().snapshot();
+            check(initial.settings().escape(), "Missing close-with-escape must allow Esc by default");
+            check(initial.documents().get("probe").menu().closeWithEscape() == null,
+                "Menus without an override inherit the global Esc setting");
+            for (boolean escape : List.of(false, true)) {
+                Files.writeString(escapeData.resolve("config.yml"),
+                    "default-layout: probe\nclose-with-escape: " + escape + "\n");
+                var updated = engine.prepare(ReloadEngine.Mode.YAML).get().snapshot();
+                check(updated.settings().escape() == escape, "Global Esc setting applies with YAML reload");
+                check(updated.pack().equals(initial.pack()), "Esc configuration does not rebuild menu resources");
+                Files.writeString(escapeData.resolve("layouts/probe.yml"),
+                    yaml("A") + "close-with-escape: " + !escape + "\n");
+                var overridden = engine.prepare(ReloadEngine.Mode.YAML).get().snapshot();
+                check(overridden.settings().escape() == escape
+                    && overridden.documents().get("probe").menu().closeWithEscape() == !escape,
+                    "Explicit page Esc setting survives reload independently of the global setting");
+            }
+        }
+        try (var input = ResourceRegressionTests.class.getResourceAsStream("/config.yml")) {
+            var defaults = YamlConfiguration.loadConfiguration(
+                new java.io.InputStreamReader(input, java.nio.charset.StandardCharsets.UTF_8));
+            check(defaults.getBoolean("close-with-escape"), "Fresh installations must allow Esc by default");
+        }
         Path data = data(root, "invalid-config", "A");
         for (String threads : List.of("0", "9", "1.5", "bad")) {
             Files.writeString(data.resolve("config.yml"),

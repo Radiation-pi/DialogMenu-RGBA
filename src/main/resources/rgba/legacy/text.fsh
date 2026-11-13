@@ -12,8 +12,11 @@ flat in int dialogmenuMarked;
 flat in vec4 dialogmenuImagePixels;
 in vec2 dialogmenuImageCoord;
 in vec3 dialogmenuSlice;
+flat in int dialogmenuNative;
+in vec2 dialogmenuNativeCoord;
 out vec4 fragColor;
 
+#moj_import <dialogmenu:native_profiles.glsl>
 #moj_import <dialogmenu:rgba_fragment.glsl>
 
 void main() {

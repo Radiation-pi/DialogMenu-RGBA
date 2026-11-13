@@ -55,6 +55,7 @@ final class ScaleCalibrationTests {
         UUID player = UUID.randomUUID(), other = UUID.randomUUID();
         var preferences = new YamlConfiguration();
         preferences.set("players." + player, 1.5);
+        // An arbitrary saved fraction, independent of the design reference.
         double initial = 211 / 177.0;
         CanvasScale.select(preferences, player, Double.toString(initial), () -> {});
         Context reference = ScaleCalibration.reference(BASE);
@@ -128,7 +129,7 @@ final class ScaleCalibrationTests {
                 check(snapshot.fonts().textWidth(MenuText.parse(boundary.text()), style) == 320 && style.height() == 1,
                     "Calibration boundary uses adjacent proportional one-pixel glyphs");
                 int top = SpriteCanvas.textTop(doc.menu(), boundary, frame.width(), 0, style);
-                check(top == Math.round(177 * scale) - 1,
+                check(top == Math.round(205 * scale) - 1,
                     "White boundary follows the scaled baseline bottom");
                 check(boundary.x() + frame.width() / 2.0 == 3, "Boundary remains centered in the native body advance");
                 List<Map<String, Integer>> rows = new ArrayList<>();

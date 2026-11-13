@@ -19,6 +19,7 @@ final class MenuRenderer {
     static final int MAX_WIDTH = 1014;
     static java.util.SortedSet<Integer> preparedWidths(Menu menu, java.util.Collection<Integer> widths,
                                                       double canvasScale, int maxPixels) {
+        if (menu.displayWidth() != 0) return new java.util.TreeSet<>(List.of(menu.displayWidth()));
         var result = new java.util.TreeSet<>(widths);
         int width = (int) Math.round(MAX_WIDTH * canvasScale);
         int height = Math.max(1, (int) Math.round(menu.height() * width / (double) menu.width()));
@@ -67,7 +68,7 @@ final class MenuRenderer {
         return draw(menu, context, width, maxPixels, false);
     }
     private Rendered draw(Menu menu, Context context, int width, int maxPixels, boolean preview) throws IOException {
-        width = (int) Math.round(width * context.canvasScale());
+        width = (int) Math.round(menu.requestedWidth(width) * context.canvasScale());
         int height = Math.max(1, (int) Math.round(menu.height() * width / (double) menu.width()));
         if (width < 64 || width > MAX_WIDTH || height > 1024 || (long) width * height > maxPixels)
             throw new IllegalArgumentException("当前画布比例/尺寸超出正文范围，请减小尺寸；不自动重排布局");

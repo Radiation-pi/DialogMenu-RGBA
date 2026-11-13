@@ -11,6 +11,7 @@ import static dev.dialogmenu.MenuModel.*;
 /** 每条正文行内按原绘制顺序输出局部字形。 */
 final class SpriteCanvas {
     record Output(Component component, int bodyWidth, int rows, int sprites) {}
+    record NativeOutput(Output body, Component foreground, NativeInk.Layout layout) {}
     private record TextKey(FontPack fonts, String text, double wrapWidth, int maxLines, int size, double scale) {}
     private record TextLayout(List<Component> lines, List<Integer> widths) {}
     private record LabelKey(FontPack fonts, String node, Component text, TextStyle style, int top, int band, int argb) {}
@@ -39,14 +40,31 @@ final class SpriteCanvas {
             - style.height() / 2.0 + line * style.stride());
     }
     Output encode(Menu menu, Rendered frame, Context context, FontPack fonts, Function<Region, ClickEvent> bind) {
+        return encode(menu, frame, context, fonts, bind, null).body();
+    }
+    NativeOutput encodeNative(LayoutStore.Document doc, Rendered frame, Context context, FontPack fonts,
+                              Function<Region, ClickEvent> bind) {
+        var layout = NativeInk.layout(doc.controls(), frame.width(), frame.height(), context::permitted);
+        NativeInk.validate(doc, frame, context, fonts, layout);
+        return encode(doc.menu(), frame, context, fonts, bind, layout);
+    }
+    private static List<List<Component>> rows(int count) {
+        List<List<Component>> result = new ArrayList<>();
+        for (int row = 0; row < count; row++) result.add(new ArrayList<>());
+        return result;
+    }
+    private NativeOutput encode(Menu menu, Rendered frame, Context context, FontPack fonts,
+                                Function<Region, ClickEvent> bind, NativeInk.Layout nativeLayout) {
         int width = frame.width(), height = frame.height(), rows = (height + 8) / 9;
-        List<List<Component>> parts = new ArrayList<>();
-        for (int row = 0; row < rows; row++) parts.add(new ArrayList<>());
+        int bodyRows = nativeLayout == null ? rows : nativeLayout.bodyRows();
+        List<List<Component>> bodyParts = rows(Math.max(rows, bodyRows));
+        var foreground = Component.text();
         Map<Region, ClickEvent> clicks = new HashMap<>();
         Map<String, Sprite> sprites = new HashMap<>();
         for (Sprite sprite : frame.sprites()) sprites.put(sprite.id(), sprite);
         // 文字和图形共用绘制顺序，LayoutStore 已按 Z 排序。
         for (Node node : menu.nodes()) {
+            List<List<Component>> parts = nativeLayout == null ? bodyParts : rows(rows);
             if (node.type().equals("model")) {
                 double zoom = width / (double) menu.width();
                 int x = (int) Math.round((menu.width() / 2.0 + node.x()) * zoom);
@@ -81,15 +99,42 @@ final class SpriteCanvas {
                     region == null || !region.hasActions() ? null : clicks.computeIfAbsent(region, bind),
                     region == null ? null : hover(region, context));
             }
+            if (nativeLayout != null) {
+                boolean interactive = node.interaction() != null
+                    && (node.interaction().region(node).hasActions() || !node.interaction().tooltip().isEmpty());
+                for (int row = 0; row < rows; row++) for (var part : parts.get(row)) {
+                    // 行带相对原生基线前移一行；边界行由按钮承载，避免正文裁剪。
+                    if (row < bodyRows - 1 || row < bodyRows && interactive) bodyParts.get(row).add(part);
+                    else {
+                        var ink = fonts.nativeInk();
+                        foreground.append(NativeInk.scope(part,
+                            ink.code(nativeLayout, node.z(), row - bodyRows)));
+                    }
+                }
+            }
         }
         var body = Component.text();
-        for (int row = 0; row < rows; row++) {
-            for (Component part : parts.get(row)) body.append(part);
+        for (int row = 0; row < bodyRows; row++) {
+            for (Component part : bodyParts.get(row)) body.append(part);
             body.append(space(width + 2));
-            if (row + 1 < rows) body.append(Component.newline());
+            if (row + 1 < bodyRows) body.append(Component.newline());
         }
-        return new Output(body.build().decoration(TextDecoration.BOLD, false).decoration(TextDecoration.ITALIC, false)
-            .shadowColor(ShadowColor.none()), width + 10, rows, frame.sprites().size());
+        return new NativeOutput(new Output(clean(body.build()), width + 10, bodyRows, frame.sprites().size()),
+            clean(foreground.build()), nativeLayout);
+    }
+    private static Component clean(Component value) {
+        return value.decoration(TextDecoration.BOLD, false).decoration(TextDecoration.ITALIC, false)
+            .shadowColor(ShadowColor.none());
+    }
+    static Component nativeLabel(String value, FontPack fonts, Rendered frame, NativeOutput overlay) {
+        var text = Component.text(value);
+        int width = fonts.textWidth(text, 8);
+        if (value.contains("\n") || width > 1024)
+            throw new IllegalArgumentException("原生按钮标签须单行且不超过1024像素");
+        Component label = positioned(fonts.rgbaText(text, 0xFFFFFF, 0, new TextStyle(8, 1), 0)
+            .font(fonts.textFont(8, text)), -width / 2, width);
+        return clean(NativeInk.orderBounds().append(label)
+            .append(positioned(overlay.foreground(), overlay.layout().canvasOffset(frame.width()), 0)));
     }
     private void addText(List<List<Component>> parts, Menu menu, Node node, Context context,
                                 FontPack fonts, Map<Region, ClickEvent> clicks,

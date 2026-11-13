@@ -18,12 +18,15 @@ layout(location = 4) flat in int dialogmenuMarked;
 layout(location = 5) flat in vec4 dialogmenuImagePixels;
 layout(location = 6) in vec2 dialogmenuImageCoord;
 layout(location = 8) in vec3 dialogmenuSlice;
+layout(location = 9) flat in int dialogmenuNative;
+layout(location = 10) in vec2 dialogmenuNativeCoord;
 #endif
 #ifndef OIT_ALPHA_ONLY
 layout(location = 0) out vec4 fragColor;
 #endif
 
 #ifdef IS_GUI
+#include <dialogmenu:native_profiles.glsl>
 #include <dialogmenu:rgba_fragment.glsl>
 #endif
 

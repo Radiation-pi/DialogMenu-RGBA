@@ -4,6 +4,7 @@ from pathlib import Path
 import struct
 import sys
 import moderngl
+import native_interface
 import numpy as np
 from PIL import Image
 
@@ -54,7 +55,7 @@ void main() {
     if (fragColor.a < 0.1) discard;
 }
 """
-program = ctx.program(vertex_shader=vertex, fragment_shader=fragment)
+program = ctx.program(vertex_shader=native_interface.vertex(vertex), fragment_shader=native_interface.fragment(fragment))
 program["canvas"].value = 1014, 1024
 glyphs = {}
 for provider in json.loads((pack / "font/images_rgba.json").read_text())["providers"]:

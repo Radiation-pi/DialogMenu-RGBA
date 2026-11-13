@@ -10,5 +10,16 @@ vec2 dialogmenu_uv() {
     if (dialogmenuMarked == 3) discard;
     if (dialogmenuMarked != 0
         && (dialogmenuSlice.x < dialogmenuSlice.y || dialogmenuSlice.x >= dialogmenuSlice.z)) discard;
+    if (dialogmenuNative >= 0 && dialogmenuMarked != 0) {
+        int id = dialogmenuNative;
+        ivec3 profile = dialogmenu_native_profile(id);
+        bool inside = false;
+        for (int box = 0; box < profile.y; box++) {
+            vec4 rect = dialogmenu_native_box(id, box);
+            inside = inside || (dialogmenuNativeCoord.x >= rect.x && dialogmenuNativeCoord.x < rect.z
+                && dialogmenuNativeCoord.y >= rect.y && dialogmenuNativeCoord.y < rect.w);
+        }
+        if (inside) discard;
+    }
     return uv;
 }

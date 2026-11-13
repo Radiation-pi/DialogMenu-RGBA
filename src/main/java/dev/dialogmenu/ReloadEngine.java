@@ -260,7 +260,7 @@ final class ReloadEngine implements AutoCloseable {
             colors.add(Integer.parseInt(color.substring(1), 16));
         }
         return new Settings(width, maxPixels, yaml.getString("default-layout", "layout-demo"),
-            yaml.getBoolean("close-with-escape", false), List.copyOf(scales), defaultScale,
+            yaml.getBoolean("close-with-escape", true), List.copyOf(scales), defaultScale,
             yaml.getBoolean("craftengine-auto-reload", true),
             data.resolve(yaml.getString("craftengine-resources", "../CraftEngine/resources")).normalize(),
             LayoutStore.integer(yaml, "resource-build-cpu-percent", 80, 1, 100),
@@ -424,7 +424,10 @@ final class ReloadEngine implements AutoCloseable {
             var menu = job.doc().menu();
             var frame = renderer.drawRuntime(menu, job.context(), job.width(), settings.maxPixels());
             if (job.width() == MenuRenderer.MAX_WIDTH && !MenuRenderer.modelProtocolFits(menu, frame)) return null;
-            new SpriteCanvas().encode(menu, frame, job.context(), fonts, region -> null);
+            var canvas = new SpriteCanvas();
+            if (job.doc().controls().overlay() && !job.doc().controls().empty())
+                canvas.encodeNative(job.doc(), frame, job.context(), fonts, region -> null);
+            else canvas.encode(menu, frame, job.context(), fonts, region -> null);
             fonts.validateDynamic(job.doc(), job.context(), job.width(), characters, dynamic);
             return null;
         }, ignored -> progress.update(start + ++completed[0] * (end - start) / total, "校验菜单与资源"));

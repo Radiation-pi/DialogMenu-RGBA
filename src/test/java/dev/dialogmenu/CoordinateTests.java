@@ -152,6 +152,10 @@ final class CoordinateTests {
         var menu = ruler.menu();
         check(menu.width() == 1014 && menu.height() == 1024 && Boolean.TRUE.equals(menu.closeWithEscape()),
             "maximum ruler canvas/escape changed");
+        var compressed = LayoutStore.loadText("canvas-limit", text.replace(", display-width: 1014", ""))
+            .get("canvas-limit");
+        check(renderer.drawRuntime(compressed.menu(), CONTEXT, 300, 1_048_576).width() == 300,
+            "layouts without explicit display width must retain their existing size");
         check(menu.nodes().stream().filter(n -> n.id().startsWith("frontend.x-")).allMatch(n -> n.y() == 500),
             "horizontal numbers are not one row");
         check(menu.nodes().stream().filter(n -> n.id().startsWith("frontend.y-")).allMatch(n -> n.x() == -497),
@@ -172,9 +176,21 @@ final class CoordinateTests {
         }
         var fonts = FontPack.create(List.of(ruler), renderer, CONTEXT, List.of(300, 360, 420), 1_048_576,
             "", List.of(1.0), List.of(0.75, 1.0), List.of());
-        for (int width : List.of(300, 360, 420, 1014)) for (double scale : List.of(0.75, 1.0)) {
+        for (int width : List.of(300, 360, 420, 452, 1014)) for (double scale : List.of(0.75, 1.0)) {
             var context = CanvasScale.context(CONTEXT, scale);
             var frame = renderer.draw(menu, context, width, 1_048_576);
+            if (scale == 1) {
+                check(frame.width() == 1014 && frame.height() == 1024,
+                    "ruler must not squeeze 1014 logical pixels into the configured open width");
+                for (Sprite tick : frame.sprites()) {
+                    if (tick.id().startsWith("frontend.tick-x-"))
+                        check(tick.x() == Integer.parseInt(tick.id().substring("frontend.tick-x-".length()))
+                            && tick.width() == 1, "X ruler tick is not one GUI pixel at its labeled coordinate");
+                    if (tick.id().startsWith("frontend.tick-y-"))
+                        check(tick.y() == Integer.parseInt(tick.id().substring("frontend.tick-y-".length()))
+                            && tick.height() == 1, "Y ruler tick is not one GUI pixel at its labeled coordinate");
+                }
+            }
             var bound = new ArrayList<Region>();
             var encoded = new SpriteCanvas().encode(menu, frame, context, fonts, r -> {
                 bound.add(r); return ClickEvent.runCommand("/test close");

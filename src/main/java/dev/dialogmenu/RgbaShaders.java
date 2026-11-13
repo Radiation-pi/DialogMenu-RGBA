@@ -22,6 +22,7 @@ final class RgbaShaders {
 
     static void write(Path pack) throws IOException {
         remove(pack);
+        new NativeInk().write(pack);
         for (String name : List.of("vertex.glsl", "fragment.glsl"))
             write(pack.resolve("assets/dialogmenu/shaders/include/rgba_" + name), read(name));
         pair(pack, "legacy/", 150, false);

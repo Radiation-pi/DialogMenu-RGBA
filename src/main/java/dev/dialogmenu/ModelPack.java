@@ -274,7 +274,8 @@ final class ModelPack {
         String vertex = Files.readString(vertexPath)
             .replace("void main() {", "#ifdef IS_GUI\n#include <dialogmenu_vanilla:models.glsl>\n"
                 + "#include <dialogmenu_ce:models.glsl>\n#endif\n#include <dialogmenu:model_vertex.glsl>\n\nvoid main() {")
-            .replace("    gl_Position =", "    dialogmenu_model(position, imageUv);\n    gl_Position =");
+            .replace("    dialogmenu_finish_native(position);",
+                "    dialogmenu_model(position, imageUv);\n    dialogmenu_finish_native(position);");
         Files.writeString(vertexPath, vertex);
         Path fragmentPath = target.resolve("dialogmenu_26_3/assets/minecraft/shaders/core/text.fsh");
         String fragment = Files.readString(fragmentPath)

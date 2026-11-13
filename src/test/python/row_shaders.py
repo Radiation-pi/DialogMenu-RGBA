@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 import moderngl
+import native_interface
 from io import BytesIO
 from PIL import Image
 
@@ -63,7 +64,7 @@ void main() {
     if (fragColor.a < 0.1) discard;
 }
 """
-program = ctx.program(vertex_shader=vertex, fragment_shader=fragment)
+program = ctx.program(vertex_shader=native_interface.vertex(vertex), fragment_shader=native_interface.fragment(fragment))
 frame = ctx.simple_framebuffer((256, 256), components=4)
 frame.use()
 checks = 0
@@ -188,7 +189,7 @@ table = ("#define IS_GUI\n#define gl_BaseVertex 3\n"
 model_vertex = vertex.replace("void main() {", table + model_include + "\nvoid main() {")
 model_vertex = model_vertex.replace("    dialogmenu_transform(position, uv);",
                                    "    dialogmenu_transform(position, uv);\n    dialogmenu_model(position, uv);")
-program = ctx.program(vertex_shader=model_vertex, fragment_shader=fragment)
+program = ctx.program(vertex_shader=native_interface.vertex(model_vertex), fragment_shader=native_interface.fragment(fragment))
 for center in (1, 8, 9, 10, 18, 35, 65, 100):
     frame.clear()
     for row, band in slices(center - 1, 16):

@@ -11,7 +11,11 @@ import static dev.dialogmenu.MenuModel.*;
 final class LayoutStore {
     record FlowRow(String collection, String id, String text) {}
     record Document(Menu menu, List<String> open, List<String> close, MenuTemplate template, List<FlowRow> flowRows,
-                    String sourceYaml) {
+                    String sourceYaml, NativeControls.Spec controls) {
+        Document(Menu menu, List<String> open, List<String> close, MenuTemplate template, List<FlowRow> flowRows,
+                 String sourceYaml) {
+            this(menu, open, close, template, flowRows, sourceYaml, NativeControls.EMPTY);
+        }
         Document(Menu menu, List<String> open, List<String> close, MenuTemplate template, List<FlowRow> flowRows) {
             this(menu, open, close, template, flowRows, null);
         }
@@ -65,19 +69,26 @@ final class LayoutStore {
             ? MenuTemplate.load(name, yaml) : Map.of(name, parse(name, yaml));
         Map<String, Document> result = new LinkedHashMap<>();
         parsed.forEach((id, doc) -> result.put(id,
-            new Document(doc.menu(), doc.open(), doc.close(), doc.template(), doc.flowRows(), text)));
+            new Document(doc.menu(), doc.open(), doc.close(), doc.template(), doc.flowRows(), text, doc.controls())));
         return Collections.unmodifiableMap(result);
     }
     static String source(Document doc) {
         return doc.template() == null ? doc.menu().id() : doc.template().definition.id;
     }
     static void validateLinks(Map<String, Document> documents) {
-        for (Document doc : documents.values()) for (Region region : interactiveRegions(doc.menu()))
-            for (String action : java.util.stream.Stream.concat(region.actions().stream(), region.doubleActions().stream()).toList()) {
+        for (Document doc : documents.values()) {
+            List<String> actions = new ArrayList<>();
+            for (Region region : interactiveRegions(doc.menu())) {
+                actions.addAll(region.actions());
+                actions.addAll(region.doubleActions());
+            }
+            for (var button : doc.controls().buttons()) actions.addAll(button.actions());
+            for (String action : actions) {
                 String[] parts = action.split(":", 2);
                 if (parts[0].strip().equals("open") && !documents.containsKey(parts[1].strip()))
                     throw new IllegalArgumentException("跳转布局不存在：" + action);
             }
+        }
     }
     void publish(Map<String, Document> next) { documents = next; }
     static List<Region> interactiveRegions(Menu menu) {
@@ -163,7 +174,7 @@ final class LayoutStore {
         return new SoundSpec(key, volume, pitch);
     }
     record Header(String id, String permission, int width, int height, Boolean escape, boolean scaleText, int schema,
-                  List<String> open, List<String> close) {
+                  List<String> open, List<String> close, int displayWidth, NativeControls.Spec controls) {
         Node renderNode(Node node) {
             if (schema == 1) return node;
             return new Node(node.id(), node.type(), node.x() - (schema == 3 ? width / 2.0 : 0),
@@ -177,7 +188,7 @@ final class LayoutStore {
             List<Node> nodes = new ArrayList<>(source.stream().map(this::renderNode).toList());
             nodes.sort(Comparator.comparingDouble(Node::z));
             return new Document(new Menu(id, permission, width, height, List.copyOf(nodes), List.of(),
-                escape, scaleText), open, close);
+                escape, scaleText, displayWidth), open, close, null, List.of(), null, controls);
         }
     }
     static Document parse(String expected, YamlConfiguration yaml) {
@@ -189,15 +200,17 @@ final class LayoutStore {
     static Header header(String expected, YamlConfiguration yaml) {
         id(expected);
         keys(yaml, Set.of("schema-version", "id", "permission", "canvas", "frontend", "events",
-            "close-with-escape", "scale-text-with-canvas"));
+            "close-with-escape", "scale-text-with-canvas", "native-controls"));
         int schema = integer(yaml, "schema-version", -1, 1, 3);
         if (!expected.equals(yaml.getString("id")))
             throw new IllegalArgumentException("id须与文件名一致");
         ConfigurationSection canvas = yaml.getConfigurationSection("canvas");
         if (canvas == null) throw new IllegalArgumentException("缺少canvas");
-        keys(canvas, Set.of("width", "height"));
+        keys(canvas, Set.of("width", "height", "display-width"));
         int width = integer(canvas, "width", 300, 16, 4096);
         int height = integer(canvas, "height", 180, 16, 4096);
+        int displayWidth = canvas.contains("display-width")
+            ? integer(canvas, "display-width", width, 64, MenuRenderer.MAX_WIDTH) : 0;
         List<String> open = List.of(), close = List.of();
         var events = yaml.getConfigurationSection("events");
         if (events != null) {
@@ -207,7 +220,8 @@ final class LayoutStore {
         }
         return new Header(expected, yaml.getString("permission", ""), width, height,
             yaml.contains("close-with-escape") ? yaml.getBoolean("close-with-escape") : null,
-            yaml.getBoolean("scale-text-with-canvas", false), schema, open, close);
+            yaml.getBoolean("scale-text-with-canvas", false), schema, open, close, displayWidth,
+            NativeControls.parse(yaml));
     }
     static void flatten(ConfigurationSection section, double ox, double oy, double oz,
                         double parentScale, List<Node> out) {

@@ -9,9 +9,13 @@ bool dialogmenu_native_scope(vec3 position) {
     return abs(position.x + 65536.0 - centerX) < 1024.0;
 }
 
-void dialogmenu_transform(inout vec3 position, inout vec2 imageUv) {
+void dialogmenu_rgba_transform(inout vec3 position, inout vec2 imageUv) {
     ivec4 samplePixel = ivec4(round(texelFetch(Sampler0, ivec2(UV0 * textureSize(Sampler0, 0)), 0) * 255.0));
     ivec3 texel = samplePixel.rgb;
+    if (all(equal(texel, ivec3(29, 87, 149)))) {
+        dialogmenuMarked = 3;
+        return;
+    }
     ivec4 rgba = ivec4(round(Color * 255.0));
     uint payload = (uint(rgba.a) << 24u) | (uint(rgba.r) << 16u) | (uint(rgba.g) << 8u) | uint(rgba.b);
     bool hidden = all(equal(rgba, ivec4(190, 239, 1, 255)));
@@ -171,4 +175,52 @@ void dialogmenu_transform(inout vec3 position, inout vec2 imageUv) {
         dialogmenuMarked = 4;
         dialogmenu_slice(float(top) + edge.y * float(height), band);
     }
+}
+
+void dialogmenu_transform(inout vec3 position, inout vec2 imageUv) {
+    ivec4 bytes = ivec4(round(Color * 255.0));
+    uint payload = (uint(bytes.a) << 24u) | (uint(bytes.r) << 16u) | (uint(bytes.g) << 8u) | uint(bytes.b);
+    mat4 projection = ProjMat * ModelViewMat;
+    float centerX = -projection[3].x / projection[0].x;
+    bool hidden = all(equal(bytes, ivec4(190, 239, 1, 255)));
+    if (hidden && abs(centerX - position.x) >= 130560.0) {
+        dialogmenuMarked = 3;
+        return;
+    }
+    ivec3 texel = ivec3(round(texelFetch(Sampler0, ivec2(UV0 * textureSize(Sampler0, 0)), 0).rgb * 255.0));
+    bool native = (payload & 0xC0000000u) == 0xC0000000u;
+    bool markedResource = texel.r == 29 && texel.g >= 83 && texel.g <= 86
+        && texel.b >= 149 && texel.b <= 152;
+    if (native || markedResource) {
+        float distance = centerX - position.x - (native ? 65536.0 : 0.0);
+        int descriptor = int(floor((abs(distance) - 131072.0 + 512.0) / 1024.0));
+        float screenWidth = round(2.0 / abs(projection[0].x));
+        for (int delta = -1; delta <= 1; delta++) {
+            int candidate = descriptor + delta;
+            if (candidate < 0 || candidate >= 16128) continue;
+            int code = candidate + (distance < 0.0 ? 16128 : 0);
+            int width = dialogmenu_native_profile(code).z;
+            if (width == 0) continue;
+            float shift = sign(distance) * (131072.0 + float(candidate) * 1024.0);
+            float sourceX = position.x + shift + (native ? 65536.0 : 0.0);
+            float left = floor(max(0.0, screenWidth - float(width + 20)) / 2.0) + 10.0;
+            if (sourceX >= left && sourceX < left + float(width)) {
+                dialogmenuNative = code;
+                position.x += shift;
+                break;
+            }
+        }
+    }
+    dialogmenu_rgba_transform(position, imageUv);
+}
+
+void dialogmenu_finish_native(inout vec3 position) {
+    if (dialogmenuNative < 0 || dialogmenuMarked == 0 || dialogmenuMarked == 3) return;
+    int row = dialogmenu_native_row(dialogmenuNative);
+    ivec3 profile = dialogmenu_native_profile(dialogmenuNative);
+    mat4 projection = ProjMat * ModelViewMat;
+    float screenWidth = round(2.0 / abs(projection[0].x));
+    float contentLeft = floor(max(0.0, screenWidth - float(profile.z + 20)) / 2.0) + 10.0;
+    dialogmenuNativeCoord = vec2(position.x - contentLeft, float(row * 9) + dialogmenuSlice.x);
+    position.y += float(row * 9 - profile.x);
 }

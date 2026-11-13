@@ -26,9 +26,12 @@ layout(location = 4) flat out int dialogmenuMarked;
 layout(location = 5) flat out vec4 dialogmenuImagePixels;
 layout(location = 6) out vec2 dialogmenuImageCoord;
 layout(location = 8) out vec3 dialogmenuSlice;
+layout(location = 9) flat out int dialogmenuNative;
+layout(location = 10) out vec2 dialogmenuNativeCoord;
 #endif
 
 #ifdef IS_GUI
+#include <dialogmenu:native_profiles.glsl>
 #include <dialogmenu:rgba_vertex.glsl>
 #endif
 
@@ -41,7 +44,10 @@ void main() {
     dialogmenuImagePixels = vec4(0.0);
     dialogmenuImageCoord = vec2(0.0);
     dialogmenuSlice = vec3(0.0);
+    dialogmenuNative = -1;
+    dialogmenuNativeCoord = vec2(0.0);
     dialogmenu_transform(position, imageUv);
+    dialogmenu_finish_native(position);
 #endif
     gl_Position = ProjMat * ModelViewMat * vec4(position, 1.0);
 #if !defined(IS_GUI) && !defined(IS_SEE_THROUGH)

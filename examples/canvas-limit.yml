@@ -1,9 +1,10 @@
 # Measurement fixture: requested width 1014, canvas scale 1.0.
 # Logical units: ticks every 2, labels every 20. No automatic viewport scaling.
+# Explicit display width keeps one logical unit per GUI pixel at canvas scale 1.
 # Requires max-canvas-pixels >= 1038336. Not installed as a startup default.
 schema-version: 3
 id: canvas-limit
-canvas: {width: 1014, height: 1024}
+canvas: {width: 1014, height: 1024, display-width: 1014}
 close-with-escape: true
 scale-text-with-canvas: true
 frontend:

@@ -65,10 +65,16 @@ public final class MenuModel {
     }
 
     public record Menu(String id, String permission, int width, int height,
-                       List<Node> nodes, List<Region> regions, Boolean closeWithEscape, boolean scaleTextWithCanvas) {
+                       List<Node> nodes, List<Region> regions, Boolean closeWithEscape, boolean scaleTextWithCanvas,
+                       int displayWidth) {
+        public Menu(String id, String permission, int width, int height, List<Node> nodes, List<Region> regions,
+                    Boolean closeWithEscape, boolean scaleTextWithCanvas) {
+            this(id, permission, width, height, nodes, regions, closeWithEscape, scaleTextWithCanvas, 0);
+        }
         public Menu(String id, String permission, int width, int height, List<Node> nodes, List<Region> regions) {
             this(id, permission, width, height, nodes, regions, null, false);
         }
+        int requestedWidth(int fallback) { return displayWidth == 0 ? fallback : displayWidth; }
         public Region hit(double x, double y) {
             for (Region region : regions) if (region.contains(x, y)) return region;
             return null;

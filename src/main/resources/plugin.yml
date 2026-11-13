@@ -3,6 +3,8 @@ version: ${version}
 main: dev.dialogmenu.DialogMenuPlugin
 api-version: '1.21.7'
 softdepend: [Skript, PlaceholderAPI, CraftEngine]
+libraries:
+  - net.kyori:adventure-nbt:4.24.0
 commands:
   dialogmenu:
     description: YAML Dialog menu

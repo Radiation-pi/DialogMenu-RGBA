@@ -5,6 +5,7 @@ import struct
 import sys
 
 import moderngl
+import native_interface
 import numpy as np
 from PIL import Image
 
@@ -56,7 +57,7 @@ void main() {
     if (fragColor.a < 0.1) discard;
 }
 """
-program = ctx.program(vertex_shader=vertex, fragment_shader=fragment)
+program = ctx.program(vertex_shader=native_interface.vertex(vertex), fragment_shader=native_interface.fragment(fragment))
 checks = 0
 for number, case in enumerate(json.loads((fixtures / "fixtures.json").read_text())):
     source = np.array(Image.open(fixtures / "images" / case["source"]).convert("RGBA"))

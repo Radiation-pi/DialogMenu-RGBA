@@ -1,0 +1,84 @@
+schema-version: 3
+id: native-overlay
+# Inputs and sliders always stay above Menu; the five cover cases apply to the button.
+# Native sizes stay fixed at every personal scale. body-rows is a minimum.
+pages:
+  native-overlay:
+    canvas: {width: 452, height: 207, display-width: 452}
+    frontend:
+      next: {type: text, content: 'Button covered >', offset: {x: 226, y: 20}, actions: 'open: native-none'}
+      cover: {type: rectangle, width: 320, height: 130, color: '#223F55', offset: {x: 226, y: 142, z: 1}}
+    native-controls:
+      overlay: true
+      body-rows: 7
+      inputs:
+        name: {type: text, label: Name, label-visible: false, width: 280, initial: Original}
+        notes: {type: text, label: Notes, label-visible: false, width: 280, multiline: true, height: 40, max-lines: 4, initial: 'Two lines'}
+        amount: {type: slider, label: Amount, width: 280, min: 0, max: 100, initial: 25, step: 1}
+      buttons:
+        send: {label: Send, width: 280, actions: ['tell: {input.name}', 'tell: {input.notes}', 'tell: {input.amount}']}
+  native-none:
+    canvas: {width: 452, height: 207, display-width: 452}
+    frontend:
+      next: {type: text, content: 'Button visible >', offset: {x: 226, y: 20}, actions: 'open: native-bottom'}
+      cover: {type: rectangle, width: 320, height: 130, color: '#223F55', offset: {x: 226, y: 142, z: -1}}
+    native-controls:
+      overlay: true
+      body-rows: 7
+      inputs:
+        name: {type: text, label: Name, label-visible: false, width: 280, initial: Original}
+        notes: {type: text, label: Notes, label-visible: false, width: 280, multiline: true, height: 40, max-lines: 4, initial: 'Two lines'}
+        amount: {type: slider, label: Amount, width: 280, min: 0, max: 100, initial: 25, step: 1}
+      buttons:
+        send: {label: Send, width: 280, actions: ['tell: {input.name}', 'tell: {input.notes}', 'tell: {input.amount}']}
+  native-bottom:
+    canvas: {width: 452, height: 207, display-width: 452}
+    frontend:
+      next: {type: text, content: 'Button bottom >', offset: {x: 226, y: 20}, actions: 'open: native-top'}
+      name-cover: {type: rectangle, width: 320, height: 10, color: '#223F55', offset: {x: 226, y: 92, z: 1}}
+      notes-cover: {type: rectangle, width: 320, height: 20, color: '#223F55', offset: {x: 226, y: 137, z: 1}}
+      amount-cover: {type: rectangle, width: 320, height: 10, color: '#223F55', offset: {x: 226, y: 172, z: 1}}
+      send-cover: {type: rectangle, width: 320, height: 10, color: '#223F55', offset: {x: 226, y: 202, z: 1}}
+    native-controls:
+      overlay: true
+      body-rows: 7
+      inputs:
+        name: {type: text, label: Name, label-visible: false, width: 280, initial: Original}
+        notes: {type: text, label: Notes, label-visible: false, width: 280, multiline: true, height: 40, max-lines: 4, initial: 'Two lines'}
+        amount: {type: slider, label: Amount, width: 280, min: 0, max: 100, initial: 25, step: 1}
+      buttons:
+        send: {label: Send, width: 280, actions: ['tell: {input.name}', 'tell: {input.notes}', 'tell: {input.amount}']}
+  native-top:
+    canvas: {width: 452, height: 207, display-width: 452}
+    frontend:
+      next: {type: text, content: 'Button top >', offset: {x: 226, y: 20}, actions: 'open: native-middle'}
+      name-cover: {type: rectangle, width: 320, height: 10, color: '#223F55', offset: {x: 226, y: 82, z: 1}}
+      notes-cover: {type: rectangle, width: 320, height: 20, color: '#223F55', offset: {x: 226, y: 117, z: 1}}
+      amount-cover: {type: rectangle, width: 320, height: 10, color: '#223F55', offset: {x: 226, y: 162, z: 1}}
+      send-cover: {type: rectangle, width: 320, height: 10, color: '#223F55', offset: {x: 226, y: 192, z: 1}}
+    native-controls:
+      overlay: true
+      body-rows: 7
+      inputs:
+        name: {type: text, label: Name, label-visible: false, width: 280, initial: Original}
+        notes: {type: text, label: Notes, label-visible: false, width: 280, multiline: true, height: 40, max-lines: 4, initial: 'Two lines'}
+        amount: {type: slider, label: Amount, width: 280, min: 0, max: 100, initial: 25, step: 1}
+      buttons:
+        send: {label: Send, width: 280, actions: ['tell: {input.name}', 'tell: {input.notes}', 'tell: {input.amount}']}
+  native-middle:
+    canvas: {width: 452, height: 207, display-width: 452}
+    frontend:
+      next: {type: text, content: 'Button middle >', offset: {x: 226, y: 20}, actions: 'open: native-overlay'}
+      name-cover: {type: rectangle, width: 320, height: 6, color: '#223F55', offset: {x: 226, y: 87, z: 1}}
+      notes-cover: {type: rectangle, width: 320, height: 14, color: '#223F55', offset: {x: 226, y: 127, z: 1}}
+      amount-cover: {type: rectangle, width: 320, height: 6, color: '#223F55', offset: {x: 226, y: 167, z: 1}}
+      send-cover: {type: rectangle, width: 320, height: 6, color: '#223F55', offset: {x: 226, y: 197, z: 1}}
+    native-controls:
+      overlay: true
+      body-rows: 7
+      inputs:
+        name: {type: text, label: Name, label-visible: false, width: 280, initial: Original}
+        notes: {type: text, label: Notes, label-visible: false, width: 280, multiline: true, height: 40, max-lines: 4, initial: 'Two lines'}
+        amount: {type: slider, label: Amount, width: 280, min: 0, max: 100, initial: 25, step: 1}
+      buttons:
+        send: {label: Send, width: 280, actions: ['tell: {input.name}', 'tell: {input.notes}', 'tell: {input.amount}']}

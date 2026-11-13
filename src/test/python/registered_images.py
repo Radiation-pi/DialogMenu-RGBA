@@ -5,6 +5,7 @@ import struct
 import sys
 
 import moderngl
+import native_interface
 from PIL import Image
 
 shader, fixtures, output = map(Path, sys.argv[1:4])
@@ -53,7 +54,7 @@ void main() {
     if (fragColor.a < 0.1) discard;
 }
 """
-program = ctx.program(vertex_shader=vertex, fragment_shader=fragment)
+program = ctx.program(vertex_shader=native_interface.vertex(vertex), fragment_shader=native_interface.fragment(fragment))
 frame = ctx.simple_framebuffer((640, 640), components=4)
 frame.use()
 checks = 0

@@ -306,7 +306,8 @@ final class MenuTemplate {
             parts.forEach(nodes::addAll);
             nodes.sort(Comparator.comparingDouble(Node::z));
             menu = new Menu(page, base.menu().permission(), base.menu().width(), base.menu().height(),
-                List.copyOf(nodes), List.of(), base.menu().closeWithEscape(), base.menu().scaleTextWithCanvas());
+                List.copyOf(nodes), List.of(), base.menu().closeWithEscape(), base.menu().scaleTextWithCanvas(),
+                base.menu().displayWidth());
             latestMenu = new MenuLayout(List.copyOf(parts), menu);
         }
         List<LayoutStore.FlowRow> flowRows = new ArrayList<>();
@@ -327,7 +328,7 @@ final class MenuTemplate {
                     MenuTemplate.expand(expand.apply(spec.row()), fields)));
             }
         }
-        return new LayoutStore.Document(menu, base.open(), base.close(), this, List.copyOf(flowRows));
+        return new LayoutStore.Document(menu, base.open(), base.close(), this, List.copyOf(flowRows), null, base.controls());
     }
     private final class GridPlan {
         private final ConfigurationSection grid;

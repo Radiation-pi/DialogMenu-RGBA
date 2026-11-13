@@ -1,7 +1,8 @@
 default-layout: layout-demo
 canvas-width: 300
 max-canvas-pixels: 1048576
-close-with-escape: false
+# 默认允许 Esc 关闭；单个菜单可用同名字段覆盖，不添加原生底部关闭按钮。
+close-with-escape: true
 # 全局材质隐藏，不改变原生布局、点击区域或悬停提示，不会腾出顶部/侧边空间。
 # 隐藏所有原生 Dialog 的顶部警告图标。
 hide-dialog-warning: false

@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 
 import moderngl
+import native_interface
 
 pack, output = map(Path, sys.argv[1:3])
 output.mkdir(parents=True, exist_ok=True)
@@ -50,7 +51,7 @@ void main() {
     gl_Position = vec4(position, 1.0);
 }
 """
-program = ctx.program(vertex_shader=source, varyings=["unchanged"])
+program = ctx.program(vertex_shader=native_interface.vertex(source), varyings=["unchanged"])
 vao = ctx.vertex_array(program, [])
 buffer = ctx.buffer(reserve=65536 * 4)
 texture = ctx.texture((2, 2), 4, bytes([255] * 16))

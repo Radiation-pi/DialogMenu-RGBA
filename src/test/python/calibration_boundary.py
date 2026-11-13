@@ -26,9 +26,9 @@ for gui in (2, 3, 4):
                 draw(row["payload"], row["row"], True, offset)
                 draw(0xFFBEEF01, row["row"], False, offset)
         actual = Image.frombytes("RGBA", frame.size, frame.read(components=4)).transpose(Image.Transpose.FLIP_TOP_BOTTOM)
-        # Contract: one solid white 320x1 line whose bottom is round(177 * scale).
+        # Contract: one solid white 320x1 line whose bottom is round(205 * scale).
         expected = Image.new("RGBA", frame.size)
-        top = int(case["scale"] * 177 + .5) - 1
+        top = int(case["scale"] * 205 + .5) - 1
         expected.paste((255, 255, 255, 255), (64 * gui, top * gui, 384 * gui, (top + 1) * gui))
         if actual.tobytes() != expected.tobytes():
             actual.save(out / "failed-actual.png")

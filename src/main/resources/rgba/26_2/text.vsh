@@ -25,6 +25,9 @@ flat out int dialogmenuMarked;
 flat out vec4 dialogmenuImagePixels;
 out vec2 dialogmenuImageCoord;
 out vec3 dialogmenuSlice;
+flat out int dialogmenuNative;
+out vec2 dialogmenuNativeCoord;
+#moj_import <dialogmenu:native_profiles.glsl>
 #moj_import <dialogmenu:rgba_vertex.glsl>
 #endif
 
@@ -36,7 +39,11 @@ void main() {
     dialogmenuMarked = 0;
     dialogmenuImagePixels = vec4(0.0);
     dialogmenuImageCoord = vec2(0.0);
+    dialogmenuSlice = vec3(0.0);
+    dialogmenuNative = -1;
+    dialogmenuNativeCoord = vec2(0.0);
     dialogmenu_transform(position, imageUv);
+    dialogmenu_finish_native(position);
 #endif
     gl_Position = ProjMat * ModelViewMat * vec4(position, 1.0);
 #if !defined(IS_GUI) && !defined(IS_SEE_THROUGH)

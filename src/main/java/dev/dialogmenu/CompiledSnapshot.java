@@ -41,7 +41,8 @@ final class CompiledSnapshot {
                     "RgbaImages.class", "RegisteredImages.class", "ImageRegistry.class", "PrimitiveShapes.class",
                     "RgbaHits.class", "RgbaOffsets.class", "RgbaDecorations.class",
                     "CanvasScale.class", "ScaleCalibration.class", "NativeUiTextures.class", "MenuOpeners.class", "MenuRenderer.class",
-                    "SpriteCanvas.class", "LayoutStore.class", "MenuTemplate.class", "ModelPack.class",
+                    "SpriteCanvas.class", "NativeInk.class", "NativeControls.class",
+                    "LayoutStore.class", "MenuTemplate.class", "ModelPack.class",
                     "VanillaAssets.class", "CraftEngineAssets.class", "/glyphs.bin.gz",
                     "/vanilla-icons.zip", "/rgba/characters-3500.txt")) {
                     try (var input = CompiledSnapshot.class.getResourceAsStream(name)) {
