@@ -63,6 +63,7 @@ public final class ResourceRegressionTests {
         checks += CoordinateTests.run(root);
         checks += ScaleCalibrationTests.run(root);
         checks += NativeControlsTests.run(root);
+        checks += NativeBackgroundTests.run(root);
         checks += NativeUiTextureTests.run(root);
         checks += ProportionalImageTests.run(root);
         checks += GraphicLimitTests.run(root);
