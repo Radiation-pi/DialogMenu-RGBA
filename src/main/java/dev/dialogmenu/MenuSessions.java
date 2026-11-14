@@ -34,7 +34,7 @@ final class MenuSessions {
         final Map<String, String> values;
         final Map<String, List<String>> lists = new LinkedHashMap<>();
         final Map<String, List<DialogMenuEntry>> externalCollections = new LinkedHashMap<>();
-        final Map<String, String> external = new LinkedHashMap<>();
+        Map<String, String> external = Map.of();
         Plugin owner;
         DialogMenuBinding binding;
         Consumer<String> callback;
@@ -108,7 +108,7 @@ final class MenuSessions {
         // 在替换旧会话前验证并复制首屏集合，不能先显示空列表再补内容。
         if (collection != null) next.externalCollections.put(LayoutStore.id(collection),
             validateEntries(next, collection, entries));
-        next.external.putAll(values);
+        next.external = Map.copyOf(values);
         next.owner = owner;
         next.callback = callback;
         next.closed = closed;
@@ -123,12 +123,7 @@ final class MenuSessions {
         return next.binding;
     }
     private static void validateExternal(Session session, Map<String, String> values) {
-        Set<String> names = new HashSet<>();
-        var variables = session.definition.variables;
-        if (variables != null) for (String key : variables.getKeys(false)) {
-            var spec = variables.getConfigurationSection(key);
-            if (spec.getString("type", "").equals("external")) names.add(spec.getString("source", key));
-        }
+        Set<String> names = session.definition.expansionPlan.externalKeys;
         for (String key : values.keySet()) if (!names.contains(key))
             throw new IllegalArgumentException("External variable not declared in YAML: " + key);
     }
@@ -146,12 +141,15 @@ final class MenuSessions {
         Session session = bound(binding);
         if (session == null) return false;
         validateExternal(session, values);
-        Map<String, String> previous = new LinkedHashMap<>(session.external);
-        session.external.putAll(values);
+        var previous = session.external;
+        if (!values.isEmpty()) {
+            var updated = new HashMap<>(previous);
+            updated.putAll(values);
+            session.external = Collections.unmodifiableMap(updated);
+        }
         try { show(binding.player, session); }
         catch (Exception error) {
-            session.external.clear();
-            session.external.putAll(previous);
+            session.external = previous;
             throw error;
         }
         return bound(binding) != null;
@@ -376,7 +374,7 @@ final class MenuSessions {
         values.put("uuid", player.getUniqueId().toString());
         values.put("server", plugin.getDataFolder().getAbsoluteFile().getParentFile().getParentFile().getName());
         if (session != null) values.putAll(session.values);
-        return new MenuExpansion(values, session == null ? null : session.definition.variables,
+        return new MenuExpansion(values, session == null ? MenuExpansion.Plan.EMPTY : session.definition.expansionPlan,
             session == null ? Map.of() : session.external,
             (text, fallback) -> placeholder(player, text, fallback),
             source -> Objects.toString(variable(key(player, source)), null));

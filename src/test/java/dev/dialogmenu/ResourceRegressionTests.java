@@ -106,6 +106,7 @@ public final class ResourceRegressionTests {
         Files.writeString(input, "B");
         rejects(consumed::verify, "changed consumed input accepted");
         checks += PresentationLifecycleTests.run(root);
+        checks += ExpansionTests.run();
         System.out.println("PASS " + checks + " resource regression checks (offline, no client)");
     }
     private static void cacheAndReload(Path root) throws Exception {

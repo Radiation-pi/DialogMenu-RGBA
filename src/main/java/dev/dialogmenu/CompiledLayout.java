@@ -86,6 +86,8 @@ final class CompiledLayout {
     }
     private final LayoutStore.Header header;
     private final List<Branch> branches = new ArrayList<>();
+    private record Assembly(List<List<Node>> parts, LayoutStore.Document document) {}
+    private volatile Assembly latest;
 
     CompiledLayout(String id, YamlConfiguration yaml) {
         header = LayoutStore.header(id, yaml);
@@ -98,8 +100,19 @@ final class CompiledLayout {
         }
     }
     LayoutStore.Document document(UnaryOperator<String> expand, boolean catalog) {
+        Assembly previous = latest;
+        List<List<Node>> parts = new ArrayList<>(branches.size());
+        boolean same = previous != null;
+        for (Branch branch : branches) {
+            List<Node> part = branch.nodes(expand, catalog);
+            if (same && previous.parts.get(parts.size()) != part) same = false;
+            parts.add(part);
+        }
+        if (same) return previous.document;
         List<Node> nodes = new ArrayList<>();
-        for (Branch branch : branches) nodes.addAll(branch.nodes(expand, catalog));
-        return header.document(nodes);
+        parts.forEach(nodes::addAll);
+        var document = header.document(nodes);
+        latest = new Assembly(List.copyOf(parts), document);
+        return document;
     }
 }

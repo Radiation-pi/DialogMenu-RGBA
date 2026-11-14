@@ -18,6 +18,8 @@ final class InitialCollectionCheck {
         yaml.loadFromString("""
             schema-version: 1
             id: choices
+            variables:
+              caption: {type: external, source: heading}
             collections:
               buttons: {external: true}
             pages:
@@ -26,7 +28,7 @@ final class InitialCollectionCheck {
                 frontend:
                   label: {type: text, content: Hello}
                 flow-lists:
-                  buttons: {collection: buttons, row: '{entry.name}', empty: Empty}
+                  buttons: {collection: buttons, row: '{caption}: {entry.name}', empty: Empty}
             """);
         var document = MenuTemplate.load("choices", yaml).get("choices");
         UUID id = UUID.randomUUID();
@@ -64,10 +66,12 @@ final class InitialCollectionCheck {
         host.sessions = sessions;
         var reasons = new ArrayList<DialogMenuClosedEvent.Reason>();
         var rows = new ArrayList<>(List.of(new DialogMenuEntry("one", "One", "", Map.of())));
-        var first = sessions.bind(owner, player, document, 300, Map.of(), "buttons", rows, key -> {}, reasons::add);
+        var values = new java.util.HashMap<>(Map.of("heading", "First"));
+        var first = sessions.bind(owner, player, document, 300, values, "buttons", rows, key -> {}, reasons::add);
         rows.clear();
-        if (host.shown != 1 || host.closes != 0 || host.rows.size() != 1 || !host.rows.getFirst().text().equals("One"))
-            throw new AssertionError("first presentation must already contain the supplied rows");
+        values.put("heading", "Out of band");
+        if (host.shown != 1 || host.closes != 0 || host.rows.size() != 1 || !host.rows.getFirst().text().equals("First: One"))
+            throw new AssertionError("first presentation must already contain the supplied values and rows");
         for (String collection : List.of("unknown", "buttons")) {
             try {
                 var entry = new DialogMenuEntry("duplicate", "Duplicate", "", Map.of());
@@ -78,8 +82,10 @@ final class InitialCollectionCheck {
                 throw new AssertionError("validation failure must preserve the current binding");
         }
         sessions.refresh(player);
-        if (host.rows.size() != 1 || !host.rows.getFirst().id().equals("one"))
-            throw new AssertionError("initial rows must be copied");
+        if (host.rows.size() != 1 || !host.rows.getFirst().id().equals("one") || !host.rows.getFirst().text().equals("First: One"))
+            throw new AssertionError("initial values and rows must be copied");
+        if (!sessions.update(first, Map.of("heading", "Next")) || !host.rows.getFirst().text().equals("Next: One"))
+            throw new AssertionError("a variable update must keep the original collection");
         var second = sessions.bind(owner, player, document, 300, Map.of(), key -> {}, reasons::add);
         if (host.rows.size() != 1 || !host.rows.getFirst().text().equals("Empty") || host.closes != 0
             || !reasons.equals(List.of(DialogMenuClosedEvent.Reason.REPLACED)) || sessions.active(first))

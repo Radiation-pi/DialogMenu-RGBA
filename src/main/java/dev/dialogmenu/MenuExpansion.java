@@ -8,63 +8,112 @@ import org.bukkit.configuration.ConfigurationSection;
 
 /** 单次呈现的按需变量快照，不跨帧或业务动作缓存。 */
 final class MenuExpansion implements UnaryOperator<String> {
-    private record Variable(int index, ConfigurationSection spec) {}
+    private record Variable(int index, String name, String token, String type, String source,
+                            String fallback, ConfigurationSection mappings, int limit) {}
+    /** Declaration metadata only; never stores the result of evaluating a variable. */
+    static final class Plan {
+        static final Plan EMPTY = new Plan(null);
+        private final Map<String, Variable> named;
+        private final List<Variable> ordered;
+        final Set<String> externalKeys;
+        private final boolean braceInName;
+
+        Plan(ConfigurationSection specs) {
+            Map<String, Variable> names = new LinkedHashMap<>();
+            Set<String> external = new HashSet<>();
+            if (specs != null) for (String name : specs.getKeys(false)) {
+                var spec = Objects.requireNonNull(specs.getConfigurationSection(name), "variable须为对象");
+                String type = spec.getString("type", "");
+                String source = spec.getString("source", type.equals("external") ? name : "");
+                if (type.equals("external")) external.add(source);
+                names.put(name, new Variable(names.size(), name, "{" + name + "}", type, source,
+                    spec.getString("fallback", ""), spec.getConfigurationSection("values"), spec.getInt("max-length", 0)));
+            }
+            ordered = List.copyOf(names.values());
+            named = Map.copyOf(names);
+            externalKeys = Set.copyOf(external);
+            braceInName = names.keySet().stream().anyMatch(n -> n.indexOf('{') >= 0 || n.indexOf('}') >= 0);
+        }
+    }
     private record Placeholder(String source, String fallback) {}
     private final Map<String, String> base;
     private final Map<String, String> external;
-    private final Map<String, Variable> variables = new LinkedHashMap<>();
+    private final Plan plan;
     private final Map<String, String> resolved = new HashMap<>();
     private final Map<Placeholder, String> placeholders = new HashMap<>();
-    private final Set<String> order = new LinkedHashSet<>();
     private final BiFunction<String, String, String> papi;
     private final Function<String, String> skript;
 
-    MenuExpansion(Map<String, String> base, ConfigurationSection variables, Map<String, String> external,
+    MenuExpansion(Map<String, String> base, Plan plan, Map<String, String> immutableExternal,
                   BiFunction<String, String, String> papi, Function<String, String> skript) {
         this.base = new LinkedHashMap<>(base);
-        this.external = new LinkedHashMap<>(external);
+        this.external = immutableExternal;
+        this.plan = plan;
         this.papi = papi;
         this.skript = skript;
-        order.addAll(base.keySet());
-        if (variables != null) for (String name : variables.getKeys(false)) {
-            this.variables.put(name, new Variable(this.variables.size(), variables.getConfigurationSection(name)));
-            order.add(name);
-        }
     }
 
     @Override public String apply(String text) {
-        String expanded = replace(text, variables.size());
+        String expanded = replace(text, plan.ordered.size());
         return expanded.contains("%") ? placeholder(expanded, expanded) : expanded;
     }
 
     private String replace(String text, int before) {
-        for (String name : order) {
+        if (text.indexOf('{') < 0) return text;
+        for (String name : base.keySet()) {
             String token = "{" + name + "}";
             if (!text.contains(token)) continue;
             String value = value(name, before);
             if (value != null) text = text.replace(token, value);
         }
+        // Old YAML permits braces in the variable name itself. Preserve literal-token matching for it.
+        if (plan.braceInName) {
+            for (int i = 0; i < before; i++) {
+                Variable v = plan.ordered.get(i);
+                if (!base.containsKey(v.name) && text.contains(v.token))
+                    text = text.replace(v.token, value(v.name, before));
+            }
+            return text;
+        }
+        // Replace in declaration order, not text order. A value may introduce a later token,
+        // including one assembled from surrounding braces, so rescan after each substitution.
+        for (int first = 0; first < before;) {
+            Variable next = null;
+            int start = -1;
+            for (int i = 0; i < text.length(); i++) {
+                char c = text.charAt(i);
+                if (c == '{') start = i + 1;
+                else if (c == '}' && start >= 0) {
+                    Variable v = plan.named.get(text.substring(start, i));
+                    if (v != null && v.index >= first && v.index < before && !base.containsKey(v.name)
+                        && (next == null || v.index < next.index)) next = v;
+                    start = -1;
+                }
+            }
+            if (next == null) break;
+            text = text.replace(next.token, value(next.name, before));
+            first = next.index + 1;
+        }
         return text;
     }
 
     private String value(String name, int before) {
-        Variable variable = variables.get(name);
+        Variable variable = plan.named.get(name);
         if (variable == null || variable.index() >= before) return base.get(name);
         if (resolved.containsKey(name)) return resolved.get(name);
-        var spec = variable.spec();
-        String source = spec.getString("source", ""), fallback = spec.getString("fallback", "");
-        String value = switch (spec.getString("type", "")) {
+        String source = variable.source, fallback = variable.fallback;
+        String value = switch (variable.type) {
             // 保持原先按声明顺序展开 literal/state 的语义。
             case "literal" -> replace(source, variable.index());
             case "state" -> Objects.toString(value(source, variable.index()), fallback);
             case "papi" -> placeholder(source, fallback);
             case "skript" -> Objects.toString(skript.apply(source), fallback);
-            case "external" -> external.getOrDefault(spec.getString("source", name), fallback);
+            case "external" -> external.getOrDefault(source, fallback);
             default -> fallback;
         };
-        var mappings = spec.getConfigurationSection("values");
+        var mappings = variable.mappings;
         if (mappings != null) value = mappings.getString(value, fallback);
-        int limit = spec.getInt("max-length", 0);
+        int limit = variable.limit;
         if (limit > 0) value = MenuSessions.shortNumber(value, limit);
         resolved.put(name, value);
         return value;

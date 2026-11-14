@@ -24,6 +24,7 @@ final class MenuTemplate {
     static final class Definition {
         final String id;
         final ConfigurationSection variables;
+        final MenuExpansion.Plan expansionPlan;
         final Map<String, String> initial = new LinkedHashMap<>();
         final Map<String, Entry> entries = new LinkedHashMap<>();
         final Map<String, CollectionSpec> collections = new LinkedHashMap<>();
@@ -37,6 +38,7 @@ final class MenuTemplate {
         Definition(String id, YamlConfiguration yaml) {
             this.id = id;
             variables = yaml.getConfigurationSection("variables");
+            expansionPlan = variables == null ? MenuExpansion.Plan.EMPTY : new MenuExpansion.Plan(variables);
             var state = yaml.getConfigurationSection("state");
             if (state != null) for (String key : state.getKeys(false))
                 initial.put(LayoutStore.id(key), state.getString(key, ""));
