@@ -486,6 +486,12 @@ public final class PresentationLifecycleTests {
             plugin.tickEnd(null);
             while (!main.isEmpty()) main.remove().run();
             check(delivered.get() == 2, "close left a ready callback active");
+            requests.put(closing.getUniqueId(), 3L);
+            publish.invoke(plugin, closing.getUniqueId(), 3L, (Runnable) delivered::incrementAndGet);
+            plugin.replaceApplication(closing);
+            plugin.tickEnd(null);
+            while (!main.isEmpty()) main.remove().run();
+            check(delivered.get() == 2, "replacement left an old ready callback active");
             record("publication-delivery", "tickEndAndFallbackExactlyOnce", true, "closeAndStaleRejected", true);
         }
     }

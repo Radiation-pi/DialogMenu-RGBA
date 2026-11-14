@@ -17,6 +17,7 @@ final class MenuSessions {
         java.io.File getDataFolder();
         java.util.logging.Logger getLogger();
         void closeApplication(Player player);
+        void replaceApplication(Player player);
         void closeFromApi(Player player);
         void suspendApplication(Player player);
         void showApplication(Player player, LayoutStore.Document document, int width, List<String> history) throws Exception;
@@ -84,31 +85,39 @@ final class MenuSessions {
             show(player, session);
             return true;
         }
-        plugin.closeApplication(player);
+        plugin.replaceApplication(player);
         Session next = new Session(document, width, history);
         sessions.put(player.getUniqueId(), next);
         next.busy = true;
         try { load(player, next, next.definition.collections.entrySet().stream()
             .filter(entry -> !entry.getValue().external()).map(Map.Entry::getKey).toList(), 0, false, 0); }
-        catch (Exception error) { remove(player); throw error; }
+        catch (Exception error) { plugin.closeApplication(player); throw error; }
         return true;
     }
     DialogMenuBinding bind(Plugin owner, Player player, LayoutStore.Document document, int width,
                            Map<String, String> values, Consumer<String> callback, Consumer<Reason> closed) throws Exception {
+        return bind(owner, player, document, width, values, null, List.of(), callback, closed);
+    }
+    DialogMenuBinding bind(Plugin owner, Player player, LayoutStore.Document document, int width,
+                           Map<String, String> values, String collection, List<DialogMenuEntry> entries,
+                           Consumer<String> callback, Consumer<Reason> closed) throws Exception {
         if (document.template().definition.collections.values().stream().anyMatch(spec -> !spec.external()))
             throw new IllegalArgumentException("External binding requires external-only collections");
         Session next = new Session(document, width, List.of());
         validateExternal(next, values);
+        // 在替换旧会话前验证并复制首屏集合，不能先显示空列表再补内容。
+        if (collection != null) next.externalCollections.put(LayoutStore.id(collection),
+            validateEntries(next, collection, entries));
         next.external.putAll(values);
         next.owner = owner;
         next.callback = callback;
         next.closed = closed;
         next.binding = new DialogMenuBinding(plugin.getMenuApi(), player, next);
-        plugin.closeApplication(player);
+        plugin.replaceApplication(player);
         sessions.put(player.getUniqueId(), next);
         try { show(player, next); }
         catch (Exception error) {
-            remove(player, Reason.CLOSED);
+            plugin.closeApplication(player);
             throw error;
         }
         return next.binding;
@@ -151,13 +160,8 @@ final class MenuSessions {
         Session session = bound(binding);
         if (session == null) return false;
         name = LayoutStore.id(name);
-        var spec = session.definition.collections.get(name);
-        if (spec == null || !spec.external())
-            throw new IllegalArgumentException("Collection is not declared external in YAML: " + name);
-        Set<String> ids = new HashSet<>();
-        for (DialogMenuEntry entry : entries)
-            if (!ids.add(entry.id())) throw new IllegalArgumentException("Duplicate collection entry ID: " + entry.id());
-        List<DialogMenuEntry> previous = session.externalCollections.put(name, List.copyOf(entries));
+        List<DialogMenuEntry> validated = validateEntries(session, name, entries);
+        List<DialogMenuEntry> previous = session.externalCollections.put(name, validated);
         try { show(binding.player, session); }
         catch (Exception error) {
             if (previous == null) session.externalCollections.remove(name);
@@ -165,6 +169,16 @@ final class MenuSessions {
             throw error;
         }
         return bound(binding) != null;
+    }
+    private static List<DialogMenuEntry> validateEntries(Session session, String name, List<DialogMenuEntry> entries) {
+        name = LayoutStore.id(name);
+        var spec = session.definition.collections.get(name);
+        if (spec == null || !spec.external())
+            throw new IllegalArgumentException("Collection is not declared external in YAML: " + name);
+        Set<String> ids = new HashSet<>();
+        for (DialogMenuEntry entry : entries)
+            if (!ids.add(entry.id())) throw new IllegalArgumentException("Duplicate collection entry ID: " + entry.id());
+        return List.copyOf(entries);
     }
     boolean openForm(DialogMenuBinding binding, String name, Consumer<Map<String, String>> submitted) {
         Session session = bound(binding);

@@ -66,6 +66,8 @@ public final class ResourceRegressionTests {
         checks += PresentationContextTests.run(root);
         checks += PreparedLayoutTests.run(root);
         checks += NativeUiTextureTests.run(root);
+        SessionReplacementCheck.main(new String[0]);
+        InitialCollectionCheck.run();
         checks += ProportionalImageTests.run(root);
         checks += GraphicLimitTests.run(root);
         checks += CanvasScaleTests.run(root);
