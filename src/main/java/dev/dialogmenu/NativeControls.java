@@ -11,26 +11,29 @@ import org.bukkit.configuration.ConfigurationSection;
 /** 原生控件数据和提交；遮挡模式使用真实排版，不单独移动命中。 */
 final class NativeControls {
     private NativeControls() {}
-    static final Spec EMPTY = new Spec(List.of(), List.of(), false, -1);
+    static final Spec EMPTY = new Spec(List.of(), List.of(), false, -1, 0);
     private static final Pattern INPUT = Pattern.compile("\\{input\\.([a-z0-9_-]+)}");
     record Field(String id, String type, String label, int width, String initial, int maxLength,
                  boolean multiline, int height, int maxLines, float min, float max, float step,
                  boolean labelVisible) {}
     record Button(String id, String label, int width, String permission, List<String> tooltip,
                   List<String> actions, boolean close, int z) {}
-    record Spec(List<Field> inputs, List<Button> buttons, boolean overlay, int bodyRows) {
+    record Spec(List<Field> inputs, List<Button> buttons, boolean overlay, int bodyRows, int backgroundExtension) {
         boolean empty() { return inputs.isEmpty() && buttons.isEmpty(); }
     }
 
     static Spec parse(ConfigurationSection parent) {
         if (!parent.contains("native-controls")) return EMPTY;
         var section = object(parent, "native-controls");
-        LayoutStore.keys(section, Set.of("inputs", "buttons", "overlay", "body-rows"));
+        LayoutStore.keys(section, Set.of("inputs", "buttons", "overlay", "body-rows", "background-extension"));
         boolean overlay = bool(section, "overlay", false);
         int bodyRows = section.contains("body-rows")
             ? LayoutStore.integer(section, "body-rows", 1, 1, 113) : -1;
         if (!overlay && bodyRows != -1)
             throw new IllegalArgumentException("body-rows仅用于原生栏遮挡模式");
+        int extension = LayoutStore.integer(section, "background-extension", 0, 0, 256);
+        if (!overlay && extension != 0)
+            throw new IllegalArgumentException("background-extension仅用于原生栏遮挡模式");
         List<Field> fields = new ArrayList<>();
         if (section.contains("inputs")) {
             var inputs = object(section, "inputs");
@@ -81,7 +84,7 @@ final class NativeControls {
         if (buttons.size() > 1024) throw new IllegalArgumentException("原生按钮最多1024个");
         if (!fields.isEmpty() && buttons.isEmpty())
             throw new IllegalArgumentException("原生输入至少需要一个buttons提交按钮");
-        return new Spec(List.copyOf(fields), List.copyOf(buttons), overlay, bodyRows);
+        return new Spec(List.copyOf(fields), List.copyOf(buttons), overlay, bodyRows, extension);
     }
 
     static List<DialogInput> inputs(Spec spec, MenuModel.Context context, Map<String, String> submitted) {

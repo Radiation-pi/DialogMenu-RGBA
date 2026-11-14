@@ -15,7 +15,7 @@ final class NativeInk {
     static final int HALF_CODES = 16128;
     static final int MAX_PROFILES = 63;
     record Control(String id, boolean button, int width, int y, int height, int z) {}
-    record Layout(int bodyRows, int carrier, int contentWidth, List<Control> controls,
+    record Layout(int bodyRows, int carrier, int contentWidth, int extensionRows, List<Control> controls,
                   List<NativeControls.Button> buttons) {
         int top() { return bodyRows * 9; }
         int canvasOffset(int width) {
@@ -47,12 +47,14 @@ final class NativeInk {
             y += 24;
         }
         int bottom = y - 4;
+        // 下延只增加背景绘制容量，不把原生控件推向画布底边。
         int rows = Math.max(spec.bodyRows() == -1 ? 1 : spec.bodyRows(),
-            (canvasHeight - bottom + 8) / 9);
+            (canvasHeight - spec.backgroundExtension() - bottom + 8) / 9);
         if (rows > 113 || rows * 9 + bottom > 1024)
             throw new IllegalArgumentException("原生栏与正文总高度超过1024原生像素");
         int contentWidth = Math.max(canvasWidth + 10, controls.stream().mapToInt(Control::width).max().orElse(0));
-        return new Layout(rows, controls.getLast().y() + 6, contentWidth, List.copyOf(controls), buttons);
+        return new Layout(rows, controls.getLast().y() + 6, contentWidth,
+            (spec.backgroundExtension() + 8) / 9, List.copyOf(controls), buttons);
     }
 
     void prepare(NativeControls.Spec spec, Menu menu, int width, int height) {
@@ -92,7 +94,7 @@ final class NativeInk {
     }
     private static Profile profileOf(Layout layout, double z) {
         var last = layout.controls().getLast();
-        int rows = (last.y() + last.height() + 8) / 9 + 1;
+        int rows = (last.y() + last.height() + 8) / 9 + 1 + layout.extensionRows();
         int minWidth = Math.max(74, layout.controls().stream().mapToInt(Control::width).max().orElse(0));
         return new Profile(layout.carrier(), rows, minWidth, mask(layout, z));
     }
