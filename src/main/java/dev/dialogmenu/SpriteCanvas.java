@@ -23,6 +23,14 @@ final class SpriteCanvas {
         return Character.toString(0xF0000 + pixels + 1024);
     }
     static Component space(int pixels) { return Component.text(move(pixels)).font(SPACE); }
+    static int playerHeadRow(int top, int height, int rows) {
+        // 玩家对象字形的可见顶部比正文行高 1 像素；不能让它绘制到画布外。
+        int row = Math.max(0, Math.min(rows - 1, Math.round((top + 1) / 9f)));
+        int drawnTop = row * 9 - 1;
+        if (drawnTop < 0 || drawnTop + 8 > height)
+            throw new IllegalArgumentException("玩家头像实际位置超出画布，请调整垂直坐标");
+        return row;
+    }
     private static Component positioned(Component ink, int x, int advance) {
         return Component.empty().append(space(x)).append(ink).append(space(-x - advance));
     }
@@ -118,7 +126,22 @@ final class SpriteCanvas {
                             FontPack fonts, Map<Region, ClickEvent> clicks, Function<Region, ClickEvent> bind,
                             Function<Region, HoverEvent<Component>> hover, Sprite sprite) {
         int width = frame.width(), height = frame.height();
-        if (node.type().equals("model")) {
+        if (node.type().equals("player-head")) {
+            double zoom = width / (double) menu.width();
+            int x = (int) Math.round((menu.width() / 2.0 + node.x()) * zoom - 4);
+            int y = (int) Math.round((menu.height() / 2.0 - node.y()) * zoom - 4);
+            if (x < 0 || x + 8 > width || y < 0 || y + 8 > height)
+                throw new IllegalArgumentException(node.id() + " 玩家头像超出画布");
+            int row = playerHeadRow(y, height, parts.size());
+            parts.get(row).add(positioned(context.playerHead(), x, 8));
+            Region region = node.interaction() == null ? null : node.interaction().region(node);
+            ClickEvent click = region != null && region.hasActions() ? clicks.computeIfAbsent(region, bind) : null;
+            var tooltip = region == null ? null : hover.apply(region);
+            if (click != null || tooltip != null)
+                for (var slice : RgbaRows.slices(row * 9 - 1, 8))
+                    parts.get(slice.row()).add(positioned(RgbaHits.rectangle(slice.local(slice.top()),
+                        8, slice.height(), click, tooltip), x, 0));
+        } else if (node.type().equals("model")) {
             double zoom = width / (double) menu.width();
             int x = (int) Math.round((menu.width() / 2.0 + node.x()) * zoom);
             int center = (int) Math.round((menu.height() / 2.0 - node.y()) * zoom);
@@ -169,16 +192,17 @@ final class SpriteCanvas {
     private void addText(List<List<Component>> parts, Menu menu, Node node, Context context,
                          FontPack fonts, Map<Region, ClickEvent> clicks, Function<Region, ClickEvent> bind,
                          Function<Region, HoverEvent<Component>> hover, int width, int height) {
-        int size = textSize(menu, node, width, context.textScale(), context.canvasScale());
-        TextStyle style = new TextStyle(size, node.scale());
+        TextStyle style = textStyle(menu, node, width, context, fonts);
+        int size = style.size();
         double zoom = width / (double) menu.width();
         String expanded = context.expand(node.text());
+        Component parsed = MenuText.parse(expanded);
         boolean fixed = expanded.equals(node.text()) && !MenuTemplate.dynamicText(node);
         TextKey key = new TextKey(fonts, expanded, node.width() * node.scale() * zoom, node.maxLines(),
             size, node.scale());
         TextLayout layout = fixed ? staticText.get(key) : null;
         if (layout == null) {
-            List<Component> lines = TextFlow.lines(node, MenuText.parse(expanded), zoom,
+            List<Component> lines = TextFlow.lines(node, parsed, zoom,
                 glyph -> fonts.glyphWidth(glyph, style));
             layout = new TextLayout(lines,
                 lines.stream().map(text -> fonts.textWidth(text, style)).toList());
@@ -223,6 +247,24 @@ final class SpriteCanvas {
                         clicks.get(region), hover.apply(region)), x, advance));
             }
         }
+    }
+    static TextStyle textStyle(Menu menu, Node node, int width, Context context, FontPack fonts) {
+        int size = textSize(menu, node, width, context.textScale(), context.canvasScale());
+        return fitTextStyle(node, size, width / (double) menu.width(),
+            node.maxLines() == -1 ? context.expand(node.text()) : "", fonts);
+    }
+    static TextStyle fitTextStyle(Node node, int size, double zoom, String expanded, FontPack fonts) {
+        if (node.maxLines() == -1) {
+            if (expanded.indexOf('\n') >= 0 || expanded.indexOf('\r') >= 0)
+                throw new IllegalArgumentException(node.id() + " fit-width仅支持单行文字");
+            Component parsed = MenuText.parse(expanded);
+            int limit = Math.max(1, (int) Math.floor(node.width() * node.scale() * zoom));
+            int minimum = Math.max(1, (int) Math.ceil(0.5 / node.scale()));
+            while (size > minimum && fonts.textWidth(parsed, new TextStyle(size, node.scale())) > limit) size--;
+            if (fonts.textWidth(parsed, new TextStyle(size, node.scale())) > limit)
+                throw new IllegalArgumentException(node.id() + " 文字无法放入fit-width");
+        }
+        return new TextStyle(size, node.scale());
     }
     private void addSprite(List<List<Component>> parts, Sprite sprite, FontPack fonts, int argb,
                            ClickEvent click, HoverEvent<Component> hover) {

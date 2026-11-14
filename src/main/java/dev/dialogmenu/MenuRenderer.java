@@ -79,7 +79,7 @@ final class MenuRenderer {
         List<Node> textNodes = new ArrayList<>();
         for (Node original : menu.nodes()) {
             Node n = original;
-            if (n.type().equals("model")) continue;
+            if (n.type().equals("model") || n.type().equals("player-head")) continue;
             if (n.type().equals("text")) {
                 if (n.rotation() != 0) throw new IllegalArgumentException(n.id() + " 原生文字不支持旋转");
                 textNodes.add(n);

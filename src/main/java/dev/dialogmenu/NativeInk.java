@@ -203,14 +203,19 @@ final class NativeInk {
             boolean interactive = interaction != null && (interaction.region(node).hasActions()
                 || !interaction.tooltip().isEmpty());
             double bottom;
-            if (node.type().equals("model")) {
+            if (node.type().equals("player-head")) {
+                double zoom = frame.width() / (double) doc.menu().width();
+                int y = (int) Math.round((doc.menu().height() / 2.0 - node.y()) * zoom - 4);
+                bottom = SpriteCanvas.playerHeadRow(y, frame.height(), (frame.height() + 8) / 9) * 9 - 1 + 8;
+                if (bottom > layout.top())
+                    throw new IllegalArgumentException(node.id() + "：原生栏暂不支持玩家头像，请放在正文区");
+            } else if (node.type().equals("model")) {
                 var area = fonts.modelArea(doc.menu(), node, frame.width(), frame.height());
                 bottom = area.getMaxY();
                 if (bottom > layout.top())
                     throw new IllegalArgumentException(node.id() + "：原生栏暂不支持模型，请放在正文区");
             } else if (node.type().equals("text")) {
-                int size = SpriteCanvas.textSize(doc.menu(), node, frame.width(), context.textScale(), context.canvasScale());
-                TextStyle style = new TextStyle(size, node.scale());
+                TextStyle style = SpriteCanvas.textStyle(doc.menu(), node, frame.width(), context, fonts);
                 var lines = TextFlow.lines(node, MenuText.parse(context.expand(node.text())),
                     frame.width() / (double) doc.menu().width(), glyph -> fonts.glyphWidth(glyph, style));
                 bottom = SpriteCanvas.textTop(doc.menu(), node, frame.width(), Math.max(0, lines.size() - 1), style)

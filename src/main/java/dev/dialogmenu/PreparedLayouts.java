@@ -37,6 +37,7 @@ final class PreparedLayouts {
     }
 
     Fragment fragment(Menu menu, Node node, Rendered frame, Context context, SpriteCanvas canvas) {
+        if (node.type().equals("player-head")) return null;
         if (node.type().equals("text")
             && (MenuTemplate.dynamicText(node) || !context.expand(node.text()).equals(node.text()))) return null;
         var key = new FragmentKey(node, menu.width(), menu.height(), menu.scaleTextWithCanvas(),

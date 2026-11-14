@@ -182,9 +182,11 @@ final class FontPack {
                     for (int cp : characters) pack.measure(cp, renderer.assets);
                     for (double scale : ScaleCalibration.is(doc) ? List.of(1d) : textScales) {
                         int size = SpriteCanvas.textSize(doc.menu(), node, width, scale, canvasScale);
-                        TextStyle style = new TextStyle(size, node.scale());
+                        TextStyle style;
                         List<net.kyori.adventure.text.Component> lines;
                         try {
+                            style = SpriteCanvas.fitTextStyle(node, size, width / (double) doc.menu().width(),
+                                active.expand(node.text()), pack);
                             lines = dynamic ? List.of() : TextFlow.lines(node, MenuText.parse(active.expand(node.text())),
                                 width / (double) doc.menu().width(),
                                 glyph -> pack.glyphWidth(glyph, style));

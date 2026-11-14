@@ -283,6 +283,9 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
     }
     private Context context(Player player) {
         return new Context() {
+            public Component playerHead() {
+                return NativePlayerHeads.of(player);
+            }
             public String expand(String text) {
                 return application.expand(player, text).replace("{player}", player.getName())
                     .replace("{uuid}", player.getUniqueId().toString());
@@ -608,7 +611,7 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
                                        boolean escape) {}
 
     record FrozenContext(Map<String, String> values, Map<String, Boolean> permissions,
-                         double textScale, double canvasScale) implements Context {
+                         double textScale, double canvasScale, Component playerHead) implements Context {
         public String expand(String text) {
             String value = values.get(text);
             if (value == null) throw new IllegalStateException("未在主线程快照的菜单文本");
@@ -798,7 +801,9 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
         Map<String, Boolean> allowed = new HashMap<>();
         for (String permission : permissions) allowed.put(permission, source.permitted(permission));
         double textScale = source.textScale(), canvasScale = source.canvasScale();
-        return new FrozenContext(Map.copyOf(values), Map.copyOf(allowed), textScale, canvasScale);
+        Component playerHead = document.menu().nodes().stream().anyMatch(node -> node.type().equals("player-head"))
+            ? source.playerHead() : Component.empty();
+        return new FrozenContext(Map.copyOf(values), Map.copyOf(allowed), textScale, canvasScale, playerHead);
     }
 
     private void publishPresentation(Player player, long request, PreparedPresentation prepared) throws Exception {

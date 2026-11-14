@@ -232,7 +232,7 @@ final class LayoutStore {
             if (s == null) throw new IllegalArgumentException("frontend元素须为对象：" + key);
             keys(s, Set.of("type", "visible", "offset", "scale", "rotation", "children",
                 "width", "height", "color", "opacity", "content", "source", "alignment", "size", "thickness",
-                "line-width", "max-lines", "clickable", "permission", "tooltip", "actions", "reuse-texture", "atlas"));
+                "line-width", "max-lines", "fit-width", "clickable", "permission", "tooltip", "actions", "reuse-texture", "atlas"));
             for (String transform : List.of("offset", "scale", "rotation")) {
                 var t = s.getConfigurationSection(transform);
                 if (t != null) keys(t, Set.of("x", "y", "z"));
@@ -240,8 +240,8 @@ final class LayoutStore {
             if (!s.getBoolean("visible", true)) continue;
             String type = s.getString("type", "");
             boolean interactive = s.contains("clickable") || s.contains("actions") || s.contains("tooltip");
-            if (interactive && !Set.of("text", "image", "model").contains(type))
-                throw new IllegalArgumentException(key + " 直接点击仅用于text/image/model");
+            if (interactive && !Set.of("text", "image", "model", "player-head").contains(type))
+                throw new IllegalArgumentException(key + " 直接点击仅用于text/image/model/player-head");
             if (s.contains("clickable") && !(s.get("clickable") instanceof Boolean))
                 throw new IllegalArgumentException(key + " clickable须为true/false");
             double x = ox + number(s, "offset.x", 0) * parentScale;
@@ -257,16 +257,23 @@ final class LayoutStore {
                 flatten(s.getConfigurationSection("children"), x, y, z, scale, out);
                 continue;
             }
-            if (!Set.of("rectangle", "frame", "line", "text", "image", "model").contains(type))
+            if (!Set.of("rectangle", "frame", "line", "text", "image", "model", "player-head").contains(type))
                 throw new IllegalArgumentException(key + " 元素尚不支持：" + type + "；模型请勿当成平面图片");
-            double w = number(s, "width", type.equals("text") ? 0 : 16);
-            double h = number(s, "height", type.equals("text") ? 0 : 16);
+            if (type.equals("player-head") && (rotation != 0 || scale != 1))
+                throw new IllegalArgumentException(key + " 玩家头像暂不支持旋转或缩放");
+            double w = number(s, "width", type.equals("text") ? 0 : type.equals("player-head") ? 8 : 16);
+            double h = number(s, "height", type.equals("text") ? 0 : type.equals("player-head") ? 8 : 16);
+            if (type.equals("player-head") && (w != 8 || h != 8))
+                throw new IllegalArgumentException(key + " 原生玩家头像固定为8×8像素");
+            if (type.equals("player-head")) NativePlayerHeads.requireSupported();
             double thickness = number(s, "thickness", 1);
             if ((!type.equals("text") && (w <= 0 || h <= 0)) || thickness <= 0)
                 throw new IllegalArgumentException(key + " 宽高/线宽须为正数");
             String color = s.getString("color", "#FFFFFF");
             if (!color.matches("#[0-9a-fA-F]{6}")) throw new IllegalArgumentException("color须为#RRGGBB");
             int argb = integer(s, "opacity", 255, 0, 255) << 24 | Integer.parseInt(color.substring(1), 16);
+            if (type.equals("player-head") && (argb != 0xFFFFFFFF || s.contains("source")))
+                throw new IllegalArgumentException(key + " 原生玩家头像不支持染色或source，使用当前玩家皮肤");
             String alignment = s.getString("alignment", "center");
             if (!Set.of("left", "center", "right").contains(alignment)) throw new IllegalArgumentException("alignment非法");
             String source = s.getString("source", "");
@@ -290,6 +297,13 @@ final class LayoutStore {
             }
             int lines = integer(s, "max-lines", 0, 0, 32);
             if (s.contains("line-width")) w = number(s, "line-width", 0);
+            if (s.contains("fit-width")) {
+                if (!type.equals("text") || s.contains("line-width") || s.contains("max-lines"))
+                    throw new IllegalArgumentException(key + " fit-width仅用于单行文字，不能与换行参数混用");
+                w = number(s, "fit-width", 0);
+                if (w <= 0) throw new IllegalArgumentException(key + " fit-width须为正数");
+                lines = -1;
+            }
             if ((s.contains("line-width") || lines > 0) && (!type.equals("text") || w <= 0 || lines == 0))
                 throw new IllegalArgumentException(key + " line-width与max-lines须同时用于文字");
             Interaction interaction = null;

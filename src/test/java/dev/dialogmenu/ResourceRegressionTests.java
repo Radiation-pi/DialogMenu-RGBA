@@ -68,6 +68,12 @@ public final class ResourceRegressionTests {
         checks += NativeUiTextureTests.run(root);
         SessionReplacementCheck.main(new String[0]);
         InitialCollectionCheck.run();
+        AvatarPlacementCheck.main(new String[0]);
+        if (NativePlayerHeads.supported()) AvatarInteractionCheck.main(new String[0]);
+        CatalogTooltipCheck.main(new String[0]);
+        NativePlayerHeadCheck.run();
+        AvatarSnapshotCheck.run(root);
+        FitWidthCheck.run(root);
         checks += ProportionalImageTests.run(root);
         checks += GraphicLimitTests.run(root);
         checks += CanvasScaleTests.run(root);
