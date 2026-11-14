@@ -1,5 +1,7 @@
 # DialogMenu
 
+性能测试见 [BENCHMARKS.md](BENCHMARKS.md)：`gradle benchmarkSmoke` 校验测试场景，`gradle benchmark` 运行独立的 JMH 基准；测试代码和依赖不进入插件 JAR。
+
 基于原版 Dialog 的 Minecraft 菜单插件。使用 YAML 配置文字、图片、点击动作和动态内容，支持 Java API、共享字库、图片染色及图片/文字拉伸。普通玩家无需安装 Mod，需接受服务器资源包。
 初期阶段，性能释放材质重载方案和实现方式并不好看，请见谅
 
