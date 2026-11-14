@@ -13,18 +13,19 @@ final class InventoryAssets {
     private static Map<String, ImageRegistry.Entry> images;
     private static Map<String, String> nativeSprites;
 
-    static synchronized Map<String, byte[]> files() throws IOException {
+    static synchronized void prepare(AssetLibrary library) throws IOException {
         if (files == null) {
             var next = new TreeMap<String, byte[]>();
-            try (var source = InventoryAssets.class.getResourceAsStream("/vanilla-inventory.zip")) {
-                if (source == null) throw new IOException("Missing vanilla inventory library");
-                try (var zip = new ZipInputStream(source)) {
-                    for (ZipEntry entry; (entry = zip.getNextEntry()) != null;)
-                        if (!entry.isDirectory()) next.put(entry.getName(), zip.readAllBytes());
-                }
+            try (var zip = new ZipInputStream(new ByteArrayInputStream(library.read("vanilla-inventory.zip")))) {
+                for (ZipEntry entry; (entry = zip.getNextEntry()) != null;)
+                    if (!entry.isDirectory()) next.put(entry.getName(), zip.readAllBytes());
             }
             files = Collections.unmodifiableMap(next);
         }
+    }
+
+    static synchronized Map<String, byte[]> files() throws IOException {
+        if (files == null) throw new IOException("Vanilla inventory library has not been prepared");
         return files;
     }
 

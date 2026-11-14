@@ -34,24 +34,28 @@ final class CompiledSnapshot {
         java.net.URL location = CompiledSnapshot.class.getProtectionDomain().getCodeSource().getLocation();
         try {
             Path binary = Path.of(location.toURI());
-            if (Files.isRegularFile(binary)) engine = SourceFiles.digest(Files.readAllBytes(binary));
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            if (Files.isRegularFile(binary)) Files.copy(binary, bytes);
             else {
-                ByteArrayOutputStream bytes = new ByteArrayOutputStream();
                 for (String name : List.of("CompiledSnapshot.class", "ReloadEngine.class", "FontPack.class",
                     "RgbaImages.class", "RegisteredImages.class", "ImageRegistry.class", "PrimitiveShapes.class",
                     "RgbaHits.class", "RgbaOffsets.class", "RgbaDecorations.class",
                     "CanvasScale.class", "ScaleCalibration.class", "NativeUiTextures.class", "MenuOpeners.class", "MenuRenderer.class",
                     "SpriteCanvas.class", "PreparedLayouts.class", "NativeInk.class", "NativeControls.class",
                     "LayoutStore.class", "MenuTemplate.class", "ModelPack.class",
-                    "VanillaAssets.class", "CraftEngineAssets.class", "/glyphs.bin.gz",
-                    "/vanilla-icons.zip", "/rgba/characters-3500.txt")) {
+                    "VanillaAssets.class", "CraftEngineAssets.class", "AssetLibrary.class",
+                    "InventoryAssets.class", "/rgba/characters-3500.txt")) {
                     try (var input = CompiledSnapshot.class.getResourceAsStream(name)) {
                         if (input == null) throw new IOException("缺少缓存兼容性标识：" + name);
                         input.transferTo(bytes);
                     }
                 }
-                engine = SourceFiles.digest(bytes.toByteArray());
             }
+            try (var manifest = CompiledSnapshot.class.getResourceAsStream("/vanilla-assets.properties")) {
+                if (manifest == null) throw new IOException("缺少原版资源库版本标识");
+                manifest.transferTo(bytes);
+            }
+            engine = SourceFiles.digest(bytes.toByteArray());
         } catch (java.net.URISyntaxException error) { throw new IOException(error); }
     }
 

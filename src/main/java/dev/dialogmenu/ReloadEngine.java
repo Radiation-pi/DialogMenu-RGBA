@@ -72,6 +72,7 @@ final class ReloadEngine implements AutoCloseable {
     private Map<Path, Stamp> builtInputs = Map.of();
     private long generation;
     private boolean reuseCompiledCache;
+    private volatile String libraryStatus = "等待检查";
 
     ReloadEngine(Path data, Context preview) {
         this(data, preview, false);
@@ -98,9 +99,22 @@ final class ReloadEngine implements AutoCloseable {
             catch (Exception error) { throw new CompletionException(error); }
         }, worker);
     }
-    CompletableFuture<Startup> startup() {
+    String libraryStatus() { return libraryStatus; }
+    private void prepareLibrary(Consumer<Progress> progress) throws IOException {
+        libraryStatus = "准备中";
+        try {
+            new AssetLibrary(data).prepare(stage -> progress.accept(new Progress(5, stage)));
+            libraryStatus = "就绪";
+        } catch (IOException error) {
+            libraryStatus = "失败";
+            throw error;
+        }
+    }
+    CompletableFuture<Startup> startup() { return startup(ignored -> {}); }
+    CompletableFuture<Startup> startup(Consumer<Progress> progress) {
         return CompletableFuture.supplyAsync(() -> {
             try {
+                prepareLibrary(progress);
                 Result restored = restored();
                 if (reuseCompiledCache) return new Startup(restored, null);
                 try {
@@ -286,6 +300,7 @@ final class ReloadEngine implements AutoCloseable {
         else cache.prune(latest.pack());
         if (mode == Mode.RESOURCE && latest == null)
             throw new IllegalStateException("尚无已编译资源，请执行 /dialogmenu reload all");
+        prepareLibrary(step -> progress.update(step.percent(), step.stage()));
         // 仅资源重载不读取磁盘上的待应用布局或配置。
         boolean all = mode == Mode.ALL || mode == Mode.FULL;
         progress.update(10, "读取重载配置");
@@ -458,6 +473,7 @@ final class ReloadEngine implements AutoCloseable {
     private Map<Path, Stamp> resourceInputs(VanillaAssets assets) throws IOException {
         Set<Path> files = new HashSet<>();
         scan(data.resolve("images"), files);
+        files.addAll(assets.libraryPaths());
         files.addAll(assets.craftEngine.dependencies());
         ModelPack.inputs(data, files);
         return stamps(files);

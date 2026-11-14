@@ -20,6 +20,7 @@ final class VanillaAssets {
     private final Map<String, BufferedImage> custom = new HashMap<>();
     private final Map<String, ImageRegistry.Entry> registered = new TreeMap<>();
     private final SourceFiles inputs = new SourceFiles();
+    private final AssetLibrary library;
     final CraftEngineAssets craftEngine;
     record State(Map<String, BufferedImage> custom, JsonElement craftEngine, Map<String, ImageRegistry.Entry> registered) {}
 
@@ -53,8 +54,10 @@ final class VanillaAssets {
         this.images = images.toAbsolutePath().normalize();
         Files.createDirectories(this.images);
         this.craftEngine = craftEngine;
-        byte[] source;
-        try (var input = resource("glyphs.bin.gz")) { source = input.readAllBytes(); }
+        library = new AssetLibrary(this.images.getParent());
+        library.prepare(ignored -> {});
+        InventoryAssets.prepare(library);
+        byte[] source = library.read("glyphs.bin.gz");
         glyphSource = SourceFiles.digest(source);
         try (var input = new DataInputStream(new GZIPInputStream(new ByteArrayInputStream(source)))) {
             if (input.readInt() != 0x534D4631) throw new IOException("Unknown glyph source format");
@@ -68,7 +71,7 @@ final class VanillaAssets {
                 glyphs.put(cp, new Glyph(alpha, w, h, advance));
             }
         }
-        try (var input = new ZipInputStream(resource("vanilla-icons.zip"))) {
+        try (var input = new ZipInputStream(new ByteArrayInputStream(library.read("vanilla-icons.zip")))) {
             for (ZipEntry entry; (entry = input.getNextEntry()) != null;) {
                 BuildBudget.checkpoint();
                 byte[] bytes = input.readAllBytes();
@@ -76,12 +79,6 @@ final class VanillaAssets {
                 if (image != null) icons.put(entry.getName().replaceFirst("\\.png$", ""), image);
             }
         }
-    }
-
-    private static InputStream resource(String name) throws IOException {
-        InputStream input = VanillaAssets.class.getClassLoader().getResourceAsStream(name);
-        if (input == null) throw new FileNotFoundException("Missing built-in asset " + name);
-        return input;
     }
 
     synchronized BufferedImage image(String source) throws IOException {
@@ -145,7 +142,8 @@ final class VanillaAssets {
         return entry != null && entry.tintable() ? argb : argb | 0xFFFFFF;
     }
 
-    void verifyInputs() throws IOException { inputs.verify(); craftEngine.verifyInputs(); }
+    List<Path> libraryPaths() { return library.paths(); }
+    void verifyInputs() throws IOException { library.verify(); inputs.verify(); craftEngine.verifyInputs(); }
 
     List<String> sources() throws IOException {
         var result = new TreeSet<String>();

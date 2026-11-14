@@ -158,6 +158,8 @@ final class EditorFiles {
                 data.resolve(config.getString("craftengine-resources", "../CraftEngine/resources")).normalize().toString());
             config.save(root.resolve("config.yml").toFile());
             Files.createSymbolicLink(root.resolve("images"), data.resolve("images"));
+            Files.createDirectories(data.resolve("libraries"));
+            Files.createSymbolicLink(root.resolve("libraries"), data.resolve("libraries"));
             return root;
         } catch (Exception error) { remove(root); throw error; }
     }

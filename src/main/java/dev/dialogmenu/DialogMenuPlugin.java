@@ -311,7 +311,8 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
     private void loadStartup() {
         long start = System.nanoTime();
         // 先排入串行队列，再监听 CE，启动缓存事件不能抢先准备资源。
-        reloadEngine.startup().whenComplete((startup, error) -> {
+        getLogger().info("后台检查原版资源库；首次使用时自动下载并校验。");
+        reloadEngine.startup(progress -> getLogger().info(progress.stage())).whenComplete((startup, error) -> {
             if (!isEnabled()) return;
             Bukkit.getScheduler().runTask(this, () -> {
                 if (error != null) {
@@ -1105,7 +1106,8 @@ public final class DialogMenuPlugin extends JavaPlugin implements Listener, TabE
                 case "status" -> sender.sendMessage("Dialog standalone layouts=" + store.ids().size()
                     + " active=" + views.size() + " renderer=" + RenderingEdition.ID
                     + " published=" + (loaded == null ? "none" : loaded.generation())
-                    + " pending=" + (publication.pending() == null ? "none" : publication.pending().generation()));
+                    + " pending=" + (publication.pending() == null ? "none" : publication.pending().generation())
+                    + " libraries=" + reloadEngine.libraryStatus());
                 case "reload" -> requestReload(sender, ReloadEngine.Request.command(args));
                 case "publish" -> {
                     if (!externalPublication()) throw new IllegalStateException("请先启用外部资源包发布模式。");

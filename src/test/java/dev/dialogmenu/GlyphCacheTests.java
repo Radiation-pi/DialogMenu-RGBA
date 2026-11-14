@@ -146,6 +146,9 @@ public final class GlyphCacheTests {
         try (var input = GlyphCacheTests.class.getResourceAsStream("/glyphs.bin.gz")) {
             Files.copy(Objects.requireNonNull(input), source);
         }
+        try (var input = GlyphCacheTests.class.getResourceAsStream("/vanilla-assets.properties")) {
+            Files.copy(Objects.requireNonNull(input), shadow.resolve("vanilla-assets.properties"));
+        }
         Path log = shadow.resolve("source-check.log");
         var process = new ProcessBuilder(Path.of(System.getProperty("java.home"), "bin/java").toString(),
             "-Djava.awt.headless=true", "-cp", shadow + File.pathSeparator + System.getProperty("java.class.path"),
@@ -189,6 +192,16 @@ public final class GlyphCacheTests {
                 changed = bytes.toByteArray();
             }
             Files.write(source, changed);
+            // Simulate a new trusted library manifest, not an unverified cache edit.
+            Path manifest = source.resolveSibling("vanilla-assets.properties");
+            var properties = new Properties();
+            try (var input = Files.newInputStream(manifest)) { properties.load(input); }
+            properties.setProperty("glyphs.bin.gz.size", Integer.toString(changed.length));
+            properties.setProperty("glyphs.bin.gz.sha256", SourceFiles.digest(changed));
+            try (var output = Files.newOutputStream(manifest)) { properties.store(output, null); }
+            try (var incompatible = new ReloadEngine(data, CONTEXT)) {
+                reject(incompatible.restore(), "changed library manifest invalidates persisted snapshots");
+            }
             Files.writeString(data.resolve("layouts/test.yml"), YAML + "\n# source update\n");
             var next = build(engine);
             check(!next.fonts().reusedGlyphs(), "same styles and characters but different glyph source rebuild");

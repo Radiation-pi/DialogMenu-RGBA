@@ -36,8 +36,11 @@ final class ModelPack {
             if (node.type().equals("model")) ids.add(node.source());
         return ids;
     }
-    private static synchronized ModelPack defaults() throws IOException {
+    private static synchronized ModelPack defaults(Path root) throws IOException {
         if (defaultPack != null) return defaultPack;
+        var library = new AssetLibrary(root);
+        library.prepare(ignored -> {});
+        InventoryAssets.prepare(library);
         JsonObject data = InventoryAssets.json("models.json");
         var models = new TreeMap<String, List<Face>>();
         var bounds = new TreeMap<String, double[]>();
@@ -67,7 +70,7 @@ final class ModelPack {
         return required.equals(pack == null ? Set.of() : pack.models.keySet());
     }
     static ModelPack prepare(Path data, Collection<LayoutStore.Document> documents) throws Exception {
-        ModelPack defaults = defaults();
+        ModelPack defaults = defaults(data);
         Set<String> ids = ids(documents);
         SourceFiles inputs = new SourceFiles();
         Path unified = data.resolve("images/registry.json");
